@@ -1,0 +1,104 @@
+{
+  "pages": [
+    {
+      "path": "pages/login/index",
+      "style": {
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/home/index",
+      "style": {
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/work-order/index",
+      "style": {
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": true,
+        "onReachBottomDistance": 80
+      }
+    },
+    {
+      "path": "pages/statistics/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/message/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/mine/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/assistant/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/plugin-check/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "\u5b89\u68c0APP",
+    "navigationBarBackgroundColor": "#F5F8FF",
+    "backgroundColor": "#F5F8FF"
+  },
+  "tabBar": {
+    "color": "#6B7897",
+    "selectedColor": "#1677FF",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "height": "58px",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "\u9996\u9875",
+        "iconPath": "static/tabbar/home.png",
+        "selectedIconPath": "static/tabbar/home-active.png"
+      },
+      {
+        "pagePath": "pages/work-order/index",
+        "text": "\u5de5\u5355",
+        "iconPath": "static/tabbar/work-order.png",
+        "selectedIconPath": "static/tabbar/work-order-active.png"
+      },
+      {
+        "pagePath": "pages/statistics/index",
+        "text": "\u7edf\u8ba1",
+        "iconPath": "static/tabbar/statistics.png",
+        "selectedIconPath": "static/tabbar/statistics-active.png"
+      },
+      {
+        "pagePath": "pages/message/index",
+        "text": "\u6d88\u606f",
+        "iconPath": "static/tabbar/message.png",
+        "selectedIconPath": "static/tabbar/message-active.png"
+      },
+      {
+        "pagePath": "pages/mine/index",
+        "text": "\u6211\u7684",
+        "iconPath": "static/tabbar/mine.png",
+        "selectedIconPath": "static/tabbar/mine-active.png"
+      }
+    ]
+  },
+  "easycom": {
+    "autoscan": true
+  }
+}

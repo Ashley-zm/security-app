@@ -1,0 +1,19 @@
+@import './variables.scss';
+
+@mixin app-card {
+  background: #ffffff;
+  border-radius: $card-radius;
+  box-shadow: $shadow-card;
+}
+
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
