@@ -42,33 +42,86 @@
           </view>
         </view>
 
+        <view v-if="detectionResult.hasResult" class="detect-result">
+          <view class="detect-summary">
+            <text class="detect-summary-title">
+              {{ detectionResult.hasTarget ? '检测到目标' : '未检测到目标' }}
+            </text>
+            <text class="detect-summary-meta">
+              {{ detectionResult.modelName }} · {{ detectionResult.engine }} · {{ detectionResult.timestamp }}
+            </text>
+          </view>
+          <view v-if="detectionResult.boxes.length" class="box-list">
+            <view v-for="(box, index) in detectionResult.boxes" :key="`${box.label}-${index}`" class="box-item">
+              <view class="box-main">
+                <text class="box-label">{{ box.label }}</text>
+                <text class="box-score">{{ formatScore(box.score) }}</text>
+              </view>
+              <view class="box-meta">
+                classId: {{ box.classId }} · left: {{ formatNumber(box.left) }} · top: {{ formatNumber(box.top) }}
+              </view>
+              <view class="box-meta">
+                right: {{ formatNumber(box.right) }} · bottom: {{ formatNumber(box.bottom) }}
+              </view>
+            </view>
+          </view>
+          <view v-else class="empty-boxes">本次检测没有返回检测框</view>
+        </view>
+
         <view class="check-actions">
-          <button
-            v-for="preset in detectPresets"
-            :key="preset.engine"
-            class="check-btn"
-            :class="`check-btn-${preset.engine}`"
-            :disabled="pluginCheck.status === 'checking'"
-            @click="checkNativePlugin(preset)"
-          >
-            {{ pluginCheck.status === 'checking' ? '检测中' : preset.buttonText }}
+          <button class="check-btn check-btn-ncnn" :disabled="pluginCheck.status === 'checking'" @click="checkNativePlugin">
+            {{ pluginCheck.status === 'checking' ? '检测中' : '开始进行yolov8检测' }}
           </button>
         </view>
       </view>
 
       <view class="config-card">
-        <view class="card-title">模拟参数</view>
-        <view v-for="preset in detectPresets" :key="preset.engine" class="config-group">
-          <view class="config-title">{{ preset.configTitle }}</view>
-          <view class="config-grid">
-            <view
-              v-for="item in getConfigItems(preset.options)"
-              :key="`${preset.engine}-${item.label}`"
-              class="config-item"
-            >
-              <text class="config-label">{{ item.label }}</text>
-              <text class="config-value">{{ item.value }}</text>
+        <view class="card-title">YOLOv8 检测参数</view>
+        <view class="form-list">
+          <view class="form-field">
+            <text class="form-label">modelType</text>
+            <input v-model="yoloForm.modelType" class="form-input" />
+          </view>
+          <view class="form-field">
+            <text class="form-label">engine</text>
+            <input v-model="yoloForm.engine" class="form-input" />
+          </view>
+          <view class="form-field">
+            <text class="form-label">modelName</text>
+            <input v-model="yoloForm.modelName" class="form-input" />
+          </view>
+          <view class="form-field">
+            <text class="form-label">modelPath</text>
+            <input v-model="yoloForm.modelPath" class="form-input" />
+          </view>
+          <view class="form-field">
+            <text class="form-label">labelPath</text>
+            <input v-model="yoloForm.labelPath" class="form-input" />
+          </view>
+          <view class="form-grid">
+            <view class="form-field compact">
+              <text class="form-label">inputSize</text>
+              <input v-model="yoloForm.inputSize" class="form-input" type="number" />
             </view>
+            <view class="form-field compact">
+              <text class="form-label">detectInterval</text>
+              <input v-model="yoloForm.detectInterval" class="form-input" type="number" />
+            </view>
+            <view class="form-field compact">
+              <text class="form-label">threshold</text>
+              <input v-model="yoloForm.threshold" class="form-input" type="digit" />
+            </view>
+            <view class="form-field compact">
+              <text class="form-label">iouThreshold</text>
+              <input v-model="yoloForm.iouThreshold" class="form-input" type="digit" />
+            </view>
+          </view>
+          <view class="form-field switch-field">
+            <view>
+              <text class="form-label">useGpu</text>
+              <text class="form-help">{{ yoloForm.useGpu ? 'true' : 'false' }}</text>
+            </view>
+            <switch :checked="yoloForm.useGpu" color="#1677ff" @change="handleUseGpuChange" />
           </view>
         </view>
       </view>
@@ -89,7 +142,7 @@
         </view>
         <view class="tip-item">
           <text class="tip-dot blue" />
-          <text>模拟检测会调用 startDetect 并打开原生 DetectActivity。</text>
+          <text>点击检测会使用当前表单参数调用 startDetect 并打开原生 DetectActivity。</text>
         </view>
       </view>
     </view>
@@ -105,7 +158,13 @@ type PluginCheckStatus = 'idle' | 'checking' | 'success' | 'error' | 'unsupporte
 interface NativePluginResult {
   success?: boolean
   type?: string
+  code?: string
   message?: string
+  modelType?: string
+  engine?: string
+  modelName?: string
+  hasTarget?: boolean
+  boxes?: unknown
   timestamp?: number
   [key: string]: unknown
 }
@@ -122,58 +181,69 @@ interface DetectOptions {
   modelType: string
   engine: string
   modelName: string
-  threshold: number
+  threshold?: number
+  iouThreshold?: number
+  modelPath?: string
+  labelPath?: string
   detectInterval: number
   inputSize: number
+  useGpu?: boolean
 }
 
-interface DetectPreset {
+interface YoloForm {
+  modelType: string
   engine: string
-  buttonText: string
-  configTitle: string
-  runningText: string
-  options: DetectOptions
+  modelName: string
+  modelPath: string
+  labelPath: string
+  inputSize: string
+  detectInterval: string
+  threshold: string
+  iouThreshold: string
+  useGpu: boolean
+}
+
+interface DetectBox {
+  classId: number
+  label: string
+  score: number
+  left: number
+  top: number
+  right: number
+  bottom: number
 }
 
 const pluginCheck = reactive({
   status: 'idle' as PluginCheckStatus,
   icon: 'GO',
   statusText: '待检测',
-  description: '请选择 mock 或 ncnn 引擎，调用 AiDetectPlugin.startDetect 并传入对应参数',
+  description: '调整 YOLOv8 参数后，调用 AiDetectPlugin.startDetect 开始检测',
   detail: '',
   lastChecked: ''
 })
 
-const detectPresets: DetectPreset[] = [
-  {
-    engine: 'mock',
-    buttonText: '开始模拟mock 引擎检测',
-    configTitle: 'mock 引擎参数',
-    runningText: 'mock 引擎检测',
-    options: {
-      modelType: 'detection',
-      engine: 'mock',
-      modelName: 'mock_yolo',
-      threshold: 0.5,
-      detectInterval: 300,
-      inputSize: 640
-    }
-  },
-  {
-    engine: 'ncnn',
-    buttonText: '开始模拟ncnn 引擎检测',
-    configTitle: 'ncnn 引擎参数',
-    runningText: 'ncnn 引擎检测',
-    options: {
-      modelType: 'detection',
-      engine: 'ncnn',
-      modelName: 'yolov8n',
-      threshold: 0.5,
-      detectInterval: 300,
-      inputSize: 640
-    }
-  }
-]
+const detectionResult = reactive({
+  hasResult: false,
+  hasTarget: false,
+  modelType: '',
+  engine: '',
+  modelName: '',
+  timestamp: '',
+  boxes: [] as DetectBox[]
+})
+
+const yoloForm = reactive<YoloForm>({
+  modelType: 'detection',
+  engine: 'ncnn',
+  modelName: 'YOLO NCNN',
+  modelPath: 'models/yolov8n_ncnn/yolov8n.param',
+  labelPath: 'models/yolov8n_ncnn/labels.txt',
+  inputSize: '640',
+  detectInterval: '500',
+  threshold: '0.5',
+  iouThreshold: '0.45',
+  useGpu: false
+})
 
 const runtimeName = computed(() => {
   // #ifdef APP-PLUS
@@ -230,13 +300,22 @@ function formatTime(date: Date) {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
 }
 
-function checkNativePlugin(preset: DetectPreset) {
-  if (!isAppPlusRuntime) {
-    updatePluginCheck('unsupported', '未运行', '当前环境不是 App-Plus，无法调用安卓原生插件', formatConfigDetail(preset.options))
+function checkNativePlugin() {
+  const options = buildDetectOptions()
+  if (!options) {
     return
   }
 
-  updatePluginCheck('checking', '检测中', `正在调用 AiDetectPlugin.startDetect 进行${preset.runningText}`, formatConfigDetail(preset.options))
+  resetDetectionResult()
+  console.log('[AiDetectPlugin] startDetect options:', options)
+
+  if (!isAppPlusRuntime) {
+    updatePluginCheck('unsupported', '未运行', '当前环境不是 App-Plus，无法调用安卓原生插件', formatConfigDetail(options))
+    console.log('[AiDetectPlugin] skip native call outside App-Plus:', options)
+    return
+  }
+
+  updatePluginCheck('checking', '检测中', '正在调用 AiDetectPlugin.startDetect 进行 YOLOv8 检测', formatConfigDetail(options))
 
   const nativeUni = uni as unknown as {
     requireNativePlugin?: (name: string) => NativePluginModule | undefined
@@ -250,74 +329,202 @@ function checkNativePlugin(preset: DetectPreset) {
       return
     }
 
-    let settled = false
+    let receivedInitialResult = false
     const timer = setTimeout(() => {
-      if (!settled) {
-        settled = true
+      if (!receivedInitialResult) {
         updatePluginCheck('error', '调用超时', '插件已加载，但 startDetect 方法未返回结果', '请检查原生插件回调是否正常触发')
       }
     }, 5000)
 
-    const syncResult = plugin.startDetect(preset.options, (result) => {
-      if (settled) {
-        return
-      }
-
-      settled = true
+    const syncResult = plugin.startDetect(options, (result) => {
+      console.log('[AiDetectPlugin] callback result:', result)
+      receivedInitialResult = true
       clearTimeout(timer)
-
-      if (result?.success) {
-        updatePluginCheck('success', '已启动', `${preset.runningText}已启动`, result.message || 'DetectActivity 已打开')
-        return
-      }
-
-      updatePluginCheck('error', '异常', 'AiDetectPlugin 已返回，但结果不是成功状态', JSON.stringify(result || {}))
+      handleDetectCallback(result)
     })
 
     if (syncResult) {
-      settled = true
+      console.log('[AiDetectPlugin] sync result:', syncResult)
+      receivedInitialResult = true
       clearTimeout(timer)
-
-      if (syncResult.success) {
-        updatePluginCheck('success', '已启动', `${preset.runningText}已启动`, syncResult.message || 'DetectActivity 已打开')
-        return
-      }
-
-      updatePluginCheck('error', '异常', 'AiDetectPlugin 已同步返回，但结果不是成功状态', JSON.stringify(syncResult))
+      handleDetectCallback(syncResult)
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
+    console.error('[AiDetectPlugin] startDetect failed:', error)
     updatePluginCheck('error', '调用失败', 'AiDetectPlugin 调用过程中发生异常', message)
   }
 }
 
-function getConfigItems(options: DetectOptions) {
-  return [
-    {
-      label: 'modelType',
-      value: options.modelType
-    },
-    {
-      label: 'engine',
-      value: options.engine
-    },
-    {
-      label: 'modelName',
-      value: options.modelName
-    },
-    {
-      label: 'threshold',
-      value: String(options.threshold)
-    },
-    {
-      label: 'detectInterval',
-      value: `${options.detectInterval}ms`
-    },
-    {
-      label: 'inputSize',
-      value: String(options.inputSize)
-    }
-  ]
+function handleDetectCallback(result: NativePluginResult | undefined) {
+  console.log('[AiDetectPlugin] handle callback type:', result?.type, result)
+
+  if (!result) {
+    console.error('[AiDetectPlugin] empty callback result')
+    updatePluginCheck('error', '回调异常', '原生插件返回了空回调结果')
+    return
+  }
+
+  if (result.type === 'activity_opened') {
+    updatePluginCheck('checking', '页面已打开', '原生 DetectActivity 已打开，等待相机启动', result.message || formatCallbackDetail(result))
+    return
+  }
+
+  if (result.type === 'camera_preview_started') {
+    updatePluginCheck('checking', '相机已启动', '相机预览已启动，等待 YOLO 检测结果', result.message || formatCallbackDetail(result))
+    return
+  }
+
+  if (result.type === 'detect_result') {
+    applyDetectResult(result)
+    return
+  }
+
+  if (result.type === 'error' || result.success === false) {
+    console.error('[AiDetectPlugin] native error:', result)
+    updatePluginCheck('error', '原生侧错误', result.message || '原生侧返回错误', formatCallbackDetail(result))
+    return
+  }
+
+  updatePluginCheck(
+    result.success ? 'success' : 'error',
+    result.success ? '收到回调' : '异常',
+    result.message || `收到未分类回调：${result.type || 'unknown'}`,
+    formatCallbackDetail(result)
+  )
+}
+
+function applyDetectResult(result: NativePluginResult) {
+  const boxes = normalizeBoxes(result.boxes)
+  console.log('[AiDetectPlugin] detect_result raw:', result)
+  console.log('[AiDetectPlugin] detect_result boxes:', boxes)
+
+  detectionResult.hasResult = true
+  detectionResult.hasTarget = Boolean(result.hasTarget)
+  detectionResult.modelType = result.modelType || ''
+  detectionResult.engine = result.engine || ''
+  detectionResult.modelName = result.modelName || ''
+  detectionResult.timestamp = formatResultTimestamp(result.timestamp)
+  detectionResult.boxes = boxes
+
+  updatePluginCheck(
+    'success',
+    detectionResult.hasTarget ? '检测到目标' : '未检测到目标',
+    detectionResult.hasTarget
+      ? `YOLO 检测完成，返回 ${boxes.length} 个检测框`
+      : 'YOLO 检测完成，本次未检测到目标',
+    formatCallbackDetail(result)
+  )
+}
+
+function normalizeBoxes(boxes: unknown): DetectBox[] {
+  if (!Array.isArray(boxes)) {
+    return []
+  }
+
+  return boxes
+    .map((box) => normalizeBox(box))
+    .filter((box): box is DetectBox => Boolean(box))
+}
+
+function normalizeBox(box: unknown): DetectBox | null {
+  if (!box || typeof box !== 'object') {
+    return null
+  }
+
+  const rawBox = box as Record<string, unknown>
+  return {
+    classId: toNumber(rawBox.classId),
+    label: typeof rawBox.label === 'string' ? rawBox.label : '',
+    score: toNumber(rawBox.score),
+    left: toNumber(rawBox.left),
+    top: toNumber(rawBox.top),
+    right: toNumber(rawBox.right),
+    bottom: toNumber(rawBox.bottom)
+  }
+}
+
+function resetDetectionResult() {
+  detectionResult.hasResult = false
+  detectionResult.hasTarget = false
+  detectionResult.modelType = ''
+  detectionResult.engine = ''
+  detectionResult.modelName = ''
+  detectionResult.timestamp = ''
+  detectionResult.boxes = []
+}
+
+function buildDetectOptions(): DetectOptions | null {
+  const inputSize = parseNumberField('inputSize', yoloForm.inputSize)
+  const detectInterval = parseNumberField('detectInterval', yoloForm.detectInterval)
+  const threshold = parseNumberField('threshold', yoloForm.threshold)
+  const iouThreshold = parseNumberField('iouThreshold', yoloForm.iouThreshold)
+
+  if (
+    inputSize === null ||
+    detectInterval === null ||
+    threshold === null ||
+    iouThreshold === null
+  ) {
+    return null
+  }
+
+  return {
+    modelType: yoloForm.modelType.trim(),
+    engine: yoloForm.engine.trim(),
+    modelName: yoloForm.modelName.trim(),
+    modelPath: yoloForm.modelPath.trim(),
+    labelPath: yoloForm.labelPath.trim(),
+    inputSize,
+    detectInterval,
+    threshold,
+    iouThreshold,
+    useGpu: yoloForm.useGpu
+  }
+}
+
+function parseNumberField(label: string, value: string) {
+  if (!value.trim()) {
+    updatePluginCheck('error', '参数错误', `${label} 不能为空`)
+    return null
+  }
+
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) {
+    updatePluginCheck('error', '参数错误', `${label} 必须是有效数字`, value)
+    return null
+  }
+  return parsed
+}
+
+function handleUseGpuChange(event: Event) {
+  const switchEvent = event as Event & { detail?: { value?: boolean } }
+  yoloForm.useGpu = Boolean(switchEvent.detail?.value)
+}
+
+function toNumber(value: unknown) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function formatNumber(value: number) {
+  return value.toFixed(1)
+}
+
+function formatScore(value: number) {
+  return `${Math.round(value * 100)}%`
+}
+
+function formatResultTimestamp(timestamp: number | undefined) {
+  if (!timestamp) {
+    return '无时间戳'
+  }
+
+  return formatTime(new Date(timestamp))
+}
+
+function formatCallbackDetail(result: NativePluginResult) {
+  return JSON.stringify(result)
 }
 
 function formatConfigDetail(options: DetectOptions) {
@@ -516,6 +723,76 @@ function hasStartDetect(plugin: NativePluginModule | undefined): plugin is Ready
   text-align: right;
 }
 
+.detect-result {
+  margin-top: 24rpx;
+  padding: 22rpx;
+  border: 2rpx solid rgba(25, 190, 107, 0.2);
+  border-radius: 18rpx;
+  background: #f2fbf7;
+}
+
+.detect-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.detect-summary-title {
+  color: $text-main;
+  font-size: 28rpx;
+  font-weight: 800;
+}
+
+.detect-summary-meta {
+  color: $text-secondary;
+  font-size: 23rpx;
+  line-height: 1.4;
+}
+
+.box-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.box-item {
+  min-width: 0;
+  padding: 18rpx;
+  border: 2rpx solid rgba(25, 190, 107, 0.16);
+  border-radius: 14rpx;
+  background: #ffffff;
+}
+
+.box-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+}
+
+.box-label {
+  min-width: 0;
+  color: $text-main;
+  font-size: 26rpx;
+  font-weight: 800;
+}
+
+.box-score {
+  flex-shrink: 0;
+  color: $success-color;
+  font-size: 24rpx;
+  font-weight: 800;
+}
+
+.box-meta,
+.empty-boxes {
+  margin-top: 10rpx;
+  color: $text-secondary;
+  font-size: 23rpx;
+  line-height: 1.45;
+}
+
 .check-actions {
   display: flex;
   flex-direction: column;
@@ -544,41 +821,56 @@ function hasStartDetect(plugin: NativePluginModule | undefined): plugin is Ready
   background: #f0f3f9;
 }
 
-.config-group {
+.form-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
   margin-top: 24rpx;
 }
 
-.config-title {
-  color: $text-main;
-  font-size: 26rpx;
-  font-weight: 800;
-}
-
-.config-grid {
+.form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16rpx;
-  margin-top: 16rpx;
+  gap: 18rpx;
 }
 
-.config-item {
+.form-field {
   min-width: 0;
-  padding: 20rpx;
+  padding: 18rpx 20rpx;
   border: 2rpx solid $border-color;
   border-radius: 18rpx;
   background: #f8fbff;
 }
 
-.config-label {
+.form-field.compact {
+  padding: 18rpx;
+}
+
+.form-label {
   display: block;
   color: $text-secondary;
   font-size: 22rpx;
 }
 
-.config-value {
-  display: block;
-  @include text-ellipsis;
+.form-input {
+  width: 100%;
+  height: 52rpx;
   margin-top: 10rpx;
+  color: $text-main;
+  font-size: 25rpx;
+  font-weight: 800;
+}
+
+.switch-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.form-help {
+  display: block;
+  margin-top: 8rpx;
   color: $text-main;
   font-size: 25rpx;
   font-weight: 800;
