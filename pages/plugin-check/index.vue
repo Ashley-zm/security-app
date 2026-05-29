@@ -287,6 +287,7 @@ interface QualityResult {
   modelName?: string
   classId?: number | string
   label?: string
+  businessLabel?: string
   score?: number | string
   positiveLabel?: string
   passLabel?: string
@@ -458,7 +459,8 @@ const QualityResultView = defineComponent({
       return h('view', { class: 'quality-fields' }, [
         renderQualityRow('modelName', props.result.modelName || '-'),
         renderQualityRow('classId', formatText(props.result.classId)),
-        renderQualityRow('label', props.result.label || '-'),
+        renderQualityRow('businessLabel', formatBusinessLabel(getQualityBusinessLabel(props.result))),
+        renderQualityRow('rawLabel', props.result.label || '-'),
         renderQualityRow('score', formatScore(props.result.score)),
         renderQualityRow('result', formatBoolean(props.result.result)),
         renderQualityRow('isPass', formatBoolean(props.result.isPass)),
@@ -587,28 +589,24 @@ function handleDetectCallback(res?: DetectCallbackResult) {
 }
 
 function handlePipelineDetectResult(res: DetectCallbackResult) {
+  const normalizedDetectionResult = normalizeDetectionResult(res)
+
   lastDetectResult.value = res
   pipelineStatus.value = res.pipelineStatus || ''
-  pipelineMessage.value = res.message || ''
+  pipelineMessage.value = res.message || getPipelineStatusText(res.pipelineStatus)
   targetModelName.value = res.targetModelName || selectedTargetModel.value.modelName
   fuzzyResult.value = res.fuzzyResult || null
   remakeResult.value = res.remakeResult || null
-  detectionResult.value = res.detectionResult || null
+  detectionResult.value = normalizedDetectionResult
   isDetecting.value = true
 
-  const statusTextMap: Record<string, string> = {
-    FUZZY: '画面模糊',
-    REMAKE: '疑似翻拍',
-    NO_TARGET: '未检测到目标',
-    TARGET_FOUND: '检测通过',
-    ERROR: '检测异常'
-  }
-  detectStatus.value = statusTextMap[pipelineStatus.value] || res.message || '检测中'
+  detectStatus.value = res.message || getPipelineStatusText(res.pipelineStatus) || '检测中'
 }
 
 function handleSnapshotResult(res: DetectCallbackResult) {
   const imagePath = res.imagePath || ''
   const timestamp = res.timestamp || Date.now()
+  const normalizedDetectionResult = normalizeDetectionResult(res)
   const record: SnapshotRecord = {
     imagePath,
     previewPath: normalizeFilePath(imagePath),
@@ -620,20 +618,21 @@ function handleSnapshotResult(res: DetectCallbackResult) {
     hasTarget: Boolean(res.hasTarget),
     fuzzyResult: res.fuzzyResult || null,
     remakeResult: res.remakeResult || null,
-    detectionResult: res.detectionResult || null,
+    detectionResult: normalizedDetectionResult,
     shouldCloseCamera: Boolean(res.shouldCloseCamera),
     raw: res
   }
 
   snapshotResult.value = record
+  resolveSnapshotPreviewPath(record)
   snapshotList.value.unshift(record)
   isDetecting.value = false
   isOpeningDetect.value = false
-  detectStatus.value = res.message || '已拍照完成'
+  detectStatus.value = res.message || getPipelineStatusText(res.pipelineStatus) || '已拍照完成'
   errorMessage.value = ''
 
   pipelineStatus.value = record.pipelineStatus
-  pipelineMessage.value = record.message
+  pipelineMessage.value = record.message || getPipelineStatusText(record.pipelineStatus)
   targetModelName.value = record.targetModelName
   fuzzyResult.value = record.fuzzyResult
   remakeResult.value = record.remakeResult
@@ -716,6 +715,32 @@ function normalizeFilePath(path: string) {
   return `file://${path}`
 }
 
+function resolveSnapshotPreviewPath(record: SnapshotRecord) {
+  if (!record.imagePath) {
+    return
+  }
+
+  // #ifdef APP-PLUS
+  const appPlus = (globalThis as { plus?: any }).plus
+  if (appPlus?.io?.resolveLocalFileSystemURL) {
+    appPlus.io.resolveLocalFileSystemURL(
+      record.imagePath,
+      (entry: { toLocalURL?: () => string }) => {
+        const previewPath = entry.toLocalURL?.() || normalizeFilePath(record.imagePath)
+        record.previewPath = previewPath
+
+        if (snapshotResult.value?.timestamp === record.timestamp) {
+          snapshotResult.value.previewPath = previewPath
+        }
+      },
+      () => {
+        record.previewPath = normalizeFilePath(record.imagePath)
+      }
+    )
+  }
+  // #endif
+}
+
 function formatTime(timestamp?: number) {
   if (!timestamp) {
     return '-'
@@ -770,6 +795,65 @@ function formatText(value?: number | string) {
     return '-'
   }
   return String(value)
+}
+
+function formatBusinessLabel(label?: string) {
+  const labelTextMap: Record<string, string> = {
+    fuzzy: '画面模糊',
+    remake: '疑似翻拍',
+    hegui: '合规'
+  }
+  return label ? `${labelTextMap[label] || label} (${label})` : '-'
+}
+
+function getQualityBusinessLabel(result: QualityResult) {
+  if (result.businessLabel) {
+    return result.businessLabel
+  }
+
+  if (result.modelName === 'resnet18_fuzzy') {
+    return result.label === '0' ? 'fuzzy' : result.label === '1' ? 'hegui' : ''
+  }
+
+  if (result.modelName === 'resnet18_remake') {
+    return result.label === '0' ? 'hegui' : result.label === '1' ? 'remake' : ''
+  }
+
+  return ''
+}
+
+function getPipelineStatusText(status?: string) {
+  const statusTextMap: Record<string, string> = {
+    FUZZY: '画面模糊，请重新拍摄',
+    REMAKE: '疑似翻拍，请重新拍摄',
+    NO_TARGET: '未检测到目标',
+    TARGET_FOUND: '检测通过',
+    ERROR: '检测异常，请重试'
+  }
+  return status ? statusTextMap[status] || '' : ''
+}
+
+function normalizeDetectionResult(res: DetectCallbackResult): TargetDetectionResult | null {
+  const boxes = getResultBoxes(res)
+  if (!res.detectionResult && boxes.length === 0) {
+    return null
+  }
+
+  return {
+    ...(res.detectionResult || {}),
+    modelName: res.detectionResult?.modelName || res.targetModelName || '',
+    boxes
+  }
+}
+
+function getResultBoxes(res: DetectCallbackResult) {
+  if (res.pipelineStatus && res.pipelineStatus !== 'TARGET_FOUND') {
+    return []
+  }
+  if (Array.isArray(res.detectionResult?.boxes)) {
+    return res.detectionResult.boxes
+  }
+  return Array.isArray(res.boxes) ? res.boxes : []
 }
 
 function getBoxCount(result?: TargetDetectionResult | null) {
