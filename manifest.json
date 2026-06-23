@@ -25,7 +25,11 @@
                 "permissions" : [
                     "<uses-permission android:name=\"android.permission.CALL_PHONE\"/>",
                     "<uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\"/>",
-                    "<uses-permission android:name=\"android.permission.ACCESS_NETWORK_STATE\"/>"
+                    "<uses-permission android:name=\"android.permission.ACCESS_NETWORK_STATE\"/>",
+                    "<uses-permission android:name=\"android.permission.RECORD_AUDIO\"/>",
+                    "<uses-permission android:name=\"android.permission.FOREGROUND_SERVICE\"/>",
+                    "<uses-permission android:name=\"android.permission.FOREGROUND_SERVICE_MICROPHONE\"/>",
+                    "<uses-permission android:name=\"android.permission.POST_NOTIFICATIONS\"/>"
                 ],
                 "minSdkVersion" : 23
             },
@@ -39,6 +43,20 @@
                 "__plugin_info__" : {
                     "name" : "AiDetectPlugin",
                     "description" : "Minimal uni-app Android native plugin with DetectActivity launch verification.",
+                    "platforms" : "Android",
+                    "url" : "",
+                    "android_package_name" : "",
+                    "ios_bundle_id" : "",
+                    "isCloud" : false,
+                    "bought" : -1,
+                    "pid" : "",
+                    "parameters" : {}
+                }
+            },
+            "AudioRecordPlugin" : {
+                "__plugin_info__" : {
+                    "name" : "AudioRecordPlugin",
+                    "description" : "Android 后台持续录音原生插件（Java + ForegroundService + MediaRecorder）",
                     "platforms" : "Android",
                     "url" : "",
                     "android_package_name" : "",

@@ -1,0 +1,21 @@
+{
+  "name": "AudioRecordPlugin",
+  "id": "AudioRecordPlugin",
+  "version": "1.0.0",
+  "description": "Android 后台持续录音原生插件（Java + ForegroundService + MediaRecorder）",
+  "_dp_type": "nativeplugin",
+  "_dp_nativeplugin": {
+    "android": {
+      "plugins": [
+        {
+          "type": "module",
+          "name": "AudioRecordPlugin",
+          "class": "com.aj.audiorecord.AudioRecordModule"
+        }
+      ],
+      "integrateType": "aar",
+      "minSdkVersion": "21",
+      "useAndroidX": true
+    }
+  }
+}

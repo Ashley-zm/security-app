@@ -74,6 +74,15 @@
               </view>
               <view class="plugin-signal" />
             </block>
+            <block v-else-if="entry.icon === 'audio'">
+              <view class="audio-mic">
+                <view class="audio-mic-head" />
+                <view class="audio-mic-line" />
+                <view class="audio-mic-base" />
+              </view>
+              <view class="audio-wave wave-left" />
+              <view class="audio-wave wave-right" />
+            </block>
             <block v-else>
               <view class="message-box">
                 <view class="message-fold left" />
@@ -177,6 +186,12 @@ const quickEntries: QuickEntry[] = [
     subtitle: '安卓原生能力校验',
     icon: 'plugin',
     path: '/pages/plugin-check/index'
+  },
+  {
+    title: '录音测试',
+    subtitle: '后台持续录音校验',
+    icon: 'audio',
+    path: '/pages/audio-record/index'
   }
 ]
 
@@ -427,6 +442,11 @@ function goAssistant() {
   box-shadow: 0 10rpx 20rpx rgba(11, 31, 68, 0.18);
 }
 
+.quick-icon-audio {
+  background: linear-gradient(135deg, #fa3534 0%, #ff9900 100%);
+  box-shadow: 0 10rpx 20rpx rgba(250, 53, 52, 0.18);
+}
+
 .assistant-ai {
   position: relative;
   z-index: 1;
@@ -625,6 +645,64 @@ function goAssistant() {
   border: 3rpx solid #ffffff;
   border-radius: 50%;
   background: $success-color;
+}
+
+.audio-mic {
+  position: relative;
+  width: 30rpx;
+  height: 45rpx;
+}
+
+.audio-mic-head {
+  position: absolute;
+  top: 0;
+  left: 6rpx;
+  width: 18rpx;
+  height: 28rpx;
+  border: 4rpx solid #ffffff;
+  border-radius: 12rpx;
+}
+
+.audio-mic-line {
+  position: absolute;
+  left: 13rpx;
+  bottom: 7rpx;
+  width: 4rpx;
+  height: 13rpx;
+  border-radius: 2rpx;
+  background: #ffffff;
+}
+
+.audio-mic-base {
+  position: absolute;
+  left: 5rpx;
+  bottom: 2rpx;
+  width: 20rpx;
+  height: 4rpx;
+  border-radius: 2rpx;
+  background: #ffffff;
+}
+
+.audio-wave {
+  position: absolute;
+  top: 24rpx;
+  width: 10rpx;
+  height: 18rpx;
+  border: 4rpx solid rgba(255, 255, 255, 0.86);
+  border-top: 0;
+  border-bottom: 0;
+}
+
+.wave-left {
+  left: 11rpx;
+  border-right: 0;
+  border-radius: 12rpx 0 0 12rpx;
+}
+
+.wave-right {
+  right: 11rpx;
+  border-left: 0;
+  border-radius: 0 12rpx 12rpx 0;
 }
 
 .quick-badge {

@@ -51,11 +51,17 @@
       "style": {
         "navigationStyle": "custom"
       }
+    },
+    {
+      "path": "pages/audio-record/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
     }
   ],
   "globalStyle": {
     "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "\u5b89\u68c0APP",
+    "navigationBarTitleText": "安检APP",
     "navigationBarBackgroundColor": "#F5F8FF",
     "backgroundColor": "#F5F8FF"
   },
@@ -68,31 +74,31 @@
     "list": [
       {
         "pagePath": "pages/home/index",
-        "text": "\u9996\u9875",
+        "text": "首页",
         "iconPath": "static/tabbar/home.png",
         "selectedIconPath": "static/tabbar/home-active.png"
       },
       {
         "pagePath": "pages/work-order/index",
-        "text": "\u5de5\u5355",
+        "text": "工单",
         "iconPath": "static/tabbar/work-order.png",
         "selectedIconPath": "static/tabbar/work-order-active.png"
       },
       {
         "pagePath": "pages/statistics/index",
-        "text": "\u7edf\u8ba1",
+        "text": "统计",
         "iconPath": "static/tabbar/statistics.png",
         "selectedIconPath": "static/tabbar/statistics-active.png"
       },
       {
         "pagePath": "pages/message/index",
-        "text": "\u6d88\u606f",
+        "text": "消息",
         "iconPath": "static/tabbar/message.png",
         "selectedIconPath": "static/tabbar/message-active.png"
       },
       {
         "pagePath": "pages/mine/index",
-        "text": "\u6211\u7684",
+        "text": "我的",
         "iconPath": "static/tabbar/mine.png",
         "selectedIconPath": "static/tabbar/mine-active.png"
       }

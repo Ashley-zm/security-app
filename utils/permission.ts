@@ -8,7 +8,8 @@ const protectedRoots = [
   '/pages/message/index',
   '/pages/mine/index',
   '/pages/assistant/index',
-  '/pages/plugin-check/index'
+  '/pages/plugin-check/index',
+  '/pages/audio-record/index'
 ]
 
 let installed = false

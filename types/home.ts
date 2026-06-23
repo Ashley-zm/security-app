@@ -8,7 +8,7 @@ export interface HomeOverview {
   recentOrders: WorkOrder[]
 }
 
-export type QuickEntryIcon = 'assistant' | 'work-order' | 'scan' | 'message' | 'plugin'
+export type QuickEntryIcon = 'assistant' | 'work-order' | 'scan' | 'message' | 'plugin' | 'audio'
 
 export interface QuickEntry {
   title: string
