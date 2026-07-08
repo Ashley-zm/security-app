@@ -1,8 +1,8 @@
 <template>
   <view class="mine-page page safe-page">
     <AppNavbar title="我的" />
-
-    <view class="profile-section">
+    <view class="profile-section"
+      :style="{ paddingTop: statusBarHeight + 28 + 'px', paddingBottom: '80rpx', paddingLeft: '30rpx', paddingRight: '30rpx' }">
       <view class="avatar-wrap">
         <view class="avatar">
           <view class="avatar-hair" />
@@ -24,94 +24,69 @@
             <text>安检员</text>
           </view>
         </view>
-        <view class="profile-line">工号：{{ profile.employeeNo }}</view>
-        <view class="profile-line">{{ maskedMobile }}</view>
+        <!-- <view class="profile-line">工号：{{ profile.employeeNo }}</view> -->
+        <view class="profile-line">{{ profile.mobile }}</view>
       </view>
     </view>
 
-    <view class="qr-card">
+    <view class="qr-card" @click="openQrPreview">
       <view class="qr-info">
         <text class="qr-title">我的二维码</text>
         <text class="qr-desc">扫一扫，向他人展示我的身份信息</text>
       </view>
       <view class="qr-code" aria-label="身份二维码">
-        <view v-for="cell in qrCells" :key="cell" :class="['qr-cell', `cell-${cell}`]" />
+        <image class="qr-code-img" :src="qrCodeSrc" mode="aspectFit" />
+      </view>
+    </view>
+
+    <view v-if="qrPreviewVisible" class="popup-mask qr-preview-mask" @click="closeQrPreview">
+      <view class="qr-preview-popup" @click.stop>
+        <button class="qr-preview-close" @click="closeQrPreview">X</button>
+        <image class="qr-preview-img" :src="qrCodeSrc" mode="aspectFit" />
       </view>
     </view>
 
     <view class="section">
-      <view class="section-title">账号与安全</view>
       <view class="menu-card">
         <button class="menu-item" @click="openChangePassword">
           <view class="menu-left">
-            <view class="menu-icon lock-icon">
-              <view class="lock-hook" />
-              <view class="lock-body" />
-            </view>
+            <image class="menu-icon " src="/static/images/mine/lock.png" />
             <text>修改密码</text>
           </view>
-          <text class="arrow">›</text>
+          <image class="arrow" src="/static/images/mine/arrow.png" />
         </button>
-        <button class="menu-item" @click="showComingSoon('手机绑定')">
-          <view class="menu-left">
-            <view class="menu-icon phone-icon">
-              <view class="phone-home" />
-            </view>
-            <text>手机绑定</text>
-          </view>
-          <view class="menu-right">
-            <text class="right-text">{{ maskedMobile }}</text>
-            <text class="arrow">›</text>
-          </view>
-        </button>
-      </view>
-    </view>
-
-    <view class="section">
-      <view class="section-title">常用设置</view>
-      <view class="menu-card">
         <button class="menu-item" @click="showComingSoon('消息通知设置')">
           <view class="menu-left">
-            <view class="menu-icon bell-icon">
-              <view class="bell-body" />
-              <view class="bell-dot" />
-            </view>
+            <image class="menu-icon" src="/static/images/mine/bell.png" />
             <text>消息通知设置</text>
           </view>
-          <text class="arrow">›</text>
+          <image class="arrow" src="/static/images/mine/arrow.png" />
         </button>
         <button class="menu-item" @click="handleClearCache">
           <view class="menu-left">
-            <view class="menu-icon trash-icon">
-              <view class="trash-lid" />
-              <view class="trash-body" />
-            </view>
+            <image class="menu-icon" src="/static/images/mine/trash.png" />
             <text>清除缓存</text>
           </view>
           <view class="menu-right">
             <text class="right-text">{{ cacheSize }}</text>
-            <text class="arrow">›</text>
+            <image class="arrow" src="/static/images/mine/arrow.png" />
           </view>
         </button>
         <button class="menu-item" @click="openAbout">
           <view class="menu-left">
-            <view class="menu-icon about-icon">i</view>
+            <image class="menu-icon" src="/static/images/mine/about.png" />
             <text>关于我们</text>
           </view>
           <view class="menu-right">
             <text class="right-text">版本 {{ appInfo.version }}</text>
-            <text class="arrow">›</text>
+            <image class="arrow" src="/static/images/mine/arrow.png" />
           </view>
         </button>
       </view>
     </view>
 
     <button class="logout-card" @click="handleLogout">
-      <view class="logout-icon">
-        <view class="logout-door" />
-        <view class="logout-arrow" />
-      </view>
-      <text>退出登录</text>
+      <text>退出当前登录</text>
     </button>
 
     <view v-if="passwordPopupVisible" class="popup-mask" @click="closeChangePassword">
@@ -120,33 +95,18 @@
         <view class="form-card">
           <view class="form-row">
             <text class="form-label">原密码</text>
-            <input
-              v-model="passwordForm.oldPassword"
-              class="form-input"
-              password
-              placeholder="请输入原密码"
-              placeholder-class="placeholder"
-            />
+            <input v-model="passwordForm.oldPassword" class="form-input" password placeholder="请输入原密码"
+              placeholder-class="placeholder" />
           </view>
           <view class="form-row">
             <text class="form-label">新密码</text>
-            <input
-              v-model="passwordForm.newPassword"
-              class="form-input"
-              password
-              placeholder="6-20 位新密码"
-              placeholder-class="placeholder"
-            />
+            <input v-model="passwordForm.newPassword" class="form-input" password placeholder="6-20 位新密码"
+              placeholder-class="placeholder" />
           </view>
           <view class="form-row">
             <text class="form-label">确认密码</text>
-            <input
-              v-model="passwordForm.confirmPassword"
-              class="form-input"
-              password
-              placeholder="请再次输入新密码"
-              placeholder-class="placeholder"
-            />
+            <input v-model="passwordForm.confirmPassword" class="form-input" password placeholder="请再次输入新密码"
+              placeholder-class="placeholder" />
           </view>
         </view>
         <view class="password-tips">密码修改成功后，需要重新登录。</view>
@@ -212,7 +172,7 @@
           </button>
         </view>
 
-        <view class="copyright">© 2026 城运安全服务平台</view>
+        <view class="copyright">© 2026 Agent智能安检平台</view>
         <button class="about-close" @click="closeAbout">我知道了</button>
       </view>
     </view>
@@ -222,12 +182,13 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { changePasswordApi } from '@/api/auth'
-import AppNavbar from '@/components/AppNavbar.vue'
 import { useUserStore } from '@/stores/user'
+const statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 0
 
 const userStore = useUserStore()
 const cacheSize = ref('32.6MB')
-const qrCells = Array.from({ length: 49 }, (_, index) => index + 1)
+const qrCodeSrc = '/static/images/mine/qr.png'
+const qrPreviewVisible = ref(false)
 const passwordPopupVisible = ref(false)
 const aboutPopupVisible = ref(false)
 const passwordUpdating = ref(false)
@@ -236,43 +197,94 @@ const passwordForm = reactive({
   newPassword: '',
   confirmPassword: ''
 })
+const openQrPreview = () => {
+  qrPreviewVisible.value = true
+}
+
+const closeQrPreview = () => {
+  qrPreviewVisible.value = false
+}
+
 const appInfo = {
   name: '安检APP',
   version: '1.0.0',
   servicePhone: '400-800-2026',
   description: '面向燃气安检现场作业，提供工单处理、消息提醒、智能问答与身份核验能力，帮助安检人员规范、高效地完成日常任务。'
 }
+// 缓存大小
+const formatSize = (bytes: number) => {
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB'
+  return (bytes / 1024 / 1024).toFixed(2) + ' MB'
+}
+const getAppCacheSize = () => {
+  return new Promise((resolve) => {
+    // @ts-ignore
+    plus?.cache?.calculate((size: number) => {
+      resolve({
+        bytes: Number(size),
+        text: formatSize(Number(size))
+      })
+    })
+  })
+}
+//获取缓存大小
+getAppCacheSize().then((res: any) => {
+  cacheSize.value = res.text
+})
 
-const profile = computed(() => ({
-  name: userStore.userInfo?.name || '张安检',
-  employeeNo: userStore.userInfo?.employeeNo || 'AG20230516',
-  mobile: userStore.userInfo?.mobile || '13800005678'
-}))
 
-const maskedMobile = computed(() => maskMobile(profile.value.mobile))
-
-function maskMobile(mobile: string) {
-  const cleanMobile = mobile.replace(/\s/g, '')
-  if (cleanMobile.length < 7) return cleanMobile || '-'
-  return `${cleanMobile.slice(0, 3)}****${cleanMobile.slice(-4)}`
+const handleClearCache = () => {
+  uni.showModal({
+    title: '清除缓存',
+    content: '确定清除本地缓存吗？',
+    success: (res) => {
+      if (!res.confirm) return
+      // 清除缓存
+      // #ifdef APP-PLUS
+      // @ts-ignore
+      plus?.cache?.clear(() => {
+        cacheSize.value = '0B'
+        uni.showToast({
+          title: '已清除',
+          icon: 'success'
+        })
+      })
+      // #endif
+    }
+  })
 }
 
-function showComingSoon(name: string) {
+// 用户信息
+console.log('userStore.userInfo', userStore.userInfo);
+const profile = computed(() => ({
+  name: userStore.userInfo?.nickName || '安检员',
+  mobile: userStore.userInfo?.userName || '--'
+}))
+// 消息通知设置
+const showComingSoon = (name: string) => {
   uni.showToast({
     title: `${name}暂未开放`,
     icon: 'none'
   })
 }
+// 关于我们
+const getAppBaseInfo = () => {
+  const appBaseInfo = uni.getAppBaseInfo()
+  appInfo.version = appBaseInfo.appVersion || '1.0.0'
+  appInfo.name = appBaseInfo.appName || '安检APP'
+}
+getAppBaseInfo()
 
-function openAbout() {
+const openAbout = () => {
   aboutPopupVisible.value = true
 }
 
-function closeAbout() {
+const closeAbout = () => {
   aboutPopupVisible.value = false
 }
-
-function handleServiceCall() {
+// 客服热线
+const handleServiceCall = () => {
   uni.makePhoneCall({
     phoneNumber: appInfo.servicePhone,
     fail: () => {
@@ -283,8 +295,8 @@ function handleServiceCall() {
     }
   })
 }
-
-function showAgreement(name: string) {
+// 用户协议
+const showAgreement = (name: string) => {
   uni.showModal({
     title: name,
     content: `${name}内容正在完善中，请以公司发布的正式文件为准。`,
@@ -292,24 +304,24 @@ function showAgreement(name: string) {
     confirmText: '知道了'
   })
 }
-
-function resetPasswordForm() {
+// 修改密码
+const resetPasswordForm = () => {
   passwordForm.oldPassword = ''
   passwordForm.newPassword = ''
   passwordForm.confirmPassword = ''
 }
-
-function openChangePassword() {
+// 打开修改密码弹窗
+const openChangePassword = () => {
   resetPasswordForm()
   passwordPopupVisible.value = true
 }
-
-function closeChangePassword() {
+// 关闭修改密码弹窗
+const closeChangePassword = () => {
   if (passwordUpdating.value) return
   passwordPopupVisible.value = false
 }
-
-function validatePasswordForm() {
+// 验证修改密码表单
+const validatePasswordForm = () => {
   if (!passwordForm.oldPassword.trim()) {
     return '请输入原密码'
   }
@@ -327,8 +339,8 @@ function validatePasswordForm() {
   }
   return ''
 }
-
-async function submitChangePassword() {
+// 提交修改密码
+const submitChangePassword = async () => {
   const message = validatePasswordForm()
   if (message) {
     uni.showToast({
@@ -361,23 +373,8 @@ async function submitChangePassword() {
     passwordUpdating.value = false
   }
 }
-
-function handleClearCache() {
-  uni.showModal({
-    title: '清除缓存',
-    content: '确定清除本地缓存吗？',
-    success: (res) => {
-      if (!res.confirm) return
-      cacheSize.value = '0B'
-      uni.showToast({
-        title: '已清除',
-        icon: 'success'
-      })
-    }
-  })
-}
-
-function handleLogout() {
+// 退出登录
+const handleLogout = () => {
   uni.showModal({
     title: '退出登录',
     content: '确定要退出当前账号吗？',
@@ -396,7 +393,7 @@ function handleLogout() {
 
 .mine-page {
   min-height: 100vh;
-  padding: 0 28rpx 32rpx;
+  // padding: 0 28rpx 32rpx;
   background: $bg-page;
 }
 
@@ -404,7 +401,9 @@ function handleLogout() {
   display: flex;
   align-items: center;
   gap: 28rpx;
-  padding: 28rpx 6rpx 32rpx;
+  // 渐变色
+  background: linear-gradient(135deg, #146fee 0%, #3190dfb8 100%);
+  // background: linear-gradient(135deg, #146fee 0%, #3190df 100%);
 }
 
 .avatar-wrap {
@@ -514,7 +513,7 @@ function handleLogout() {
 }
 
 .name {
-  color: #12284a;
+  color: #ffffff;
   font-size: 34rpx;
   font-weight: 800;
   line-height: 46rpx;
@@ -545,7 +544,7 @@ function handleLogout() {
 
 .profile-line {
   margin-top: 8rpx;
-  color: #41506f;
+  color: #ffffff;
   font-size: 26rpx;
   line-height: 36rpx;
 }
@@ -553,17 +552,21 @@ function handleLogout() {
 .qr-card,
 .menu-card,
 .logout-card {
-  background: #ffffff;
   border-radius: $card-radius;
   box-shadow: $shadow-card;
+  background: #ffffff;
 }
 
 .qr-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 132rpx;
+  min-height: 160rpx;
   padding: 24rpx 26rpx 24rpx 28rpx;
+  margin: -50rpx 30rpx 50rpx;
+  backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 24px rgba(4, 46, 138, 0.04), 0 2px 8px rgba(0, 0, 0, 0.015);
 }
 
 .qr-info {
@@ -574,7 +577,7 @@ function handleLogout() {
 }
 
 .qr-title {
-  color: #15284b;
+  color: #2955a5;
   font-size: 30rpx;
   font-weight: 800;
 }
@@ -586,59 +589,68 @@ function handleLogout() {
 
 .qr-code {
   position: relative;
-  display: grid;
-  flex: 0 0 92rpx;
-  grid-template-columns: repeat(7, 1fr);
-  grid-template-rows: repeat(7, 1fr);
-  gap: 4rpx;
   width: 92rpx;
   height: 92rpx;
   padding: 7rpx;
+}
+
+.qr-code-img {
+  width: 100%;
+  height: 100%;
+}
+
+.qr-preview-mask {
+  align-items: center;
+  justify-content: center;
+  padding: 48rpx;
+}
+
+.qr-preview-popup {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 620rpx;
+  max-width: 100%;
+  aspect-ratio: 1;
+  padding: 48rpx;
+  border-radius: 28rpx;
   background: #ffffff;
+  box-shadow: 0 24rpx 60rpx rgba(11, 31, 68, 0.22);
 }
 
-.qr-cell {
-  border-radius: 1rpx;
-  background: #15213a;
-  opacity: 0;
+.qr-preview-img {
+  width: 100%;
+  height: 100%;
 }
 
-.cell-1,
-.cell-2,
-.cell-3,
-.cell-4,
-.cell-5,
-.cell-6,
-.cell-7,
-.cell-8,
-.cell-14,
-.cell-15,
-.cell-17,
-.cell-18,
-.cell-20,
-.cell-21,
-.cell-22,
-.cell-28,
-.cell-29,
-.cell-30,
-.cell-31,
-.cell-32,
-.cell-33,
-.cell-34,
-.cell-35,
-.cell-36,
-.cell-38,
-.cell-41,
-.cell-43,
-.cell-45,
-.cell-46,
-.cell-48,
-.cell-49 {
-  opacity: 1;
+.qr-preview-close {
+  position: absolute;
+  top: 16rpx;
+  right: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56rpx;
+  height: 56rpx;
+  padding: 0;
+  border-radius: 50%;
+  color: #6a7893;
+  font-size: 40rpx;
+  line-height: 1;
+  background: #f2f6fc;
 }
+
+.qr-preview-close::after {
+  border: 0;
+}
+
+
 
 .section {
   margin-top: 34rpx;
+  margin: 34rpx 30rpx 32rpx;
 }
 
 .section-title {
@@ -658,12 +670,13 @@ function handleLogout() {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  min-height: 98rpx;
-  padding: 0 28rpx;
+  min-height: 110rpx;
+  padding: 0 36rpx;
   color: $text-main;
   font-size: 28rpx;
   background: #ffffff;
   border-bottom: 2rpx solid $border-color;
+  border-radius: 0;
 }
 
 .menu-item:last-child {
@@ -693,134 +706,35 @@ function handleLogout() {
 
 .menu-icon {
   position: relative;
-  flex: 0 0 36rpx;
-  width: 36rpx;
-  height: 36rpx;
-  color: $text-main;
+  flex: 0 0 60rpx;
+  width: 60rpx;
+  height: 60rpx;
 }
 
-.lock-hook {
-  position: absolute;
-  top: 2rpx;
-  left: 10rpx;
-  width: 16rpx;
-  height: 15rpx;
-  border: 3rpx solid #24334f;
-  border-bottom: 0;
-  border-radius: 10rpx 10rpx 0 0;
-}
-
-.lock-body {
-  position: absolute;
-  right: 5rpx;
-  bottom: 3rpx;
-  left: 5rpx;
-  height: 20rpx;
-  border: 3rpx solid #24334f;
-  border-radius: 3rpx;
-}
-
-.phone-icon {
-  border: 3rpx solid #24334f;
-  border-radius: 4rpx;
-}
-
-.phone-home {
-  position: absolute;
-  bottom: 4rpx;
-  left: 14rpx;
-  width: 6rpx;
-  height: 6rpx;
-  border-radius: 50%;
-  background: #24334f;
-}
-
-.bell-body {
-  position: absolute;
-  top: 5rpx;
-  left: 8rpx;
-  width: 20rpx;
-  height: 22rpx;
-  border: 3rpx solid #24334f;
-  border-bottom: 0;
-  border-radius: 12rpx 12rpx 3rpx 3rpx;
-}
-
-.bell-body::after {
-  position: absolute;
-  right: -5rpx;
-  bottom: -5rpx;
-  left: -5rpx;
-  height: 3rpx;
-  border-radius: 2rpx;
-  background: #24334f;
-  content: '';
-}
-
-.bell-dot {
-  position: absolute;
-  bottom: 2rpx;
-  left: 15rpx;
-  width: 7rpx;
-  height: 6rpx;
-  border-radius: 0 0 6rpx 6rpx;
-  background: #24334f;
-}
-
-.trash-lid {
-  position: absolute;
-  top: 6rpx;
-  left: 6rpx;
-  width: 24rpx;
-  height: 3rpx;
-  border-radius: 2rpx;
-  background: #24334f;
-}
-
-.trash-body {
-  position: absolute;
-  right: 7rpx;
-  bottom: 4rpx;
-  left: 7rpx;
-  height: 22rpx;
-  border: 3rpx solid #24334f;
-  border-top: 0;
-  border-radius: 0 0 3rpx 3rpx;
-}
-
-.about-icon {
-  @include flex-center;
-  border: 3rpx solid #24334f;
-  border-radius: 50%;
-  font-size: 24rpx;
-  font-weight: 800;
-  line-height: 1;
-}
-
-.right-text,
-.arrow {
+.right-text {
   color: $text-muted;
-  font-size: 25rpx;
+  font-size: 28rpx;
   font-weight: 400;
 }
 
 .arrow {
-  font-size: 40rpx;
-  line-height: 1;
+  width: 25rpx;
+  height: 25rpx;
 }
 
 .logout-card {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 20rpx;
-  width: 100%;
   min-height: 98rpx;
   margin-top: 34rpx;
   padding: 0 28rpx;
   color: #ff4d43;
   font-size: 28rpx;
   font-weight: 700;
-  text-align: left;
+  text-align: center;
+  margin: 0 30rpx 32rpx;
 }
 
 .logout-icon {
@@ -838,28 +752,6 @@ function handleLogout() {
   border: 3rpx solid #ff4d43;
   border-right: 0;
   border-radius: 3rpx 0 0 3rpx;
-}
-
-.logout-arrow {
-  position: absolute;
-  top: 16rpx;
-  right: 4rpx;
-  width: 20rpx;
-  height: 3rpx;
-  border-radius: 2rpx;
-  background: #ff4d43;
-}
-
-.logout-arrow::after {
-  position: absolute;
-  top: -5rpx;
-  right: 0;
-  width: 10rpx;
-  height: 10rpx;
-  border-top: 3rpx solid #ff4d43;
-  border-right: 3rpx solid #ff4d43;
-  transform: rotate(45deg);
-  content: '';
 }
 
 .popup-mask {

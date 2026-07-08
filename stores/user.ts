@@ -9,6 +9,7 @@ import {
   setToken as setTokenStorage,
   setUserInfoStorage
 } from '@/utils/storage'
+import { getUserInfoApi } from '@/api/auth'
 
 interface UserState {
   token: string
@@ -21,9 +22,11 @@ export const useUserStore = defineStore('user', {
     userInfo: getUserInfoStorage<UserInfo>()
   }),
   actions: {
-    setToken(token: string) {
+    async setToken(token: string) {
       this.token = token
       setTokenStorage(token)
+      const userInfoResult = await getUserInfoApi()
+      this.setUserInfo(userInfoResult.user)
     },
     setUserInfo(userInfo: UserInfo) {
       this.userInfo = userInfo
@@ -31,8 +34,7 @@ export const useUserStore = defineStore('user', {
     },
     async login(params: LoginParams) {
       const result = await loginApi(params)
-      this.setToken(result.token)
-      this.setUserInfo(result.userInfo)
+      this.setToken(result.access_token)
       return result
     },
     logout() {
@@ -44,5 +46,9 @@ export const useUserStore = defineStore('user', {
         url: '/pages/login/index'
       })
     }
+  },
+  getters: {
+    getToken: (state) => state.token,
+    getUserInfo: (state) => state.userInfo
   }
 })

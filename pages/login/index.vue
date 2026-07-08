@@ -10,8 +10,25 @@
 
     <view class="login-card">
       <view class="card-title">账号登录</view>
+      <view v-if="tenantEnabled" class="field">
+        <view class="field-icon"><u-icon name="home" color="#1677ff" size="36rpx" /></view>
+        <picker
+          class="tenant-picker"
+          mode="selector"
+          :range="tenantList"
+          range-key="companyName"
+          :value="selectedTenantIndex < 0 ? 0 : selectedTenantIndex"
+          :disabled="tenantLoading || !tenantList.length"
+          @change="handleTenantChange"
+        >
+          <view class="tenant-name" :class="{ empty: !selectedTenantName }">
+            {{ tenantLoading ? '租户加载中...' : selectedTenantName || '请选择租户' }}
+          </view>
+        </picker>
+        <text class="field-arrow">&gt;</text>
+      </view>
       <view class="field">
-        <text class="field-icon">☎</text>
+        <view class="field-icon"><u-icon name="phone" color="#1677ff" size="36rpx" /></view>
         <input
           v-model="form.mobile"
           class="field-input"
@@ -22,7 +39,7 @@
         />
       </view>
       <view class="field">
-        <text class="field-icon">●</text>
+        <view class="field-icon"><u-icon name="lock" color="#1677ff" size="36rpx" /></view>
         <input
           v-model="form.password"
           class="field-input"
@@ -30,7 +47,9 @@
           placeholder="请输入密码"
           placeholder-class="placeholder"
         />
-        <button class="eye-btn" @click="showPassword = !showPassword">{{ showPassword ? '隐藏' : '显示' }}</button>
+        <button class="eye-btn" @click="showPassword = !showPassword">
+          <u-icon :name="showPassword ? 'eye-off' : 'eye'" color="#1677ff" size="36rpx" />
+        </button>
       </view>
 
       <view class="form-row">
@@ -54,25 +73,33 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useUserStore } from '@/stores/user'
-import type { LoginForm } from '@/types/auth'
+import { getTenantListApi } from '@/api/auth'
+import type { LoginForm, TenantInfo } from '@/types/auth'
 import { clearRememberLogin, getRememberLogin, setRememberLogin } from '@/utils/storage'
 import { isMobile, required } from '@/utils/validate'
 
 const userStore = useUserStore()
 const submitting = ref(false)
 const showPassword = ref(false)
+const tenantEnabled = ref(true)
+const tenantLoading = ref(false)
+const tenantList = ref<TenantInfo[]>([])
+const selectedTenantIndex = ref(-1)
 
 const form = reactive<LoginForm>({
-  mobile: '',
-  password: '',
+  mobile: '15621825359',
+  password: '123456',
+  tenantId: '',
   remember: false,
   agree: false
 })
 
 onMounted(() => {
-  if (userStore.token) {
+  console.log('用户token',userStore.getToken);
+  
+  if (userStore.getToken) {
     uni.switchTab({
       url: '/pages/home/index'
     })
@@ -85,8 +112,54 @@ onMounted(() => {
     form.password = remembered.password
     form.remember = true
   }
+
+  loadTenantList()
 })
 
+
+const selectedTenantName = computed(() => {
+  if (selectedTenantIndex.value < 0) return ''
+  return tenantList.value[selectedTenantIndex.value]?.companyName || ''
+})
+
+async function loadTenantList() {
+  tenantLoading.value = true
+  try {
+    const result = await getTenantListApi()
+    tenantEnabled.value = result.tenantEnabled
+    tenantList.value = result.voList || []
+
+    if (!result.tenantEnabled) {
+      form.tenantId = ''
+      selectedTenantIndex.value = -1
+      return
+    }
+
+    if (tenantList.value.length) {
+      const index = Math.max(
+        tenantList.value.findIndex((item) => item.tenantId === form.tenantId),
+        0
+      )
+      selectedTenantIndex.value = index
+      form.tenantId = tenantList.value[index].tenantId
+    } else {
+      form.tenantId = ''
+      selectedTenantIndex.value = -1
+    }
+  } catch (error) {
+    toast(error instanceof Error ? error.message : '租户列表获取失败')
+  } finally {
+    tenantLoading.value = false
+  }
+}
+
+function handleTenantChange(event: { detail: { value: number | string } }) {
+  const index = Number(event.detail.value)
+  const tenant = tenantList.value[index]
+  if (!tenant) return
+  selectedTenantIndex.value = index
+  form.tenantId = tenant.tenantId
+}
 function toast(title: string) {
   uni.showToast({
     title,
@@ -95,6 +168,10 @@ function toast(title: string) {
 }
 
 function validateForm() {
+  if (tenantEnabled.value && !required(form.tenantId)) {
+    toast('请选择租户')
+    return false
+  }
   if (!required(form.mobile)) {
     toast('手机号不能为空')
     return false
@@ -120,8 +197,9 @@ async function handleLogin() {
   submitting.value = true
   try {
     await userStore.login({
-      mobile: form.mobile,
-      password: form.password
+      username: form.mobile,
+      password: form.password,
+      tenantId: form.tenantId
     })
 
     if (form.remember) {
@@ -230,9 +308,9 @@ function showForgot() {
 }
 
 .field-icon {
+  display: flex;
+  align-items: center;
   width: 44rpx;
-  color: $primary-color;
-  font-size: 30rpx;
 }
 
 .field-input {
@@ -246,12 +324,38 @@ function showForgot() {
 .placeholder {
   color: #a7b3cc;
 }
+.tenant-picker {
+  flex: 1;
+  min-width: 0;
+  height: 92rpx;
+}
+
+.tenant-name {
+  display: flex;
+  align-items: center;
+  height: 92rpx;
+  overflow: hidden;
+  color: $text-main;
+  font-size: 30rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tenant-name.empty {
+  color: #a7b3cc;
+}
+
+.field-arrow {
+  margin-left: 16rpx;
+  color: #a7b3cc;
+  font-size: 30rpx;
+}
 
 .eye-btn {
-  min-width: 88rpx;
+  @include flex-center;
+  width: 72rpx;
   height: 64rpx;
-  color: $primary-color;
-  font-size: 25rpx;
+  padding: 0;
 }
 
 .form-row {

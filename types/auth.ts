@@ -1,13 +1,17 @@
 export interface LoginForm {
   mobile: string
   password: string
+  tenantId: string
   remember: boolean
   agree: boolean
 }
 
 export interface LoginParams {
-  mobile: string
+  username: string
   password: string
+  tenantId?: string
+  clientId?: string
+  grantType?: string
 }
 
 export interface ChangePasswordParams {
@@ -16,14 +20,36 @@ export interface ChangePasswordParams {
 }
 
 export interface UserInfo {
-  id: string
-  name: string
+  userId: string
+  userName: string
+  nickName: string | null
   mobile: string
   employeeNo: string
   roleName: string
+  avatarUrl: string | null
+  qrCodeUrl: string | null
+  tenantId: string
+  [key: string]: unknown
 }
 
 export interface LoginResult {
-  token: string
+  access_token: string
   userInfo: UserInfo
+}
+
+export interface TenantInfo {
+  tenantId: string
+  companyName: string
+  domain: string | null
+}
+
+export interface TenantListResult {
+  tenantEnabled: boolean
+  voList: TenantInfo[]
+}
+
+export interface UserInfoResult {
+  permissions: string[],
+  roles: string[],
+  user: UserInfo
 }
