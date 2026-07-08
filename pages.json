@@ -37,7 +37,11 @@
     {
       "path": "pages/mine/index",
       "style": {
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+				"disableScroll": true,
+				"app-plus": {
+					"bounce": "none"
+				}
       }
     },
     {
@@ -56,6 +60,13 @@
       "path": "pages/audio-record/index",
       "style": {
         "navigationStyle": "custom"
+      }
+    },{
+      "path": "pages/work-order/person-list",
+      "style": {
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": true,
+        "onReachBottomDistance": 80
       }
     }
   ],
@@ -105,6 +116,9 @@
     ]
   },
   "easycom": {
-    "autoscan": true
+    "autoscan": true,
+    "custom": {
+      "^u-(.*)": "uview-plus/components/u-$1/u-$1.vue"
+    }
   }
 }
