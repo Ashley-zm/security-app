@@ -1,37 +1,29 @@
 <template>
   <view class="work-order-page page safe-page">
-    <AppNavbar title="安检工单" show-back right-icon="⌕" @right-click="focusSearch" />
+    <AppNavbar title="安检工单" />
 
-    <view class="tabs">
-      <button
-        v-for="tab in tabs"
-        :key="tab.value"
-        class="tab-item"
-        :class="{ active: activeStatus === tab.value }"
-        @click="changeStatus(tab.value)"
-      >
-        {{ tab.label }}
-      </button>
+    <view class="tabs-wrap">
+      <view class="tabs">
+        <button v-for="tab in tabs" :key="tab.value" class="tab-item" :class="{ active: activeStatus === tab.value }"
+          @click="changeStatus(tab.value)">
+          {{ tab.label }}
+        </button>
+      </view>
     </view>
 
     <view class="search-panel">
       <view class="search-box">
-        <text class="search-icon">⌕</text>
-        <input
-          id="keywordInput"
-          v-model="searchKeyword"
-          class="search-input"
-          confirm-type="search"
-          placeholder="支持用户名 / 手机号 / 户号模糊查询"
-          placeholder-class="placeholder"
-          :focus="searchFocused"
-          @confirm="handleSearch"
-          @input="handleInput"
-          @blur="searchFocused = false"
-        />
+        <input id="keywordInput" v-model="searchKeyword" class="search-input" confirm-type="search"
+          placeholder="请输入安检工单编号、名称" placeholder-class="placeholder" :focus="searchFocused" @confirm="handleSearch"
+          @blur="searchFocused = false" />
         <button v-if="searchKeyword" class="clear-btn" @click="clearSearch">×</button>
       </view>
-      <button class="filter-btn" @click="openFilter">筛选</button>
+      <button class="search-btn" @click="handleSearch">
+        <text>查询</text>
+      </button>
+      <view class="time-sort-btn" @click="toggleTimeSort">
+        <image class="time-sort-icon" :src="timeSortIcon" mode="aspectFit" />
+      </view>
     </view>
 
     <view v-if="store.error" class="error-card">
@@ -41,57 +33,39 @@
     </view>
 
     <view v-else class="order-list">
-      <WorkOrderCard
-        v-for="item in store.list"
-        :key="item.id"
-        :item="item"
-        @call="handleCall"
-        @change-time="openChangeTime"
-        @navigate="handleNavigate"
-      />
+      <button v-for="order in orderViews" :key="order.id" class="order-card" @click="openOrder(order)">
+        <view class="order-top">
+          <text class="plan-name">{{ order.planName }}</text>
+          <text class="status-pill" :class="order.statusClass">{{ order.statusText }}</text>
+        </view>
+
+        <view class="order-no">{{ order.orderNo }}</view>
+
+        <view class="stats-grid">
+          <view v-for="stat in order.stats" :key="stat.label" class="stat-item" :class="stat.type">
+            <text class="stat-label">{{ stat.label }}</text>
+            <text class="stat-value">
+              <text class="stat-number">{{ stat.value }}</text>
+              <text class="stat-unit">户</text>
+            </text>
+          </view>
+        </view>
+
+        <view class="time-row">
+          <text class="time-label">派单时间：</text>
+          <text class="time-value">{{ order.dispatchTime }}</text>
+        </view>
+        <view class="time-row">
+          <text class="time-label">{{ order.finishLabel }}：</text>
+          <text class="time-value">{{ order.finishTime }}</text>
+        </view>
+      </button>
 
       <view v-if="store.loading && !store.list.length" class="loading-text">工单加载中...</view>
-      <AppEmpty
-        v-if="!store.loading && !store.list.length"
-        title="暂无工单"
-        desc="调整状态或搜索条件后再试"
-        show-retry
-        @retry="store.refresh()"
-      />
+      <AppEmpty v-if="!store.loading && !store.list.length" title="暂无工单" desc="调整状态或搜索条件后再试" show-retry
+        @retry="store.refresh()" />
       <view v-if="store.loading && store.list.length" class="footer-text">加载更多...</view>
       <view v-if="store.finished && store.list.length" class="footer-text">没有更多工单了</view>
-    </view>
-
-    <view v-if="popupVisible" class="popup-mask" @click="closePopup">
-      <view class="popup" @click.stop>
-        <view class="popup-title">修改预约时间</view>
-        <view class="current-time">
-          <text class="label">当前预约时间</text>
-          <text class="value">{{ currentOrder?.appointmentTime }}</text>
-        </view>
-
-        <view class="picker-row">
-          <picker mode="date" :value="appointmentDate" @change="handleDateChange">
-            <view class="picker-field">
-              <text>日期</text>
-              <text>{{ appointmentDate || '请选择日期' }}</text>
-            </view>
-          </picker>
-          <picker mode="time" :value="appointmentTime" @change="handleTimeChange">
-            <view class="picker-field">
-              <text>时间</text>
-              <text>{{ appointmentTime || '请选择时间' }}</text>
-            </view>
-          </picker>
-        </view>
-
-        <view class="popup-actions">
-          <button class="popup-btn cancel" @click="closePopup">取消</button>
-          <button class="popup-btn confirm" :disabled="updating" @click="confirmChangeTime">
-            {{ updating ? '提交中...' : '确认修改' }}
-          </button>
-        </view>
-      </view>
     </view>
   </view>
 </template>
@@ -101,33 +75,41 @@ import { computed, nextTick, onMounted, ref } from 'vue'
 import { onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
 import AppEmpty from '@/components/AppEmpty.vue'
 import AppNavbar from '@/components/AppNavbar.vue'
-import WorkOrderCard from '@/components/WorkOrderCard.vue'
 import { useWorkOrderStore } from '@/stores/workOrder'
-import type { WorkOrder, WorkOrderStatus } from '@/types/workOrder'
+import type { WorkOrder, WorkOrderCardView, WorkOrderPageStatus, WorkOrderTabOption } from '@/types/workOrder'
+import { getDictsByTypes } from '@/utils/common'
 
-type TabValue = WorkOrderStatus | 'all'
+ getDictsByTypes(['danger_type', 'danger_level'], true).then((dicts) => {
+  console.log('dicts', dicts)
+})
+
+
 
 const store = useWorkOrderStore()
 const searchKeyword = ref('')
 const searchFocused = ref(false)
-const popupVisible = ref(false)
-const currentOrder = ref<WorkOrder | null>(null)
-const appointmentDate = ref('')
-const appointmentTime = ref('')
-const updating = ref(false)
-let searchTimer: ReturnType<typeof setTimeout> | null = null
+const timeSort = ref<1 | 2>(store.queryParams.sort || 2)
 
-const tabs: Array<{ label: string; value: TabValue }> = [
-  { label: '待执行', value: 'pending' },
-  { label: '进行中', value: 'processing' },
-  { label: '已完成', value: 'completed' },
-  { label: '全部', value: 'all' }
+const tabs: WorkOrderTabOption[] = [
+  { label: '全部', value: 'all' },
+  { label: '待处理', value: 1 },
+  { label: '进行中', value: 2 },
+  { label: '已完成', value: 3 },
+  { label: '已结束', value: 5 },
+  { label: '已取消', value: 4 }
 ]
 
-const activeStatus = computed(() => store.queryParams.status || 'all')
+const activeStatus = computed<WorkOrderPageStatus>(() => store.queryParams.status || 'all')
+const timeSortIcon = computed(() => (
+  timeSort.value === 1 ? '/static/images/shijianzhengxu.png' : '/static/images/shijiandaoxu.png'
+))
+const orderViews = computed<WorkOrderCardView[]>(() => {
+  return store.list.map(formatOrder)
+})
 
 onMounted(() => {
-  searchKeyword.value = store.queryParams.keyword || ''
+  searchKeyword.value = store.queryParams.workOrderNoOrName || ''
+  timeSort.value = store.queryParams.sort || 2
   store.refresh()
 })
 
@@ -140,26 +122,10 @@ onReachBottom(() => {
   store.loadMore()
 })
 
-function focusSearch() {
-  searchFocused.value = false
-  nextTick(() => {
-    searchFocused.value = true
-  })
-}
-
-function changeStatus(status: TabValue) {
+function changeStatus(status: WorkOrderPageStatus) {
   if (activeStatus.value === status) return
   store.setStatus(status)
   store.refresh()
-}
-
-function handleInput() {
-  if (searchTimer) {
-    clearTimeout(searchTimer)
-  }
-  searchTimer = setTimeout(() => {
-    handleSearch()
-  }, 300)
 }
 
 function handleSearch() {
@@ -170,99 +136,81 @@ function handleSearch() {
 function clearSearch() {
   searchKeyword.value = ''
   handleSearch()
-}
-
-function openFilter() {
-  uni.showActionSheet({
-    itemList: tabs.map((tab) => tab.label),
-    success: (res) => {
-      const selected = tabs[res.tapIndex]
-      if (selected) {
-        changeStatus(selected.value)
-      }
-    }
+  nextTick(() => {
+    searchFocused.value = true
   })
 }
 
-function handleCall(item: WorkOrder) {
-  if (!item.userPhone) {
-    uni.showToast({
-      title: '用户手机号为空',
-      icon: 'none'
-    })
-    return
-  }
+function toggleTimeSort() {
+  timeSort.value = timeSort.value === 1 ? 2 : 1
+  store.setSort(timeSort.value)
+  store.refresh()
+}
 
-  uni.makePhoneCall({
-    phoneNumber: item.userPhone
+function openOrder(order: WorkOrderCardView) {
+  uni.navigateTo({
+    url: `/pages/work-order/person-list?id=${encodeURIComponent(order.id)}&orderNo=${encodeURIComponent(order.orderNo)}&title=${encodeURIComponent(order.planName)}`
   })
 }
 
-function handleNavigate(item: WorkOrder) {
-  if (!item.latitude || !item.longitude) {
-    uni.showToast({
-      title: '暂无位置信息，无法导航',
-      icon: 'none'
-    })
-    return
+function formatOrder(item: WorkOrder): WorkOrderCardView {
+  const total = item.userCount || 0
+  const completed = item.completedCount || 0
+  const failed = item.failedCount || 0
+  const canceled = item.canceledCount || 0
+  const pending = Math.max(total - completed - failed - canceled, 0)
+
+  return {
+    id: String(item.id),
+    orderNo: item.workOrderNo || item.orderNo || '--',
+    planName: item.workOrderName || '--',
+    statusText: getStatusText(item.status),
+    statusClass: getStatusClass(item.status),
+    stats: [
+      { label: '总用户数', value: total, type: 'total' },
+      { label: '已完成', value: completed, type: 'success' },
+      { label: '失败', value: failed, type: 'danger' },
+      { label: '待安检', value: pending, type: 'primary' }
+    ],
+    dispatchTime: item.assignTime || item.createTime || '--',
+    finishLabel: getFinishLabel(item.status),
+    finishTime: getFinishTime(item)
   }
-
-  uni.openLocation({
-    latitude: item.latitude,
-    longitude: item.longitude,
-    name: item.userName,
-    address: item.address,
-    scale: 16
-  })
 }
 
-function openChangeTime(item: WorkOrder) {
-  currentOrder.value = item
-  const [date = '', time = ''] = item.appointmentTime.split(' ')
-  appointmentDate.value = date
-  appointmentTime.value = time
-  popupVisible.value = true
-}
-
-function closePopup() {
-  if (updating.value) return
-  popupVisible.value = false
-}
-
-function handleDateChange(event: { detail: { value: string | number } }) {
-  appointmentDate.value = String(event.detail.value)
-}
-
-function handleTimeChange(event: { detail: { value: string | number } }) {
-  appointmentTime.value = String(event.detail.value)
-}
-
-async function confirmChangeTime() {
-  if (!currentOrder.value) return
-  if (!appointmentDate.value || !appointmentTime.value) {
-    uni.showToast({
-      title: '请选择新的预约时间',
-      icon: 'none'
-    })
-    return
+function getStatusText(status: WorkOrder['status']) {
+  const statusMap: Record<number, string> = {
+    1: '未开始',
+    2: '进行中',
+    3: '已完成',
+    4: '已取消',
+    5: '已结束'
   }
+  return typeof status === 'number' ? statusMap[status] || '--' : '--'
+}
 
-  updating.value = true
-  try {
-    await store.updateAppointmentTime(currentOrder.value.id, `${appointmentDate.value} ${appointmentTime.value}`)
-    popupVisible.value = false
-    uni.showToast({
-      title: '预约时间修改成功',
-      icon: 'success'
-    })
-  } catch (error) {
-    uni.showToast({
-      title: error instanceof Error ? error.message : '预约时间修改失败',
-      icon: 'none'
-    })
-  } finally {
-    updating.value = false
+function getStatusClass(status: WorkOrder['status']) {
+  const classMap: Record<number, string> = {
+    1: 'is-pending',
+    2: 'is-processing',
+    3: 'is-completed',
+    4: 'is-canceled',
+    5: 'is-ended'
   }
+  return typeof status === 'number' ? classMap[status] || 'is-pending' : 'is-pending'
+}
+
+function getFinishLabel(status: WorkOrder['status']) {
+  if (status === 3) return '完成时间'
+  if (status === 4) return '取消时间'
+  if (status === 5) return '结束时间'
+  return '计划完成日期'
+}
+
+function getFinishTime(item: WorkOrder) {
+  if (item.status === 3) return item.completeTime || item.planCompleteTime || '—'
+  if (item.status === 4 || item.status === 5) return item.cancelTime || '—'
+  return item.planCompleteTime || '—'
 }
 </script>
 
@@ -271,25 +219,31 @@ async function confirmChangeTime() {
 @import '@/styles/mixins.scss';
 
 .work-order-page {
-  padding: 0 24rpx 32rpx;
+  padding: 0 0 32rpx;
+}
+
+.tabs-wrap {
+  width: 100%;
 }
 
 .tabs {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12rpx;
-  margin-top: 10rpx;
-  padding: 10rpx;
-  border-radius: 28rpx;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-items: center;
+  width: 100%;
+  gap: 4rpx;
+  padding: 6rpx;
   background: #eaf1ff;
 }
 
 .tab-item {
   @include flex-center;
-  height: 68rpx;
+  min-width: 0;
+  height: 60rpx;
+  padding: 0 2rpx;
   border-radius: 22rpx;
   color: $text-secondary;
-  font-size: 25rpx;
+  font-size: 23rpx;
   font-weight: 600;
 }
 
@@ -300,69 +254,256 @@ async function confirmChangeTime() {
 }
 
 .search-panel {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120rpx 80rpx;
   gap: 16rpx;
-  margin-top: 22rpx;
+  align-items: center;
+  padding: 26rpx 24rpx 32rpx;
+
 }
 
 .search-box {
+  position: relative;
   display: flex;
   align-items: center;
-  flex: 1;
   min-width: 0;
-  height: 84rpx;
-  padding: 0 18rpx;
-  border-radius: 42rpx;
+  height: 80rpx;
+  padding: 0 22rpx;
+  border-radius: 20rpx;
   background: #ffffff;
-  box-shadow: $shadow-card;
-}
-
-.search-icon {
-  margin-right: 10rpx;
-  color: $text-muted;
-  font-size: 28rpx;
+  box-shadow: 0 6px 16px rgba(4, 46, 138, 0.06), 0 2px 4px rgba(4, 46, 138, 0.03);
 }
 
 .search-input {
   flex: 1;
   min-width: 0;
-  height: 84rpx;
+  height: 80rpx;
   color: $text-main;
   font-size: 26rpx;
 }
 
 .placeholder {
-  color: #a7b3cc;
+  color: #b5bdcc;
 }
 
 .clear-btn {
   @include flex-center;
-  width: 48rpx;
-  height: 48rpx;
-  border-radius: 24rpx;
-  color: $text-secondary;
+  flex-shrink: 0;
+  width: 44rpx;
+  height: 44rpx;
+  color: $text-muted;
   font-size: 32rpx;
-  background: #eef3fb;
 }
 
-.filter-btn {
+.search-btn {
   @include flex-center;
-  flex-shrink: 0;
-  width: 112rpx;
-  height: 84rpx;
-  border-radius: 42rpx;
-  color: #ffffff;
-  font-size: 26rpx;
+  gap: 6rpx;
+  height: 72rpx;
+  border-radius: 20rpx;
+  color: $primary-color;
+  font-size: 28rpx;
   font-weight: 700;
-  background: $primary-color;
-  box-shadow: 0 12rpx 24rpx rgba(22, 119, 255, 0.18);
+  background: #ffffff;
+  // box-shadow: 0 10rpx 20rpx rgba(22, 119, 255, 0.16);
+  box-shadow: 0 6px 16px rgba(4, 46, 138, 0.06), 0 2px 4px rgba(4, 46, 138, 0.03);
+}
+
+.time-sort-btn {
+  @include flex-center;
+  gap: 8rpx;
+  width: 70rpx;
+  height: 72rpx;
+  border-radius: 20rpx;
+  color: $primary-color;
+  font-size: 24rpx;
+  font-weight: 700;
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(4, 46, 138, 0.06), 0 2px 4px rgba(4, 46, 138, 0.03);
+  // box-shadow: 0 10rpx 20rpx rgba(22, 119, 255, 0.16);
+}
+
+.time-sort-icon {
+  width: 40rpx;
+  height: 40rpx;
 }
 
 .order-list {
   display: flex;
   flex-direction: column;
   gap: 22rpx;
+  padding: 0 24rpx;
+}
+
+.order-card {
+  width: 100%;
+  padding: 24rpx 24rpx 26rpx;
+  text-align: left;
+  background: #ffffff;
+  border-radius: $card-radius;
+  box-shadow: $shadow-card;
+}
+
+.order-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.order-no {
+  @include text-ellipsis;
+  margin-top: 8rpx;
+  color: #9aa8c5;
+  font-size: 25rpx;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.status-pill {
+  @include flex-center;
+  flex-shrink: 0;
+  min-width: 116rpx;
+  height: 60rpx;
+  padding: 0 20rpx;
+  border-radius: 40rpx;
+  font-size: 26rpx;
+  font-weight: 700;
+}
+
+.status-pill.is-pending,
+.status-pill.is-processing {
+  color: $primary-color;
+  background: #dcecff;
+}
+
+.status-pill.is-completed {
+  color: $success-color;
+  background: #ddf8d6;
+}
+
+.status-pill.is-ended,
+.status-pill.is-canceled {
+  color: $text-secondary;
+  background: #eef3fb;
+}
+
+.status-pill.is-danger {
+  color: $error-color;
+  background: #fff0f0;
+}
+
+.status-pill.is-warning {
+  color: $warning-color;
+  background: #fff4df;
+}
+
+.plan-name {
+  @include text-ellipsis;
+  flex: 1;
+  min-width: 0;
+  color: #001a4d;
+  font-size: 34rpx;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 28rpx;
+  padding: 24rpx 0;
+  border-top: 1rpx solid #edf1f6;
+  border-bottom: 1rpx solid #edf1f6;
+  background: #ffffff;
+}
+
+.stat-item {
+  position: relative;
+  min-width: 0;
+  text-align: center;
+}
+
+.stat-item+.stat-item::before {
+  position: absolute;
+  top: 6rpx;
+  bottom: 6rpx;
+  left: 0;
+  width: 1rpx;
+  background: #edf1f6;
+  content: '';
+}
+
+.stat-label,
+.stat-value {
+  display: block;
+  line-height: 1.35;
+}
+
+.stat-label {
+  color: #9aa8c5;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.stat-value {
+  margin-top: 10rpx;
+  color: #001a4d;
+}
+
+.stat-number {
+  font-size: 36rpx;
+  font-weight: 900;
+}
+
+.stat-unit {
+  margin-left: 3rpx;
+  color: #7da8db;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.stat-item.success .stat-number,
+.stat-item.success .stat-unit {
+  color: #02c987;
+}
+
+.stat-item.danger .stat-number,
+.stat-item.danger .stat-unit {
+  color: #ff4040;
+}
+
+.stat-item.primary .stat-number,
+.stat-item.primary .stat-unit {
+  color: #3f86ff;
+}
+
+.time-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
   margin-top: 24rpx;
+  font-size: 27rpx;
+  line-height: 1.35;
+}
+
+.time-row+.time-row {
+  margin-top: 18rpx;
+}
+
+.time-label {
+  flex-shrink: 0;
+  color: #9aa8c5;
+  font-weight: 700;
+}
+
+.time-value {
+  @include text-ellipsis;
+  flex: 1;
+  min-width: 0;
+  color: #001a4d;
+  font-weight: 600;
+  text-align: right;
 }
 
 .loading-text,
@@ -374,7 +515,7 @@ async function confirmChangeTime() {
 }
 
 .error-card {
-  margin-top: 28rpx;
+  margin: 0 10rpx;
   padding: 36rpx 28rpx;
   background: #ffffff;
   border-radius: $card-radius;
@@ -402,93 +543,5 @@ async function confirmChangeTime() {
   color: #ffffff;
   font-size: 26rpx;
   background: $primary-color;
-}
-
-.popup-mask {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  align-items: flex-end;
-  background: rgba(11, 31, 68, 0.42);
-}
-
-.popup {
-  width: 100%;
-  padding: 34rpx 30rpx calc(34rpx + env(safe-area-inset-bottom));
-  border-radius: 34rpx 34rpx 0 0;
-  background: #ffffff;
-}
-
-.popup-title {
-  color: $text-main;
-  font-size: 34rpx;
-  font-weight: 800;
-  text-align: center;
-}
-
-.current-time {
-  margin-top: 28rpx;
-  padding: 24rpx;
-  border-radius: 20rpx;
-  background: #f7faff;
-}
-
-.label {
-  display: block;
-  color: $text-secondary;
-  font-size: 24rpx;
-}
-
-.value {
-  display: block;
-  margin-top: 8rpx;
-  color: $text-main;
-  font-size: 30rpx;
-  font-weight: 700;
-}
-
-.picker-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18rpx;
-  margin-top: 22rpx;
-}
-
-.picker-field {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 88rpx;
-  padding: 0 22rpx;
-  border-radius: 20rpx;
-  color: $text-main;
-  font-size: 26rpx;
-  background: #f7faff;
-}
-
-.popup-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18rpx;
-  margin-top: 34rpx;
-}
-
-.popup-btn {
-  @include flex-center;
-  height: 86rpx;
-  border-radius: 43rpx;
-  font-size: 28rpx;
-  font-weight: 700;
-}
-
-.popup-btn.cancel {
-  color: $text-secondary;
-  background: #eef3fb;
-}
-
-.popup-btn.confirm {
-  color: #ffffff;
-  background: linear-gradient(135deg, #1677ff 0%, #38a4ff 100%);
 }
 </style>

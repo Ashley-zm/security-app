@@ -1,268 +1,158 @@
 <template>
   <view class="plugin-check-page page safe-page">
     <AppNavbar title="插件检测" show-back />
-
     <view class="page-body">
       <view class="hero-card" :class="statusClass">
         <view class="hero-main">
-          <view class="hero-icon">
-            <text>AI</text>
-          </view>
+          <view class="hero-icon"><text>AI</text></view>
           <view class="hero-copy">
-            <text class="title">质量检测 Pipeline</text>
-            <text class="subtitle">模糊检测 · 翻拍检测 · 目标识别</text>
+            <text class="title">{{ currentMode.label }}</text>
+            <text class="subtitle">{{ currentMode.subtitle }}</text>
           </view>
-          <text class="status-pill" :class="statusClass">{{ detectStatus }}</text>
+          <text class="status-pill">{{ detectStatus }}</text>
         </view>
-
-        <view class="pipeline-steps">
-          <text class="step-tag">fuzzy</text>
-          <text class="step-arrow">→</text>
-          <text class="step-tag">remake</text>
-          <text class="step-arrow">→</text>
-          <text class="step-tag active">targetModel</text>
+        <view class="stage-row">
+          <template v-for="(stage, index) in currentMode.stages" :key="stage">
+            <text class="stage-tag" :class="{ active: index === currentMode.stages.length - 1 }">{{ stage }}</text>
+            <text v-if="index < currentMode.stages.length - 1" class="stage-arrow">→</text>
+          </template>
         </view>
       </view>
 
-      <view class="card model-card">
+      <view class="card">
         <view class="card-head">
           <view>
-            <text class="card-title">目标检测模型</text>
-            <text class="card-subtitle">当前检测固定提交 YOLOv8n 参数</text>
+            <text class="card-title">检测模式</text>
+            <text class="card-subtitle">detectMode: {{ selectedMode }}</text>
           </view>
-          <text class="card-badge">{{ selectedTargetModel.useGpu ? 'GPU' : 'CPU' }}</text>
+          <text class="badge">{{ pluginStatus }}</text>
         </view>
+        <view class="mode-grid">
+          <button
+            v-for="mode in detectModes"
+            :key="mode.value"
+            class="mode-btn"
+            :class="{ active: selectedMode === mode.value }"
+            :disabled="isOpeningDetect || isDetecting"
+            @click="selectMode(mode.value)"
+          >
+            <text class="mode-title">{{ mode.label }}</text>
+            <text class="mode-desc">{{ mode.desc }}</text>
+          </button>
+        </view>
+      </view>
 
-        <view class="picker-content">
+      <view class="card">
+        <view class="card-head">
           <view>
-            <text class="model-name">{{ selectedTargetModel.name }}</text>
-            <text class="model-desc">{{ selectedTargetModel.modelName }}</text>
+            <text class="card-title">启动参数</text>
+            <text class="card-subtitle">{{ optionSummary }}</text>
           </view>
-          <text class="picker-arrow">固定</text>
+          <text class="badge">{{ modelPlacementText }}</text>
         </view>
-
-        <view class="model-grid">
-          <view class="info-item">
-            <text class="info-label">modelPath</text>
-            <text class="info-value path-text">{{ selectedTargetModel.modelPath }}</text>
-          </view>
-          <view class="info-item">
-            <text class="info-label">binPath</text>
-            <text class="info-value path-text">{{ selectedTargetModel.binPath }}</text>
-          </view>
-          <view class="info-item">
-            <text class="info-label">labelPath</text>
-            <text class="info-value path-text">{{ selectedTargetModel.labelPath }}</text>
-          </view>
-          <view class="info-item">
-            <text class="info-label">参数</text>
-            <text class="info-value">
-              {{ selectedTargetModel.inputSize }} / {{ selectedTargetModel.threshold }} /
-              {{ selectedTargetModel.iouThreshold }}
-            </text>
-          </view>
+        <view class="info-grid">
+          <view class="info-item"><text class="info-label">detectInterval</text><text class="info-value">{{ currentOptions.detectInterval || '-' }} ms</text></view>
+          <view class="info-item"><text class="info-label">callbackInterval</text><text class="info-value">{{ currentOptions.callbackInterval || '-' }} ms</text></view>
+          <view class="info-item"><text class="info-label">labels</text><text class="info-value">{{ activeLabels || '全部绘制' }}</text></view>
+          <view class="info-item"><text class="info-label">targetModel</text><text class="info-value">{{ usesTargetModel ? selectedTargetModel.modelName : '不需要' }}</text></view>
         </view>
-      </view>
-
-    <view class="card action-card">
-      <view class="card-head">
-        <view>
-          <text class="card-title">检测操作</text>
-          <text class="card-subtitle">{{ pluginStatus }}</text>
-        </view>
-      </view>
-      <view class="button-row">
-        <button
-          class="action-btn primary"
-          :disabled="isOpeningDetect || isDetecting"
-          @click="startDetect"
-        >
-          {{ isOpeningDetect ? '正在打开...' : '开始检测' }}
-        </button>
-      </view>
-
-      <view v-if="errorMessage" class="error-box">{{ errorMessage }}</view>
-    </view>
-
-    <view class="card">
-      <view class="card-head">
-        <view>
-          <text class="card-title">实时 Pipeline 状态</text>
-          <text class="card-subtitle">原生检测回调 detect_result</text>
-        </view>
-      </view>
-      <view class="pipeline-box">
-        <view>
-          <text class="pipeline-label">pipelineStatus</text>
-          <text class="pipeline-status">{{ pipelineStatus || '-' }}</text>
-        </view>
-        <view>
-          <text class="pipeline-label">message</text>
-          <text class="pipeline-message">{{ pipelineMessage || '-' }}</text>
-        </view>
-        <view>
-          <text class="pipeline-label">targetModelName</text>
-          <text class="pipeline-message">{{ targetModelName || '-' }}</text>
-        </view>
-      </view>
-    </view>
-
-    <view class="card">
-      <view class="card-head">
-        <view>
-          <text class="card-title">质量检测结果</text>
-          <text class="card-subtitle">score 仅展示，不参与业务判断</text>
-        </view>
-      </view>
-      <view class="result-grid">
-        <view class="result-panel">
-          <view class="panel-title">fuzzyResult</view>
-          <quality-result-view :result="fuzzyResult" />
-        </view>
-        <view class="result-panel">
-          <view class="panel-title">remakeResult</view>
-          <quality-result-view :result="remakeResult" />
-        </view>
-      </view>
-    </view>
-
-    <view class="card">
-      <view class="card-head">
-        <view>
-          <text class="card-title">目标检测结果</text>
-          <text class="card-subtitle">展示 targetModel 返回的 boxes</text>
-        </view>
-        <text class="card-badge">{{ getBoxCount(detectionResult) }} 个</text>
-      </view>
-      <view v-if="detectionResult" class="target-summary">
-        <view class="row">
-          <text class="label">modelName</text>
-          <text class="value">{{ detectionResult.modelName || '-' }}</text>
-        </view>
-        <view class="row">
-          <text class="label">boxes 数量</text>
-          <text class="value">{{ getBoxCount(detectionResult) }}</text>
-        </view>
-        <view v-if="normalizedBoxes.length" class="box-list">
-          <view v-for="(box, index) in normalizedBoxes" :key="index" class="box-item">
-            <view class="box-header">
-              <text class="box-label">{{ box.label || `目标 ${index + 1}` }}</text>
-              <text class="box-score">{{ formatScore(box.score) }}</text>
+        <view v-if="usesTargetModel" class="model-panel">
+          <view class="model-head">
+            <view>
+              <text class="model-name">{{ selectedTargetModel.name }}</text>
+              <text class="model-desc">{{ selectedTargetModel.modelArch }} · {{ selectedTargetModel.engine }}</text>
             </view>
-            <text class="box-meta">classId: {{ box.classId ?? '-' }}</text>
-            <text class="box-meta">
-              left: {{ formatNumber(box.left) }} / top: {{ formatNumber(box.top) }}
-            </text>
-            <text class="box-meta">
-              right: {{ formatNumber(box.right) }} / bottom: {{ formatNumber(box.bottom) }}
-            </text>
+            <text class="badge">{{ selectedTargetModel.useGpu ? 'GPU' : 'CPU' }}</text>
           </view>
+          <text class="path-text">modelPath: {{ selectedTargetModel.modelPath }}</text>
+          <text class="path-text">binPath: {{ selectedTargetModel.binPath }}</text>
+          <text class="path-text">labelPath: {{ selectedTargetModel.labelPath }}</text>
         </view>
-        <view v-else class="empty">暂无检测框</view>
+        <view class="json-box"><text class="json-text">{{ currentOptionsText }}</text></view>
       </view>
-      <view v-else class="empty">暂无目标检测结果</view>
-    </view>
 
-    <view class="card">
-      <view class="card-head">
-        <view>
-          <text class="card-title">最新拍照结果</text>
-          <text class="card-subtitle">原生页面拍照后返回 snapshot</text>
+      <view class="card">
+        <view class="card-head">
+          <view>
+            <text class="card-title">检测操作</text>
+            <text class="card-subtitle">{{ actionSubtitle }}</text>
+          </view>
+        </view>
+        <view class="button-row">
+          <button class="action-btn primary" :disabled="isOpeningDetect || isDetecting" @click="startDetect">{{ isOpeningDetect ? '正在打开...' : '开始检测' }}</button>
+          <button class="action-btn danger" :disabled="!isDetecting" @click="stopDetect">停止检测</button>
+        </view>
+        <view v-if="errorMessage" class="error-box">{{ errorMessage }}</view>
+      </view>
+
+      <view class="card">
+        <view class="card-head">
+          <view>
+            <text class="card-title">最新回调</text>
+            <text class="card-subtitle">{{ latestEventSubtitle }}</text>
+          </view>
+          <text class="badge">{{ latestEvent?.type || 'none' }}</text>
+        </view>
+        <view class="info-grid">
+          <view class="info-item"><text class="info-label">pipelineStatus</text><text class="info-value strong">{{ pipelineStatus || '-' }}</text></view>
+          <view class="info-item"><text class="info-label">message</text><text class="info-value">{{ pipelineMessage || '-' }}</text></view>
+          <view class="info-item"><text class="info-label">targetModelName</text><text class="info-value">{{ targetModelName || '-' }}</text></view>
+          <view class="info-item"><text class="info-label">hasTarget</text><text class="info-value">{{ latestHasTarget }}</text></view>
         </view>
       </view>
-      <view v-if="snapshotResult" class="snapshot-detail">
-        <image
-          v-if="snapshotResult.previewPath"
-          class="snapshot-image"
-          :src="snapshotResult.previewPath"
-          mode="widthFix"
-        />
-        <view class="row column">
-          <text class="label">imagePath</text>
-          <text class="value path-text">{{ snapshotResult.imagePath || '-' }}</text>
-        </view>
-        <view class="row">
-          <text class="label">timeText</text>
-          <text class="value">{{ snapshotResult.timeText }}</text>
-        </view>
-        <view class="row">
-          <text class="label">pipelineStatus</text>
-          <text class="value">{{ snapshotResult.pipelineStatus || '-' }}</text>
-        </view>
-        <view class="row">
-          <text class="label">message</text>
-          <text class="value">{{ snapshotResult.message || '-' }}</text>
-        </view>
-        <view class="row">
-          <text class="label">hasTarget</text>
-          <text class="value">{{ snapshotResult.hasTarget ? 'true' : 'false' }}</text>
-        </view>
 
-        <view class="result-grid snapshot-results">
-          <view class="result-panel">
-            <view class="panel-title">fuzzyResult</view>
-            <quality-result-view :result="snapshotResult.fuzzyResult" />
-          </view>
-          <view class="result-panel">
-            <view class="panel-title">remakeResult</view>
-            <quality-result-view :result="snapshotResult.remakeResult" />
-          </view>
+      <view class="card">
+        <view class="card-head"><view><text class="card-title">质量检测结果</text><text class="card-subtitle">fuzzyResult / remakeResult</text></view></view>
+        <view class="result-grid">
+          <view class="result-panel"><text class="panel-title">fuzzyResult</text><quality-result-view :result="fuzzyResult" /></view>
+          <view class="result-panel"><text class="panel-title">remakeResult</text><quality-result-view :result="remakeResult" /></view>
         </view>
+      </view>
 
-        <view class="snapshot-target">
-          <view class="panel-title">detectionResult</view>
-          <view class="row">
-            <text class="label">modelName</text>
-            <text class="value">{{ snapshotResult.detectionResult?.modelName || '-' }}</text>
+      <view class="card">
+        <view class="card-head"><view><text class="card-title">目标检测结果</text><text class="card-subtitle">boxes / detectionResult</text></view><text class="badge">{{ boxes.length }} 个</text></view>
+        <view v-if="detectionResult" class="result-panel">
+          <view class="row"><text class="label">modelName</text><text class="value">{{ detectionResult.modelName || '-' }}</text></view>
+          <view v-if="boxes.length" class="box-list">
+            <view v-for="(box, index) in boxes" :key="index" class="box-item">
+              <view class="box-head"><text class="box-label">{{ box.label || `目标 ${index + 1}` }}</text><text class="box-score">{{ formatScore(box.score) }}</text></view>
+              <text class="box-meta">classId: {{ formatText(box.classId) }}</text>
+              <text class="box-meta">left: {{ formatNumber(box.left) }} / top: {{ formatNumber(box.top) }}</text>
+              <text class="box-meta">right: {{ formatNumber(box.right) }} / bottom: {{ formatNumber(box.bottom) }}</text>
+            </view>
           </view>
-          <view class="row">
-            <text class="label">boxes 数量</text>
-            <text class="value">{{ getBoxCount(snapshotResult.detectionResult) }}</text>
-          </view>
-          <view v-if="getBoxes(snapshotResult.detectionResult).length" class="box-list">
-            <view
-              v-for="(box, index) in getBoxes(snapshotResult.detectionResult)"
-              :key="`snapshot-box-${index}`"
-              class="box-item"
-            >
-              <view class="box-header">
-                <text class="box-label">{{ box.label || `目标 ${index + 1}` }}</text>
-                <text class="box-score">{{ formatScore(box.score) }}</text>
-              </view>
-              <text class="box-meta">classId: {{ box.classId ?? '-' }}</text>
-              <text class="box-meta">
-                left: {{ formatNumber(box.left) }} / top: {{ formatNumber(box.top) }}
-              </text>
-              <text class="box-meta">
-                right: {{ formatNumber(box.right) }} / bottom: {{ formatNumber(box.bottom) }}
-              </text>
+          <view v-else class="empty">暂无检测框</view>
+        </view>
+        <view v-else class="empty">当前模式尚未返回目标检测结果</view>
+      </view>
+
+      <view class="card">
+        <view class="card-head"><view><text class="card-title">拍照结果</text><text class="card-subtitle">snapshot / 多图完成结果</text></view><text class="badge">{{ snapshotList.length }} 张</text></view>
+        <view v-if="snapshotResult" class="snapshot-detail">
+          <image v-if="snapshotResult.previewPath" class="snapshot-image" :src="snapshotResult.previewPath" mode="widthFix" />
+          <view class="row column"><text class="label">imagePath</text><text class="value path-text">{{ snapshotResult.imagePath || '-' }}</text></view>
+          <view v-if="showSnapshotStatus" class="row"><text class="label">result</text><text class="value">{{ snapshotResult.result || '-' }}</text></view>
+          <view v-if="showSnapshotStatus" class="row"><text class="label">target</text><text class="value">{{ snapshotResult.target || '-' }}</text></view>
+          <view v-if="showSnapshotStatus" class="row"><text class="label">confidence</text><text class="value">{{ formatScore(snapshotResult.confidence) }}</text></view>
+          <view class="row"><text class="label">time</text><text class="value">{{ snapshotResult.timeText }}</text></view>
+        </view>
+        <view v-else class="empty">暂无拍照结果</view>
+        <view v-if="snapshotList.length" class="record-list">
+          <view v-for="(item, index) in snapshotList" :key="`${item.timestamp}-${item.index}-${index}`" class="record-item">
+            <image v-if="item.previewPath" class="record-image" :src="item.previewPath" mode="aspectFill" />
+            <view class="record-info">
+              <text class="record-time">#{{ item.index || index + 1 }} {{ item.timeText }}</text>
+              <text v-if="showSnapshotStatus" class="record-line">{{ item.result || '-' }} · {{ item.target || '无目标' }}</text>
+              <text v-if="showSnapshotStatus" class="record-line">fuzzy: {{ item.fuzzyLabel || '-' }} / remake: {{ item.remakeLabel || '-' }}</text>
             </view>
           </view>
         </view>
       </view>
-      <view v-else class="empty">暂无拍照结果</view>
-    </view>
 
-    <view class="card">
-      <view class="card-head">
-        <view>
-          <text class="card-title">拍照记录</text>
-          <text class="card-subtitle">仅保存当前页面内记录</text>
-        </view>
-        <text class="card-badge">{{ snapshotList.length }} 条</text>
+      <view class="card">
+        <view class="card-head"><view><text class="card-title">原始 JSON</text><text class="card-subtitle">用于核对原生插件返回字段</text></view></view>
+        <view class="json-box raw-json"><text class="json-text">{{ latestEventText }}</text></view>
       </view>
-      <view v-if="snapshotList.length" class="record-list">
-        <view v-for="(item, index) in snapshotList" :key="`${item.timestamp}-${index}`" class="record-item">
-          <image v-if="item.previewPath" class="record-image" :src="item.previewPath" mode="aspectFill" />
-          <view class="record-info">
-            <text class="record-time">{{ item.timeText }}</text>
-            <text class="record-line">{{ item.pipelineStatus || '-' }} · {{ item.message || '-' }}</text>
-            <text class="record-line">{{ item.targetModelName || '-' }}</text>
-          </view>
-        </view>
-      </view>
-      <view v-else class="empty">当前页面暂无拍照记录</view>
-    </view>
     </view>
   </view>
 </template>
@@ -271,8 +161,16 @@
 import { computed, defineComponent, h, ref } from 'vue'
 import AppNavbar from '@/components/AppNavbar.vue'
 
+type DetectMode = 'photo_only' | 'target_only' | 'quality_only' | 'full_pipeline'
+type AnyRecord = Record<string, any>
+
+interface ModeConfig { value: DetectMode; label: string; subtitle: string; desc: string; stages: string[] }
 interface TargetModel {
   name: string
+  modelType: string
+  modelArch: 'yolov8' | 'yolov5'
+  engine: 'ncnn' | 'mock'
+  labels?: string
   modelName: string
   modelPath: string
   binPath: string
@@ -282,112 +180,45 @@ interface TargetModel {
   iouThreshold: number
   useGpu: boolean
 }
-
-interface QualityResult {
-  modelName?: string
-  classId?: number | string
-  label?: string
-  businessLabel?: string
-  score?: number | string
-  positiveLabel?: string
-  passLabel?: string
-  result?: boolean
-  isPass?: boolean
-  topK?: Array<{
-    classId?: number | string
-    label?: string
-    score?: number | string
-  }>
-  [key: string]: unknown
-}
-
-interface DetectBox {
-  classId?: number | string
-  label?: string
-  score?: number | string
-  left?: number | string
-  top?: number | string
-  right?: number | string
-  bottom?: number | string
-}
-
-interface TargetDetectionResult {
-  modelName?: string
-  boxes?: DetectBox[]
-  [key: string]: unknown
-}
-
-interface DetectCallbackResult {
-  success?: boolean
-  type?: string
-  resultSource?: string
-  pipelineStatus?: string
-  message?: string
-  targetModelName?: string
-  hasTarget?: boolean
-  imagePath?: string
-  shouldCloseCamera?: boolean
-  fuzzyResult?: QualityResult | null
-  remakeResult?: QualityResult | null
-  detectionResult?: TargetDetectionResult | null
-  boxes?: DetectBox[]
-  timestamp?: number
-  code?: string
-  [key: string]: unknown
-}
-
 interface SnapshotRecord {
+  index: number
   imagePath: string
   previewPath: string
   timestamp: number
   timeText: string
-  pipelineStatus: string
-  message: string
-  targetModelName: string
-  hasTarget: boolean
-  fuzzyResult: QualityResult | null
-  remakeResult: QualityResult | null
-  detectionResult: TargetDetectionResult | null
-  shouldCloseCamera: boolean
-  raw: DetectCallbackResult
+  result: string
+  target: string
+  confidence?: number | string
+  fuzzyLabel: string
+  remakeLabel: string
+  raw: AnyRecord
 }
-
 interface AiDetectPlugin {
-  startDetect?: (
-    options: {
-      pipelineMode: boolean
-      detectInterval: number
-      callbackInterval: number
-      targetModel: {
-        modelType: 'detection'
-        engine: 'ncnn'
-        modelName: string
-        modelPath: string
-        binPath: string
-        labelPath: string
-        inputSize: number
-        threshold: number
-        iouThreshold: number
-        useGpu: boolean
-      }
-    },
-    callback: (res?: DetectCallbackResult) => void
-  ) => DetectCallbackResult | void
+  startDetect?: (options: AnyRecord, callback: (res?: AnyRecord) => void) => AnyRecord | void
+  stopDetect?: (options?: AnyRecord, callback?: (res?: AnyRecord) => void) => AnyRecord | void
 }
-
-const targetModels: TargetModel[] = [
-  {
-    name: 'YOLOv8n 检测模型',
-    modelName: 'yolov8n',
-    modelPath: 'models/yolov8n_ncnn/yolov8n.param',
-    binPath: 'models/yolov8n_ncnn/yolov8n.bin',
-    labelPath: 'models/yolov8n_ncnn/labels.txt',
-    inputSize: 640,
-    threshold: 0.5,
-    iouThreshold: 0.45,
-    useGpu: false
-  }
+const detectModes: ModeConfig[] = [
+  { value: 'photo_only', label: '纯拍照', subtitle: '只打开原生相机并返回照片', desc: '不加载模型', stages: ['preview', 'snapshot'] },
+  { value: 'target_only', label: '单模型目标检测', subtitle: '只运行目标检测模型', desc: 'YOLO 目标框', stages: ['targetModel'] },
+  { value: 'quality_only', label: '模糊 + 翻拍', subtitle: '只运行内置质量模型', desc: 'fuzzy → remake', stages: ['fuzzy', 'remake'] },
+  { value: 'full_pipeline', label: '完整 Pipeline', subtitle: '模糊、翻拍与目标检测串联', desc: 'fuzzy → remake → target', stages: ['fuzzy', 'remake', 'targetModel'] }
 ]
+
+const targetModels: TargetModel[] = [{
+  name: '外部 YOLOv5 目标检测模型',
+  modelType: 'detection',
+  modelArch: 'yolov5',
+  engine: 'ncnn',
+  labels: 'person',
+  modelName: 'mqj_Integration_v14',
+  modelPath: 'models/object/mqj_Integration_v14.ncnn.param',
+  binPath: 'models/object/mqj_Integration_v14.ncnn.bin',
+  labelPath: 'models/object/labels.txt',
+  inputSize: 640,
+  threshold: 0.5,
+  iouThreshold: 0.45,
+  useGpu: false
+}]
 
 let aiDetect: AiDetectPlugin | null = null
 let isAppPlusRuntime = false
@@ -401,279 +232,268 @@ try {
 }
 // #endif
 
+const selectedMode = ref<DetectMode>('full_pipeline')
+const detectInterval = ref(500)
+const callbackInterval = ref(500)
 const isDetecting = ref(false)
 const isOpeningDetect = ref(false)
 const detectStatus = ref('未开始')
 const pipelineStatus = ref('')
 const pipelineMessage = ref('')
 const targetModelName = ref('')
-const fuzzyResult = ref<QualityResult | null>(null)
-const remakeResult = ref<QualityResult | null>(null)
-const detectionResult = ref<TargetDetectionResult | null>(null)
-const lastDetectResult = ref<DetectCallbackResult | null>(null)
+const fuzzyResult = ref<AnyRecord | null>(null)
+const remakeResult = ref<AnyRecord | null>(null)
+const detectionResult = ref<AnyRecord | null>(null)
+const latestEvent = ref<AnyRecord | null>(null)
 const snapshotResult = ref<SnapshotRecord | null>(null)
 const snapshotList = ref<SnapshotRecord[]>([])
 const errorMessage = ref('')
 
-const pluginStatus = computed(() => {
-  if (!isAppPlusRuntime) {
-    return '不支持原生插件'
-  }
-  return aiDetect ? 'AiDetectPlugin 已加载' : 'AiDetectPlugin 未加载'
-})
-
 const selectedTargetModel = computed(() => targetModels[0])
+const currentMode = computed(() => detectModes.find((mode) => mode.value === selectedMode.value) || detectModes[0])
+const usesTargetModel = computed(() => selectedMode.value === 'target_only' || selectedMode.value === 'full_pipeline')
+const showSnapshotStatus = computed(() => selectedMode.value !== 'photo_only')
+const activeLabels = computed(() => (usesTargetModel.value ? selectedTargetModel.value.labels || '' : ''))
+const boxes = computed(() => (Array.isArray(detectionResult.value?.boxes) ? detectionResult.value?.boxes : []))
+const currentOptions = computed(() => buildStartOptions(selectedMode.value))
+const currentOptionsText = computed(() => JSON.stringify(currentOptions.value, null, 2))
+const latestEventText = computed(() => (latestEvent.value ? JSON.stringify(latestEvent.value, null, 2) : '{}'))
 
-const normalizedBoxes = computed(() => {
-  const boxes = detectionResult.value?.boxes
-  return Array.isArray(boxes) ? boxes : []
+const pluginStatus = computed(() => (!isAppPlusRuntime ? '非 App' : aiDetect ? '已加载' : '未加载'))
+const actionSubtitle = computed(() => (!isAppPlusRuntime ? '当前环境无法调用 Android 原生插件' : aiDetect ? 'AiDetectPlugin.startDetect' : '未获取到 AiDetectPlugin'))
+const latestHasTarget = computed(() => (latestEvent.value?.hasTarget === undefined ? '-' : latestEvent.value.hasTarget ? 'true' : 'false'))
+const latestEventSubtitle = computed(() => latestEvent.value ? `${latestEvent.value.success === false ? '失败' : '成功'} · ${formatTime(latestEvent.value.timestamp)}` : '等待原生回调')
+const optionSummary = computed(() => {
+  if (selectedMode.value === 'photo_only') return 'photo_only 不创建 ImageAnalysis，也不需要模型字段'
+  if (selectedMode.value === 'quality_only') return 'quality_only 使用内置 fuzzy/remake 模型，不传 targetModel'
+  if (selectedMode.value === 'target_only') return 'target_only 将目标模型字段放在 options 顶层'
+  return 'full_pipeline 将目标模型字段放在 targetModel 内'
 })
-
+const modelPlacementText = computed(() => {
+  if (selectedMode.value === 'target_only') return '顶层模型字段'
+  if (selectedMode.value === 'full_pipeline') return 'targetModel'
+  return '无需目标模型'
+})
 const statusClass = computed(() => {
-  if (errorMessage.value || pipelineStatus.value === 'ERROR') {
-    return 'is-error'
-  }
-  if (pipelineStatus.value === 'TARGET_FOUND') {
-    return 'is-success'
-  }
-  if (isDetecting.value || isOpeningDetect.value) {
-    return 'is-running'
-  }
+  if (errorMessage.value || pipelineStatus.value === 'ERROR') return 'is-error'
+  if (pipelineStatus.value === 'TARGET_FOUND' || pipelineStatus.value === 'QUALITY_PASS' || latestEvent.value?.qualified === true) return 'is-success'
+  if (isDetecting.value || isOpeningDetect.value) return 'is-running'
   return ''
 })
 
 const QualityResultView = defineComponent({
   name: 'QualityResultView',
-  props: {
-    result: {
-      type: Object as () => QualityResult | null,
-      default: null
-    }
-  },
+  props: { result: { type: Object as () => AnyRecord | null, default: null } },
   setup(props) {
     return () => {
-      if (!props.result) {
-        return h('view', { class: 'empty compact-empty' }, '暂无结果')
-      }
-
+      if (!props.result) return h('view', { class: 'empty compact-empty' }, '暂无结果')
       return h('view', { class: 'quality-fields' }, [
-        renderQualityRow('modelName', props.result.modelName || '-'),
-        renderQualityRow('classId', formatText(props.result.classId)),
-        renderQualityRow('businessLabel', formatBusinessLabel(getQualityBusinessLabel(props.result))),
-        renderQualityRow('rawLabel', props.result.label || '-'),
-        renderQualityRow('score', formatScore(props.result.score)),
-        renderQualityRow('result', formatBoolean(props.result.result)),
-        renderQualityRow('isPass', formatBoolean(props.result.isPass)),
-        renderTopK(props.result.topK)
+        qualityRow('modelName', props.result.modelName || '-'),
+        qualityRow('classId', formatText(props.result.classId)),
+        qualityRow('businessLabel', formatBusinessLabel(getQualityBusinessLabel(props.result))),
+        qualityRow('rawLabel', props.result.label || '-'),
+        qualityRow('score', formatScore(props.result.score)),
+        qualityRow('result', formatBoolean(props.result.result)),
+        qualityRow('isPass', formatBoolean(props.result.isPass))
       ])
     }
   }
 })
 
-function renderQualityRow(label: string, value: string) {
-  return h('view', { class: 'quality-row' }, [
-    h('text', { class: 'quality-label' }, label),
-    h('text', { class: 'quality-value' }, value)
-  ])
+function qualityRow(label: string, value: string) {
+  return h('view', { class: 'quality-row' }, [h('text', { class: 'quality-label' }, label), h('text', { class: 'quality-value' }, value)])
 }
 
-function renderTopK(topK?: QualityResult['topK']) {
-  if (!Array.isArray(topK) || topK.length === 0) {
-    return h('view')
-  }
+function selectMode(mode: DetectMode) {
+  selectedMode.value = mode
+  resetRuntimeState()
+  detectStatus.value = '未开始'
+}
 
-  return h('view', { class: 'topk-list' }, [
-    h('text', { class: 'quality-label' }, 'topK'),
-    ...topK.map((item, index) =>
-      h('view', { class: 'topk-item' }, [
-        h('text', { class: 'topk-label' }, `${index + 1}. ${item.label || '-'}`),
-        h('text', { class: 'topk-score' }, `${formatText(item.classId)} / ${formatScore(item.score)}`)
-      ])
-    )
-  ])
+function buildStartOptions(mode: DetectMode): AnyRecord {
+  if (mode === 'photo_only') return { detectMode: mode }
+  const baseOptions: AnyRecord = { detectMode: mode, detectInterval: detectInterval.value, callbackInterval: callbackInterval.value }
+  if (mode === 'quality_only') return baseOptions
+  const targetModel = buildTargetModelOptions()
+  if (mode === 'target_only') return { ...baseOptions, labels: selectedTargetModel.value.labels, ...targetModel }
+  return { ...baseOptions, labels: selectedTargetModel.value.labels, targetModel }
+}
+
+function buildTargetModelOptions() {
+  const model = selectedTargetModel.value
+  return {
+    modelType: model.modelType,
+    modelArch: model.modelArch,
+    engine: model.engine,
+    modelName: model.modelName,
+    modelPath: model.modelPath,
+    binPath: model.binPath,
+    labelPath: model.labelPath,
+    inputSize: model.inputSize,
+    threshold: model.threshold,
+    iouThreshold: model.iouThreshold,
+    useGpu: model.useGpu
+  }
 }
 
 function startDetect() {
-  if (!checkPlugin()) {
-    return
-  }
-  if (isOpeningDetect.value || isDetecting.value) {
-    return
-  }
-
-  const targetModel = selectedTargetModel.value
-  const startOptions = {
-    pipelineMode: true,
-    detectInterval: 500,
-    callbackInterval: 500,
-    targetModel: {
-      modelType: 'detection' as const,
-      engine: 'ncnn' as const,
-      modelName: 'yolov8n',
-      modelPath: 'models/yolov8n_ncnn/yolov8n.param',
-      binPath: 'models/yolov8n_ncnn/yolov8n.bin',
-      labelPath: 'models/yolov8n_ncnn/labels.txt',
-      inputSize: 640,
-      threshold: 0.5,
-      iouThreshold: 0.45,
-      useGpu: false
-    }
-  }
-
+  if (!checkPlugin() || isOpeningDetect.value || isDetecting.value) return
   resetRuntimeState()
   isOpeningDetect.value = true
   detectStatus.value = '正在打开检测页'
-  targetModelName.value = targetModel.modelName
-
+  targetModelName.value = usesTargetModel.value ? selectedTargetModel.value.modelName : ''
   try {
-    console.log('AiDetectPlugin startDetect 参数', startOptions)
-    const syncResult = aiDetect?.startDetect?.(startOptions, (res) => {
-      console.log('AiDetect result:', res)
-      handleDetectCallback(res)
-    })
-    if (syncResult) {
-      console.log('AiDetect result:', syncResult)
-      handleDetectCallback(syncResult)
-    }
+    const options = currentOptions.value
+    console.log('AiDetectPlugin startDetect 参数', options)
+    const syncResult = aiDetect?.startDetect?.(options, (res) => handleDetectCallback(res))
+    if (syncResult) handleDetectCallback(syncResult)
   } catch (error) {
-    handleDetectError({
-      success: false,
-      type: 'error',
-      message: error instanceof Error ? error.message : String(error)
-    })
+    handleDetectError({ success: false, type: 'error', message: error instanceof Error ? error.message : String(error), timestamp: Date.now() })
   }
 }
 
-function handleDetectCallback(res?: DetectCallbackResult) {
-  console.log('AiDetectPlugin 回调', res)
-  if (!res) {
+function stopDetect() {
+  if (!aiDetect?.stopDetect) {
+    isDetecting.value = false
+    detectStatus.value = '已停止'
     return
   }
+  try {
+    const syncResult = aiDetect.stopDetect({}, (res) => handleDetectCallback(res))
+    if (syncResult) handleDetectCallback(syncResult)
+  } catch (error) {
+    handleDetectError({ success: false, type: 'error', message: error instanceof Error ? error.message : String(error), timestamp: Date.now() })
+  }
+}
 
+function handleDetectCallback(res?: AnyRecord) {
+  if (!res) return
+  latestEvent.value = res
   isOpeningDetect.value = false
-
   if (res.success === false) {
-    if (res.type === 'snapshot_error') {
-      handleSnapshotError(res)
-    } else {
-      handleDetectError(res)
-    }
+    if (res.type === 'cancel') handleCancel(res)
+    else handleDetectError(res)
     return
   }
-
   if (res.type === 'activity_opened') {
     isDetecting.value = true
-    detectStatus.value = '检测中'
-    pipelineMessage.value = res.message || '原生 DetectActivity 已打开'
+    detectStatus.value = '检测页已打开'
+    pipelineMessage.value = res.message || '原生检测页已打开'
     return
   }
-
-  if (res.type === 'detect_result') {
-    handlePipelineDetectResult(res)
+  if (res.type === 'camera_permission_granted' || res.type === 'camera_preview_started') {
+    isDetecting.value = true
+    detectStatus.value = res.message || '检测中'
+    pipelineMessage.value = res.message || pipelineMessage.value
     return
   }
-
-  if (res.type === 'snapshot') {
-    handleSnapshotResult(res)
+  if (res.type === 'detect_result') return handleRealtimeResult(res)
+  if (res.type === 'snapshot') return handleSnapshotResult(res)
+  if (res.type === 'detect_stopped') {
+    isDetecting.value = false
+    detectStatus.value = '已停止'
+    pipelineMessage.value = res.message || '已停止检测'
     return
   }
-
-  if (res.type === 'snapshot_error') {
-    handleSnapshotError(res)
-    return
-  }
-
-  if (res.type === 'error') {
-    handleDetectError(res)
-  }
+  if (res.type === 'error' || res.type === 'snapshot_error') return handleDetectError(res)
+  pipelineMessage.value = res.message || pipelineMessage.value
+  detectStatus.value = res.message || detectStatus.value
 }
 
-function handlePipelineDetectResult(res: DetectCallbackResult) {
+function handleRealtimeResult(res: AnyRecord) {
   const normalizedDetectionResult = normalizeDetectionResult(res)
-
-  lastDetectResult.value = res
-  pipelineStatus.value = res.pipelineStatus || ''
-  pipelineMessage.value = res.message || getPipelineStatusText(res.pipelineStatus)
-  targetModelName.value = res.targetModelName || selectedTargetModel.value.modelName
+  pipelineStatus.value = inferStatus(res)
+  pipelineMessage.value = res.message || getPipelineStatusText(pipelineStatus.value)
+  targetModelName.value = res.targetModelName || normalizedDetectionResult?.modelName || targetModelName.value
   fuzzyResult.value = res.fuzzyResult || null
   remakeResult.value = res.remakeResult || null
   detectionResult.value = normalizedDetectionResult
   isDetecting.value = true
+  detectStatus.value = pipelineMessage.value || '检测中'
+  errorMessage.value = ''
+}
+function handleSnapshotResult(res: AnyRecord) {
+  if (Array.isArray(res.images) && res.images.length > 0) {
+    const records = res.images.map((item: AnyRecord, index: number) => createSnapshotRecordFromImage(item, res, index))
+    snapshotList.value = [...records].reverse()
+    snapshotResult.value = records[records.length - 1] || null
+    records.forEach(resolveSnapshotPreviewPath)
+  } else {
+    const record = createSnapshotRecordFromCallback(res)
+    snapshotResult.value = record
+    snapshotList.value.unshift(record)
+    resolveSnapshotPreviewPath(record)
+  }
 
-  detectStatus.value = res.message || getPipelineStatusText(res.pipelineStatus) || '检测中'
+  pipelineStatus.value = inferStatus(res)
+  pipelineMessage.value = res.message || getPipelineStatusText(pipelineStatus.value)
+  targetModelName.value = res.targetModelName || targetModelName.value
+  fuzzyResult.value = res.fuzzyResult || null
+  remakeResult.value = res.remakeResult || null
+  detectionResult.value = normalizeDetectionResult(res)
+  errorMessage.value = ''
+
+  if (res.mode === 'multi' || res.shouldCloseCamera === true) {
+    isDetecting.value = false
+  }
+
+  detectStatus.value = res.message || (res.mode === 'multi' ? '已完成拍摄' : '已拍照')
+  if (selectedMode.value !== 'photo_only') showToast(detectStatus.value, 'success')
 }
 
-function handleSnapshotResult(res: DetectCallbackResult) {
-  const imagePath = res.imagePath || ''
+function createSnapshotRecordFromCallback(res: AnyRecord): SnapshotRecord {
   const timestamp = res.timestamp || Date.now()
-  const normalizedDetectionResult = normalizeDetectionResult(res)
-  const record: SnapshotRecord = {
+  const imagePath = res.imagePath || res.path || ''
+  return {
+    index: snapshotList.value.length + 1,
     imagePath,
     previewPath: normalizeFilePath(imagePath),
     timestamp,
     timeText: formatTime(timestamp),
-    pipelineStatus: res.pipelineStatus || '',
-    message: res.message || '',
-    targetModelName: res.targetModelName || selectedTargetModel.value.modelName,
-    hasTarget: Boolean(res.hasTarget),
-    fuzzyResult: res.fuzzyResult || null,
-    remakeResult: res.remakeResult || null,
-    detectionResult: normalizedDetectionResult,
-    shouldCloseCamera: Boolean(res.shouldCloseCamera),
+    result: getSnapshotDisplayResult(res),
+    target: getSnapshotTarget(res),
+    confidence: getSnapshotConfidence(res),
+    fuzzyLabel: getQualityBusinessLabel(res.fuzzyResult),
+    remakeLabel: getQualityBusinessLabel(res.remakeResult),
     raw: res
   }
+}
 
-  snapshotResult.value = record
-  resolveSnapshotPreviewPath(record)
-  snapshotList.value.unshift(record)
+function createSnapshotRecordFromImage(image: AnyRecord, parent: AnyRecord, fallbackIndex: number): SnapshotRecord {
+  const imagePath = image.imagePath || image.path || ''
+  const timestamp = parent.timestamp || Date.now()
+  return {
+    index: Number(image.index || fallbackIndex + 1),
+    imagePath,
+    previewPath: normalizeFilePath(imagePath),
+    timestamp,
+    timeText: image.time || formatTime(timestamp),
+    result: getSnapshotDisplayResult(image, parent),
+    target: image.target || '',
+    confidence: image.confidence,
+    fuzzyLabel: image.fuzzyLabel || '',
+    remakeLabel: image.remakeLabel || '',
+    raw: image
+  }
+}
+
+function handleCancel(res: AnyRecord) {
   isDetecting.value = false
   isOpeningDetect.value = false
-  detectStatus.value = res.message || getPipelineStatusText(res.pipelineStatus) || '已拍照完成'
-  errorMessage.value = ''
-
-  pipelineStatus.value = record.pipelineStatus
-  pipelineMessage.value = record.message || getPipelineStatusText(record.pipelineStatus)
-  targetModelName.value = record.targetModelName
-  fuzzyResult.value = record.fuzzyResult
-  remakeResult.value = record.remakeResult
-  detectionResult.value = record.detectionResult
-  lastDetectResult.value = res
-
-  saveSnapshotRecord(record)
-  showToast(res.message || '拍照完成', 'success')
+  detectStatus.value = '已取消'
+  pipelineMessage.value = res.message || 'cancel'
 }
 
-function handleSnapshotError(res: DetectCallbackResult) {
-  const message = res.message || '拍照失败'
-  errorMessage.value = message
-  isOpeningDetect.value = false
-
-  if (res.shouldCloseCamera === true) {
-    isDetecting.value = false
-  }
-
-  detectStatus.value = res.message || '拍照异常'
-
-  if (res.imagePath) {
-    console.warn('拍照异常，保留 imagePath 用于排查', res.imagePath)
-  }
-
-  showToast(message)
-  console.error('AiDetectPlugin snapshot_error', res)
-}
-
-function handleDetectError(res: DetectCallbackResult) {
+function handleDetectError(res: AnyRecord) {
   const message = res.message || '检测异常'
   errorMessage.value = message
   isOpeningDetect.value = false
-
-  if (res.shouldCloseCamera === true || res.type === 'error') {
+  if (res.type === 'error' || res.type === 'cancel' || res.shouldCloseCamera === true) {
     isDetecting.value = false
   }
-
   pipelineStatus.value = res.pipelineStatus || pipelineStatus.value || 'ERROR'
   pipelineMessage.value = message
-  detectStatus.value = message || '检测异常'
+  detectStatus.value = message
   showToast(message)
   console.error('AiDetectPlugin error', res)
 }
@@ -682,44 +502,90 @@ function resetRuntimeState() {
   errorMessage.value = ''
   pipelineStatus.value = ''
   pipelineMessage.value = ''
+  targetModelName.value = ''
   fuzzyResult.value = null
   remakeResult.value = null
   detectionResult.value = null
-  lastDetectResult.value = null
+  latestEvent.value = null
 }
 
 function checkPlugin() {
   if (!isAppPlusRuntime) {
-    errorMessage.value = '不支持原生插件'
-    detectStatus.value = '不支持原生插件'
-    showToast('不支持原生插件')
+    errorMessage.value = '当前环境不支持原生插件'
+    detectStatus.value = '非 App 环境'
+    showToast('当前环境不支持原生插件')
     return false
   }
-
   if (!aiDetect?.startDetect) {
     errorMessage.value = 'AiDetectPlugin 未加载'
     showToast('AiDetectPlugin 未加载')
     return false
   }
-
   return true
 }
 
+function inferStatus(res: AnyRecord) {
+  if (res.pipelineStatus) return res.pipelineStatus
+  if (selectedMode.value === 'photo_only') return res.qualified === false ? 'PHOTO_FAIL' : 'PHOTO_PASS'
+  if (selectedMode.value === 'target_only') return res.hasTarget || getResultBoxes(res).length > 0 ? 'TARGET_FOUND' : 'NO_TARGET'
+  return ''
+}
+
+function normalizeDetectionResult(res: AnyRecord): AnyRecord | null {
+  const resultBoxes = getResultBoxes(res)
+  if (!res.detectionResult && resultBoxes.length === 0) return null
+  return {
+    ...(res.detectionResult || {}),
+    modelName: res.detectionResult?.modelName || res.targetModelName || selectedTargetModel.value.modelName,
+    boxes: resultBoxes
+  }
+}
+
+function getResultBoxes(res: AnyRecord) {
+  if (res.pipelineStatus && res.pipelineStatus !== 'TARGET_FOUND') return []
+  if (Array.isArray(res.detectionResult?.boxes)) return res.detectionResult.boxes
+  return Array.isArray(res.boxes) ? res.boxes : []
+}
+
+function getSnapshotTarget(res: AnyRecord) {
+  if (typeof res.target === 'string') return res.target
+  return getResultBoxes(res)[0]?.label || ''
+}
+
+function getSnapshotConfidence(res: AnyRecord) {
+  if (typeof res.confidence === 'number' || typeof res.confidence === 'string') return res.confidence
+  return getResultBoxes(res)[0]?.score
+}
+
+function getSnapshotDisplayResult(source: AnyRecord, parent: AnyRecord = source) {
+  if (selectedMode.value === 'photo_only') return ''
+
+  const status = source.pipelineStatus || parent.pipelineStatus || ''
+  const targetText = String(source.target || parent.target || '').trim()
+  const hasBoxes = getResultBoxes(source).length > 0 || getResultBoxes(parent).length > 0
+  const hasTarget = Boolean(source.hasTarget || parent.hasTarget || hasBoxes || (targetText && targetText !== '无目标' && targetText !== '-'))
+  const confidence = Number(source.confidence ?? parent.confidence)
+  const hasConfidence = Number.isFinite(confidence) && confidence > 0
+
+  if (status === 'TARGET_FOUND' || ((selectedMode.value === 'full_pipeline' || selectedMode.value === 'target_only') && (hasTarget || hasConfidence))) {
+    return 'pass'
+  }
+
+  if (status === 'QUALITY_PASS') return 'pass'
+  if (status === 'FUZZY' || status === 'REMAKE' || status === 'NO_TARGET' || status === 'ERROR') return 'fail'
+  if (source.qualified === true || parent.qualified === true) return 'pass'
+  if (source.qualified === false || parent.qualified === false) return 'fail'
+
+  return source.result || parent.result || ''
+}
+
 function normalizeFilePath(path: string) {
-  if (!path) {
-    return ''
-  }
-  if (path.startsWith('file://')) {
-    return path
-  }
-  return `file://${path}`
+  if (!path) return ''
+  return path.startsWith('file://') ? path : `file://${path}`
 }
 
 function resolveSnapshotPreviewPath(record: SnapshotRecord) {
-  if (!record.imagePath) {
-    return
-  }
-
+  if (!record.imagePath) return
   // #ifdef APP-PLUS
   const appPlus = (globalThis as { plus?: any }).plus
   if (appPlus?.io?.resolveLocalFileSystemURL) {
@@ -728,10 +594,7 @@ function resolveSnapshotPreviewPath(record: SnapshotRecord) {
       (entry: { toLocalURL?: () => string }) => {
         const previewPath = entry.toLocalURL?.() || normalizeFilePath(record.imagePath)
         record.previewPath = previewPath
-
-        if (snapshotResult.value?.timestamp === record.timestamp) {
-          snapshotResult.value.previewPath = previewPath
-        }
+        if (snapshotResult.value?.imagePath === record.imagePath) snapshotResult.value.previewPath = previewPath
       },
       () => {
         record.previewPath = normalizeFilePath(record.imagePath)
@@ -742,83 +605,44 @@ function resolveSnapshotPreviewPath(record: SnapshotRecord) {
 }
 
 function formatTime(timestamp?: number) {
-  if (!timestamp) {
-    return '-'
-  }
-
+  if (!timestamp) return '-'
   const date = new Date(timestamp)
   const pad = (value: number) => String(value).padStart(2, '0')
-  const year = date.getFullYear()
-  const month = pad(date.getMonth() + 1)
-  const day = pad(date.getDate())
-  const hour = pad(date.getHours())
-  const minute = pad(date.getMinutes())
-  const second = pad(date.getSeconds())
-  return `${year}-${month}-${day} ${hour}:${minute}:${second}`
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
 }
 
 function formatScore(score?: number | string) {
-  if (score === undefined || score === null || score === '') {
-    return '-'
-  }
-
+  if (score === undefined || score === null || score === '') return '-'
   const numericScore = Number(score)
-  if (!Number.isFinite(numericScore)) {
-    return '-'
-  }
-
-  return numericScore.toFixed(3)
+  return Number.isFinite(numericScore) ? numericScore.toFixed(3) : '-'
 }
 
 function formatNumber(value?: number | string) {
-  if (value === undefined || value === null || value === '') {
-    return '-'
-  }
-
+  if (value === undefined || value === null || value === '') return '-'
   const numericValue = Number(value)
-  if (!Number.isFinite(numericValue)) {
-    return '-'
-  }
-
-  return numericValue.toFixed(1)
+  return Number.isFinite(numericValue) ? numericValue.toFixed(1) : '-'
 }
 
 function formatBoolean(value?: boolean) {
-  if (value === undefined || value === null) {
-    return '-'
-  }
+  if (value === undefined || value === null) return '-'
   return value ? 'true' : 'false'
 }
 
 function formatText(value?: number | string) {
-  if (value === undefined || value === null || value === '') {
-    return '-'
-  }
+  if (value === undefined || value === null || value === '') return '-'
   return String(value)
 }
 
 function formatBusinessLabel(label?: string) {
-  const labelTextMap: Record<string, string> = {
-    fuzzy: '画面模糊',
-    remake: '疑似翻拍',
-    hegui: '合规'
-  }
+  const labelTextMap: Record<string, string> = { fuzzy: '画面模糊', remake: '疑似翻拍', hegui: '合规' }
   return label ? `${labelTextMap[label] || label} (${label})` : '-'
 }
 
-function getQualityBusinessLabel(result: QualityResult) {
-  if (result.businessLabel) {
-    return result.businessLabel
-  }
-
-  if (result.modelName === 'resnet18_fuzzy') {
-    return result.label === '0' ? 'fuzzy' : result.label === '1' ? 'hegui' : ''
-  }
-
-  if (result.modelName === 'resnet18_remake') {
-    return result.label === '0' ? 'hegui' : result.label === '1' ? 'remake' : ''
-  }
-
+function getQualityBusinessLabel(result?: AnyRecord | null) {
+  if (!result) return ''
+  if (result.businessLabel) return result.businessLabel
+  if (result.modelName === 'resnet18_fuzzy') return result.label === '0' ? 'fuzzy' : result.label === '1' ? 'hegui' : ''
+  if (result.modelName === 'resnet18_remake') return result.label === '0' ? 'hegui' : result.label === '1' ? 'remake' : ''
   return ''
 }
 
@@ -826,66 +650,20 @@ function getPipelineStatusText(status?: string) {
   const statusTextMap: Record<string, string> = {
     FUZZY: '画面模糊，请重新拍摄',
     REMAKE: '疑似翻拍，请重新拍摄',
+    QUALITY_PASS: '质量检测通过',
     NO_TARGET: '未检测到目标',
     TARGET_FOUND: '检测通过',
+    PHOTO_PASS: '拍照完成',
+    PHOTO_FAIL: '拍照失败',
     ERROR: '检测异常，请重试'
   }
-  return status ? statusTextMap[status] || '' : ''
-}
-
-function normalizeDetectionResult(res: DetectCallbackResult): TargetDetectionResult | null {
-  const boxes = getResultBoxes(res)
-  if (!res.detectionResult && boxes.length === 0) {
-    return null
-  }
-
-  return {
-    ...(res.detectionResult || {}),
-    modelName: res.detectionResult?.modelName || res.targetModelName || '',
-    boxes
-  }
-}
-
-function getResultBoxes(res: DetectCallbackResult) {
-  if (res.pipelineStatus && res.pipelineStatus !== 'TARGET_FOUND') {
-    return []
-  }
-  if (Array.isArray(res.detectionResult?.boxes)) {
-    return res.detectionResult.boxes
-  }
-  return Array.isArray(res.boxes) ? res.boxes : []
-}
-
-function getBoxCount(result?: TargetDetectionResult | null) {
-  return Array.isArray(result?.boxes) ? result.boxes.length : 0
-}
-
-function getBoxes(result?: TargetDetectionResult | null) {
-  return Array.isArray(result?.boxes) ? result.boxes : []
+  return status ? statusTextMap[status] || status : ''
 }
 
 function showToast(title: string, icon: 'none' | 'success' = 'none') {
-  uni.showToast({
-    title,
-    icon
-  })
-}
-
-function saveSnapshotRecord(record: SnapshotRecord) {
-  console.log('保存拍照记录，可在此处调用后端接口', record)
-  console.log('后续可上传结构', {
-    imagePath: record.imagePath,
-    captureTime: record.timestamp,
-    pipelineStatus: record.pipelineStatus,
-    message: record.message,
-    targetModelName: record.targetModelName,
-    fuzzyResult: record.fuzzyResult,
-    remakeResult: record.remakeResult,
-    detectionResult: record.detectionResult
-  })
+  uni.showToast({ title, icon })
 }
 </script>
-
 <style scoped lang="scss">
 @import '@/styles/variables.scss';
 @import '@/styles/mixins.scss';
@@ -898,41 +676,54 @@ function saveSnapshotRecord(record: SnapshotRecord) {
   padding: 0 28rpx 34rpx;
 }
 
+.hero-card,
+.card {
+  border-radius: $card-radius;
+  background: #ffffff;
+  box-shadow: $shadow-card;
+}
+
 .hero-card {
   position: relative;
   overflow: hidden;
   padding: 30rpx;
-  border-radius: $card-radius;
+  color: #ffffff;
   background: linear-gradient(135deg, #1677ff 0%, #35b3ff 100%);
-  box-shadow: 0 18rpx 40rpx rgba(22, 119, 255, 0.2);
 }
 
 .hero-card::after {
   position: absolute;
-  right: -34rpx;
-  bottom: -36rpx;
+  right: -28rpx;
+  bottom: -38rpx;
   color: rgba(255, 255, 255, 0.13);
-  font-size: 92rpx;
+  font-size: 88rpx;
   font-weight: 900;
-  content: 'PIPE';
+  content: 'MODE';
 }
 
 .hero-card.is-error {
   background: linear-gradient(135deg, #fa3534 0%, #ff8a65 100%);
-  box-shadow: 0 18rpx 40rpx rgba(250, 53, 52, 0.18);
 }
 
 .hero-card.is-success {
   background: linear-gradient(135deg, #19be6b 0%, #54d98f 100%);
-  box-shadow: 0 18rpx 40rpx rgba(25, 190, 107, 0.18);
+}
+
+.hero-main,
+.card-head,
+.model-head,
+.row,
+.quality-row,
+.box-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18rpx;
 }
 
 .hero-main {
   position: relative;
   z-index: 1;
-  display: flex;
-  align-items: flex-start;
-  gap: 20rpx;
 }
 
 .hero-icon {
@@ -947,7 +738,8 @@ function saveSnapshotRecord(record: SnapshotRecord) {
   background: #ffffff;
 }
 
-.hero-copy {
+.hero-copy,
+.record-info {
   min-width: 0;
   flex: 1;
 }
@@ -956,28 +748,28 @@ function saveSnapshotRecord(record: SnapshotRecord) {
 .subtitle,
 .card-title,
 .card-subtitle,
+.mode-title,
+.mode-desc,
 .model-name,
 .model-desc,
 .info-label,
 .info-value,
 .label,
 .value,
-.pipeline-label,
-.pipeline-status,
-.pipeline-message,
 .panel-title,
 .box-label,
 .box-score,
 .box-meta,
 .record-time,
 .record-line,
+.json-text,
+.path-text,
 .empty,
 .error-box {
   display: block;
 }
 
 .title {
-  color: #ffffff;
   font-size: 38rpx;
   font-weight: 800;
   line-height: 1.2;
@@ -990,32 +782,29 @@ function saveSnapshotRecord(record: SnapshotRecord) {
   line-height: 1.35;
 }
 
-.status-pill {
+.status-pill,
+.badge {
   flex-shrink: 0;
-  max-width: 190rpx;
-  padding: 9rpx 16rpx;
-  border-radius: 28rpx;
-  color: $primary-color;
+  padding: 8rpx 16rpx;
+  border-radius: 22rpx;
   font-size: 22rpx;
   font-weight: 700;
   line-height: 1.35;
   text-align: center;
+}
+
+.status-pill {
+  max-width: 190rpx;
+  color: $primary-color;
   background: rgba(255, 255, 255, 0.92);
 }
 
-.status-pill.is-running {
+.badge {
   color: $primary-color;
+  background: $primary-light;
 }
 
-.status-pill.is-success {
-  color: $success-color;
-}
-
-.status-pill.is-error {
-  color: $error-color;
-}
-
-.pipeline-steps {
+.stage-row {
   position: relative;
   z-index: 1;
   display: flex;
@@ -1025,7 +814,7 @@ function saveSnapshotRecord(record: SnapshotRecord) {
   margin-top: 30rpx;
 }
 
-.step-tag {
+.stage-tag {
   padding: 9rpx 18rpx;
   border-radius: 28rpx;
   color: #ffffff;
@@ -1034,12 +823,12 @@ function saveSnapshotRecord(record: SnapshotRecord) {
   background: rgba(255, 255, 255, 0.18);
 }
 
-.step-tag.active {
+.stage-tag.active {
   color: $primary-color;
   background: #ffffff;
 }
 
-.step-arrow {
+.stage-arrow {
   color: rgba(255, 255, 255, 0.72);
   font-size: 25rpx;
 }
@@ -1047,16 +836,9 @@ function saveSnapshotRecord(record: SnapshotRecord) {
 .card {
   margin-top: 24rpx;
   padding: 28rpx;
-  border-radius: $card-radius;
-  background: #ffffff;
-  box-shadow: $shadow-card;
 }
 
 .card-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20rpx;
   margin-bottom: 22rpx;
 }
 
@@ -1074,102 +856,136 @@ function saveSnapshotRecord(record: SnapshotRecord) {
   line-height: 1.4;
 }
 
-.card-badge {
-  flex-shrink: 0;
-  padding: 8rpx 16rpx;
-  border-radius: 22rpx;
-  color: $primary-color;
-  font-size: 22rpx;
-  font-weight: 700;
-  background: $primary-light;
-}
-
-.model-picker {
-  margin-bottom: 18rpx;
-}
-
-.picker-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20rpx;
-  padding: 24rpx;
-  border: 2rpx solid rgba(22, 119, 255, 0.16);
-  border-radius: 20rpx;
-  background: linear-gradient(135deg, #f8fbff 0%, #eef7ff 100%);
-}
-
-.model-name {
-  color: $text-main;
-  font-size: 29rpx;
-  font-weight: 800;
-  line-height: 1.3;
-}
-
-.model-desc {
-  margin-top: 8rpx;
-  color: $primary-color;
-  font-size: 24rpx;
-  font-weight: 600;
-}
-
-.picker-arrow {
-  flex-shrink: 0;
-  padding: 8rpx 16rpx;
-  border-radius: 22rpx;
-  color: $primary-color;
-  font-size: 23rpx;
-  background: #ffffff;
-}
-
-.model-grid,
+.mode-grid,
+.info-grid,
 .result-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16rpx;
 }
 
+.mode-btn,
 .info-item,
 .result-panel,
-.pipeline-box,
-.target-summary,
-.snapshot-target {
+.model-panel,
+.snapshot-detail {
   min-width: 0;
   padding: 20rpx;
+  border: 1rpx solid $border-color;
   border-radius: 20rpx;
   background: #f8fbff;
 }
 
-.info-item {
-  border: 1rpx solid $border-color;
+.mode-btn {
+  min-height: 128rpx;
+  text-align: left;
 }
 
+.mode-btn.active {
+  border-color: rgba(22, 119, 255, 0.5);
+  background: linear-gradient(135deg, #eef7ff 0%, #ffffff 100%);
+}
+
+.mode-btn[disabled],
+.action-btn[disabled] {
+  opacity: 0.55;
+}
+
+.mode-title,
+.model-name,
+.panel-title {
+  color: $text-main;
+  font-weight: 800;
+}
+
+.mode-title,
+.panel-title {
+  font-size: 27rpx;
+}
+
+.mode-desc,
+.model-desc,
 .info-label,
 .label,
-.pipeline-label,
-.quality-label {
+.quality-label,
+.box-meta,
+.record-line {
   color: $text-secondary;
   font-size: 23rpx;
+  line-height: 1.4;
+}
+
+.mode-desc,
+.model-desc,
+.info-value,
+.value {
+  margin-top: 8rpx;
 }
 
 .info-value,
 .value,
-.pipeline-message,
 .quality-value {
-  min-width: 0;
-  margin-top: 8rpx;
   color: $text-main;
   font-size: 25rpx;
   line-height: 1.45;
 }
 
+.info-value.strong {
+  color: $primary-color;
+  font-size: 31rpx;
+  font-weight: 900;
+}
+
+.model-panel,
+.json-box {
+  margin-top: 18rpx;
+}
+
+.model-head {
+  margin-bottom: 18rpx;
+}
+
+.model-name {
+  font-size: 29rpx;
+  line-height: 1.3;
+}
+
+.model-desc {
+  color: $primary-color;
+  font-weight: 600;
+}
+
 .path-text {
+  margin-top: 8rpx;
+  color: $text-secondary;
+  font-size: 22rpx;
+  line-height: 1.45;
   word-break: break-all;
+}
+
+.json-box {
+  padding: 20rpx;
+  border-radius: 18rpx;
+  background: #111827;
+}
+
+.json-text {
+  color: #d1fae5;
+  font-family: monospace;
+  font-size: 21rpx;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.raw-json {
+  max-height: 560rpx;
+  overflow: auto;
 }
 
 .button-row {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 16rpx;
 }
 
@@ -1187,7 +1003,6 @@ function saveSnapshotRecord(record: SnapshotRecord) {
 .action-btn.primary {
   color: #ffffff;
   background: linear-gradient(135deg, #1677ff 0%, #38a4ff 100%);
-  box-shadow: 0 14rpx 26rpx rgba(22, 119, 255, 0.2);
 }
 
 .action-btn.danger {
@@ -1195,15 +1010,31 @@ function saveSnapshotRecord(record: SnapshotRecord) {
   background: #fff1f0;
 }
 
-.action-btn[disabled] {
-  opacity: 0.55;
+.error-box {
+  margin-top: 20rpx;
+  padding: 18rpx 20rpx;
+  border-radius: 18rpx;
+  color: $error-color;
+  font-size: 24rpx;
+  line-height: 1.45;
+  background: #fff1f0;
+}
+
+.quality-fields,
+.box-list,
+.record-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.quality-value {
+  margin-top: 0;
+  font-weight: 700;
+  text-align: right;
 }
 
 .row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20rpx;
   margin-top: 14rpx;
 }
 
@@ -1224,110 +1055,21 @@ function saveSnapshotRecord(record: SnapshotRecord) {
   text-align: left;
 }
 
-.error-box {
-  margin-top: 20rpx;
-  padding: 18rpx 20rpx;
-  border-radius: 18rpx;
-  color: $error-color;
-  font-size: 24rpx;
-  line-height: 1.45;
-  background: #fff1f0;
-}
-
-.pipeline-box {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16rpx;
-}
-
-.pipeline-box > view {
-  padding: 18rpx;
-  border-radius: 18rpx;
-  background: #ffffff;
-}
-
-.pipeline-status {
-  margin-top: 10rpx;
-  color: $primary-color;
-  font-size: 36rpx;
-  font-weight: 900;
-  line-height: 1.2;
-}
-
-.panel-title {
-  margin-bottom: 16rpx;
-  color: $text-main;
-  font-size: 26rpx;
-  font-weight: 800;
-}
-
-.quality-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 12rpx;
-}
-
-.quality-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14rpx;
-}
-
-.quality-value {
-  margin-top: 0;
-  font-weight: 700;
-  text-align: right;
-}
-
-.topk-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8rpx;
-  margin-top: 8rpx;
-  padding-top: 12rpx;
-  border-top: 1rpx solid $border-color;
-}
-
-.topk-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12rpx;
-}
-
-.topk-label,
-.topk-score {
-  color: $text-secondary;
-  font-size: 22rpx;
-  line-height: 1.35;
-}
-
-.topk-score {
-  flex-shrink: 0;
-  color: $text-main;
-  font-weight: 700;
-}
-
-.box-list {
-  display: flex;
-  flex-direction: column;
-  gap: 14rpx;
+.box-list,
+.record-list {
   margin-top: 18rpx;
 }
 
-.box-item {
+.box-item,
+.record-item {
   padding: 18rpx;
   border: 1rpx solid $border-color;
   border-radius: 18rpx;
   background: #ffffff;
 }
 
-.box-header {
-  display: flex;
+.box-head {
   align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
   margin-bottom: 12rpx;
 }
 
@@ -1349,13 +1091,6 @@ function saveSnapshotRecord(record: SnapshotRecord) {
   background: #e9f8ef;
 }
 
-.box-meta {
-  margin-top: 7rpx;
-  color: $text-secondary;
-  font-size: 23rpx;
-  line-height: 1.4;
-}
-
 .snapshot-image {
   width: 100%;
   margin-bottom: 18rpx;
@@ -1363,26 +1098,9 @@ function saveSnapshotRecord(record: SnapshotRecord) {
   background: #edf1f8;
 }
 
-.snapshot-results {
-  margin-top: 18rpx;
-}
-
-.snapshot-target {
-  margin-top: 16rpx;
-}
-
-.record-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-}
-
 .record-item {
   display: flex;
   gap: 18rpx;
-  min-width: 0;
-  padding: 18rpx;
-  border-radius: 20rpx;
   background: #f8fbff;
 }
 
@@ -1394,11 +1112,6 @@ function saveSnapshotRecord(record: SnapshotRecord) {
   background: #edf1f8;
 }
 
-.record-info {
-  min-width: 0;
-  flex: 1;
-}
-
 .record-time {
   color: $text-main;
   font-size: 25rpx;
@@ -1408,9 +1121,6 @@ function saveSnapshotRecord(record: SnapshotRecord) {
 
 .record-line {
   margin-top: 8rpx;
-  color: $text-secondary;
-  font-size: 23rpx;
-  line-height: 1.4;
 }
 
 .empty {
@@ -1425,7 +1135,8 @@ function saveSnapshotRecord(record: SnapshotRecord) {
 
 @media (max-width: 420px) {
   .hero-main,
-  .card-head {
+  .card-head,
+  .model-head {
     flex-direction: column;
   }
 
@@ -1433,8 +1144,10 @@ function saveSnapshotRecord(record: SnapshotRecord) {
     max-width: none;
   }
 
-  .model-grid,
-  .result-grid {
+  .mode-grid,
+  .info-grid,
+  .result-grid,
+  .button-row {
     grid-template-columns: 1fr;
   }
 }
