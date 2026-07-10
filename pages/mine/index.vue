@@ -2,7 +2,7 @@
   <view class="mine-page page safe-page">
     <AppNavbar title="我的" />
     <view class="profile-section"
-      :style="{ paddingTop: statusBarHeight + 28 + 'px', paddingBottom: '80rpx', paddingLeft: '30rpx', paddingRight: '30rpx' }">
+      :style="{ paddingTop: statusBarHeight + 28 + 'px', paddingBottom: '80rpx', paddingLeft: '24rpx', paddingRight: '24rpx' }">
       <view class="avatar-wrap">
         <view class="avatar">
           <view class="avatar-hair" />
@@ -393,7 +393,6 @@ const handleLogout = () => {
 
 .mine-page {
   min-height: 100vh;
-  // padding: 0 28rpx 32rpx;
   background: $bg-page;
 }
 
@@ -563,7 +562,7 @@ const handleLogout = () => {
   justify-content: space-between;
   min-height: 160rpx;
   padding: 24rpx 26rpx 24rpx 28rpx;
-  margin: -50rpx 30rpx 50rpx;
+  margin: -50rpx 24rpx 50rpx;
   backdrop-filter: blur(20px);
   background: rgba(255, 255, 255, 0.4);
   box-shadow: 0 8px 24px rgba(4, 46, 138, 0.04), 0 2px 8px rgba(0, 0, 0, 0.015);
@@ -583,7 +582,7 @@ const handleLogout = () => {
 }
 
 .qr-desc {
-  color: $text-secondary;
+  color: $info-color;
   font-size: 25rpx;
 }
 
@@ -650,7 +649,7 @@ const handleLogout = () => {
 
 .section {
   margin-top: 34rpx;
-  margin: 34rpx 30rpx 32rpx;
+  margin: 34rpx 24rpx 32rpx;// 上34rpx 左右24rpx 下32rpx
 }
 
 .section-title {
@@ -734,7 +733,7 @@ const handleLogout = () => {
   font-size: 28rpx;
   font-weight: 700;
   text-align: center;
-  margin: 0 30rpx 32rpx;
+  margin: 0 24rpx 32rpx;
 }
 
 .logout-icon {
@@ -765,7 +764,7 @@ const handleLogout = () => {
 
 .password-popup {
   width: 100%;
-  padding: 34rpx 30rpx calc(34rpx + env(safe-area-inset-bottom));
+  padding: 34rpx 24rpx calc(34rpx + env(safe-area-inset-bottom));
   border-radius: 34rpx 34rpx 0 0;
   background: #ffffff;
 }
@@ -774,7 +773,7 @@ const handleLogout = () => {
   width: 100%;
   max-height: 88vh;
   overflow-y: auto;
-  padding: 38rpx 30rpx calc(34rpx + env(safe-area-inset-bottom));
+  padding: 38rpx 24rpx calc(34rpx + env(safe-area-inset-bottom));
   border-radius: 34rpx 34rpx 0 0;
   background: #ffffff;
 }
@@ -793,7 +792,7 @@ const handleLogout = () => {
   color: #ffffff;
   font-size: 46rpx;
   font-weight: 900;
-  background: linear-gradient(135deg, #1677ff 0%, #38a4ff 100%);
+  background: $confirm-btn-bg;
   box-shadow: 0 16rpx 30rpx rgba(22, 119, 255, 0.2);
 }
 
@@ -814,7 +813,7 @@ const handleLogout = () => {
   margin-top: 26rpx;
   padding: 24rpx;
   border-radius: 22rpx;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 26rpx;
   line-height: 1.6;
   background: #f7faff;
@@ -843,7 +842,7 @@ const handleLogout = () => {
 
 .about-stat-label {
   margin-top: 8rpx;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 22rpx;
 }
 
@@ -883,7 +882,7 @@ const handleLogout = () => {
 
 .about-row-desc {
   margin-top: 8rpx;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 24rpx;
 }
 
@@ -903,7 +902,7 @@ const handleLogout = () => {
   color: #ffffff;
   font-size: 28rpx;
   font-weight: 700;
-  background: linear-gradient(135deg, #1677ff 0%, #38a4ff 100%);
+  background: $confirm-btn-bg;
 }
 
 .popup-title {
@@ -954,7 +953,7 @@ const handleLogout = () => {
 
 .password-tips {
   margin-top: 18rpx;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 24rpx;
   line-height: 1.5;
 }
@@ -975,13 +974,13 @@ const handleLogout = () => {
 }
 
 .popup-btn.cancel {
-  color: $text-secondary;
+  color: $info-color;
   background: #eef3fb;
 }
 
 .popup-btn.confirm {
   color: #ffffff;
-  background: linear-gradient(135deg, #1677ff 0%, #38a4ff 100%);
+  background: $confirm-btn-bg;
 }
 
 .popup-btn[disabled] {

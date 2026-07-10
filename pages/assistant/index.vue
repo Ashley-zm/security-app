@@ -421,7 +421,7 @@ function clearMessages() {
 .section-subtitle {
   display: block;
   margin-top: 8rpx;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 23rpx;
 }
 
@@ -489,7 +489,7 @@ function clearMessages() {
 
 .question-desc {
   margin-top: 10rpx;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 22rpx;
   line-height: 1.35;
 }
@@ -544,7 +544,7 @@ function clearMessages() {
   border: 0;
   border-radius: 24rpx 8rpx 24rpx 24rpx;
   color: #ffffff;
-  background: linear-gradient(135deg, #1677ff 0%, #38a4ff 100%);
+  background: $confirm-btn-bg;
   box-shadow: 0 12rpx 24rpx rgba(22, 119, 255, 0.16);
 }
 
@@ -601,7 +601,7 @@ function clearMessages() {
   align-items: flex-start;
   gap: 10rpx;
   margin-top: 10rpx;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 24rpx;
   line-height: 1.45;
 }
@@ -625,7 +625,7 @@ function clearMessages() {
 .reference-tag {
   padding: 8rpx 13rpx;
   border-radius: 8rpx;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 21rpx;
   background: #eef5ff;
 }
@@ -735,7 +735,7 @@ function clearMessages() {
   color: #ffffff;
   font-size: 26rpx;
   font-weight: 700;
-  background: linear-gradient(135deg, #1677ff 0%, #38a4ff 100%);
+  background: $confirm-btn-bg;
   box-shadow: 0 12rpx 22rpx rgba(22, 119, 255, 0.22);
 }
 

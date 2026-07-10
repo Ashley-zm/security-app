@@ -801,7 +801,7 @@ function showToast(title: string, icon: 'none' | 'success' = 'none') {
 
 .badge {
   color: $primary-color;
-  background: $primary-light;
+  background: $primary-bg;
 }
 
 .stage-row {
@@ -851,7 +851,7 @@ function showToast(title: string, icon: 'none' | 'success' = 'none') {
 
 .card-subtitle {
   margin-top: 8rpx;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 23rpx;
   line-height: 1.4;
 }
@@ -910,7 +910,7 @@ function showToast(title: string, icon: 'none' | 'success' = 'none') {
 .quality-label,
 .box-meta,
 .record-line {
-  color: $text-secondary;
+  color: $info-color;
   font-size: 23rpx;
   line-height: 1.4;
 }
@@ -957,7 +957,7 @@ function showToast(title: string, icon: 'none' | 'success' = 'none') {
 
 .path-text {
   margin-top: 8rpx;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 22rpx;
   line-height: 1.45;
   word-break: break-all;
@@ -997,12 +997,12 @@ function showToast(title: string, icon: 'none' | 'success' = 'none') {
   color: $primary-color;
   font-size: 28rpx;
   font-weight: 700;
-  background: $primary-light;
+  background: $primary-bg;
 }
 
 .action-btn.primary {
   color: #ffffff;
-  background: linear-gradient(135deg, #1677ff 0%, #38a4ff 100%);
+  background: $confirm-btn-bg;
 }
 
 .action-btn.danger {

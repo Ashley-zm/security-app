@@ -50,7 +50,7 @@ import AppNavbar from '@/components/AppNavbar.vue'
 
 .desc {
   margin-top: 14rpx;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 26rpx;
   line-height: 1.6;
 }
@@ -86,7 +86,7 @@ import AppNavbar from '@/components/AppNavbar.vue'
 
 .label {
   margin-top: 10rpx;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 23rpx;
 }
 </style>

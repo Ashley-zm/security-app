@@ -1,73 +1,101 @@
 <template>
   <view class="work-order-page page safe-page">
-    <AppNavbar :title="title" show-back  />
+    <AppNavbar :title="title" show-back />
 
-    <view class="tabs">
-      <button
-        v-for="tab in tabs"
-        :key="tab.value"
-        class="tab-item"
-        :class="{ active: activeStatus === tab.value }"
-        @click="changeStatus(tab.value)"
-      >
-        {{ tab.label }}
-      </button>
+    <view class="tabs-wrap">
+      <view class="tabs" :style="tabCountStyle">
+        <button v-for="tab in tabs" :key="tab.dictValue" class="tab-item"
+          :class="{ active: activeStatus === tab.dictValue }" @click="changeStatus(tab.dictValue)">
+          {{ tab.dictLabel }}
+        </button>
+      </view>
     </view>
 
     <view class="search-panel">
       <view class="search-box">
-        <text class="search-icon">⌕</text>
-        <input
-          id="keywordInput"
-          v-model="searchKeyword"
-          class="search-input"
-          confirm-type="search"
-          placeholder="支持用户名 / 手机号 / 户号模糊查询"
-          placeholder-class="placeholder"
-          :focus="searchFocused"
-          @confirm="handleSearch"
-          @input="handleInput"
-          @blur="searchFocused = false"
-        />
-        <button v-if="searchKeyword" class="clear-btn" @click="clearSearch">×</button>
+        <input id="keywordInput" v-model="searchKeyword" class="search-input" confirm-type="search"
+          placeholder="请输入户号、户名、手机号、地址、表号" placeholder-class="placeholder" :focus="searchFocused"
+          @confirm="handleSearch" @blur="searchFocused = false" />
+        <button v-if="searchKeyword" class="clear-btn" @click="clearSearch">X</button>
       </view>
-      <button class="filter-btn" @click="openFilter">筛选</button>
+      <button class="search-btn" @click="handleSearch">
+        <u-icon name="search" color="$primary-color" size="20"></u-icon>
+        <text>查询</text>
+      </button>
+      <view class="time-sort-btn" @click="toggleTimeSort">
+        <image class="time-sort-icon" :src="timeSortIcon" mode="aspectFit" />
+      </view>
     </view>
 
-    <view v-if="store.error" class="error-card">
-      <view class="error-title">工单加载失败</view>
-      <view class="error-desc">{{ store.error }}</view>
-      <button class="retry-btn" @click="store.refresh()">重试</button>
+    <view v-if="error" class="error-card">
+      <view class="error-title">用户列表加载失败</view>
+      <view class="error-desc">{{ error }}</view>
+      <button class="retry-btn" @click="refreshList">重试</button>
     </view>
 
-    <view v-else class="order-list">
-      <WorkOrderCard
-        v-for="item in store.list"
-        :key="item.id"
-        :item="item"
-        @call="handleCall"
-        @change-time="openChangeTime"
-        @navigate="handleNavigate"
-      />
+    <scroll-view v-else class="user-list" scroll-y
+      :show-scrollbar="false" lower-threshold="120" @scrolltolower="loadMore">
+      <view class="user-list-content">
+        <view v-for="item in userViews" :key="item.id" class="user-card" @click="openUserDetail(item)">
+          <view class="card-header">
+            <view class="name-line">
+              <text class="household-name">{{ item.householdName }}</text>
+              <button class="phone-icon-btn" @click.stop="handleCall(item)">
+                <u-icon name="phone-fill" color="#1677ff" size="15"></u-icon>
+              </button>
+            </view>
+            <text class="status-pill" :class="item.statusClass">{{ item.statusText }}</text>
+          </view>
 
-      <view v-if="store.loading && !store.list.length" class="loading-text">工单加载中...</view>
-      <AppEmpty
-        v-if="!store.loading && !store.list.length"
-        title="暂无工单"
-        desc="调整状态或搜索条件后再试"
-        show-retry
-        @retry="store.refresh()"
-      />
-      <view v-if="store.loading && store.list.length" class="footer-text">加载更多...</view>
-      <view v-if="store.finished && store.list.length" class="footer-text">没有更多工单了</view>
-    </view>
+          <view class="number-row">
+            <view class="number-item">
+              <text class="number-label">户号</text>
+              <text class="number-value">{{ item.householdNo }}</text>
+            </view>
+            <view class="number-item">
+              <text class="number-label">表号</text>
+              <text class="number-value">{{ item.meterNo }}</text>
+            </view>
+          </view>
+
+          <view class="divider" />
+
+          <view class="info-row">
+            <view class="info-icon">
+              <u-icon name="clock" color="#8aa4cf" size="16"></u-icon>
+            </view>
+            <text class="info-label">预约时间</text>
+            <text class="info-value">{{ item.appointmentTime }}</text>
+          </view>
+          <view class="info-row address-info">
+            <view class="info-icon">
+              <u-icon name="map" color="#8aa4cf" size="16"></u-icon>
+            </view>
+            <text class="info-label">地址</text>
+            <text class="info-value address-value">{{ item.userAddress }}</text>
+          </view>
+
+          <view class="card-actions" @click.stop>
+            <button class="action-btn appointment-btn" @click="openChangeTime(item)">修改预约时间</button>
+            <button class="action-btn navigate-btn" @click="handleNavigate(item)">
+              <u-icon name="map-fill" color="#1677ff" size="25"></u-icon>
+            </button>
+          </view>
+        </view>
+
+        <view v-if="loading && !list.length" class="loading-text">用户加载中...</view>
+        <AppEmpty v-if="!loading && !list.length" title="暂无安检用户" desc="调整状态或搜索条件后再试" show-retry @retry="refreshList" />
+        <view v-if="loading && list.length" class="footer-text">加载更多...</view>
+        <view v-if="finished && list.length" class="footer-text">没有更多用户了</view>
+      </view>
+    </scroll-view>
 
     <view v-if="popupVisible" class="popup-mask" @click="closePopup">
       <view class="popup" @click.stop>
         <view class="popup-title">修改预约时间</view>
         <view class="current-time">
           <text class="label">当前预约时间</text>
-          <text class="value">{{ currentOrder?.appointmentTime }}</text>
+          <text class="value">{{ currentUser?.appointmentTime || '暂未预约' }}</text>
         </view>
 
         <view class="picker-row">
@@ -97,104 +125,197 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
-import { onLoad, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
+import { computed, nextTick, ref } from 'vue'
+import { onLoad, onPullDownRefresh } from '@dcloudio/uni-app'
 import AppEmpty from '@/components/AppEmpty.vue'
 import AppNavbar from '@/components/AppNavbar.vue'
-import WorkOrderCard from '@/components/WorkOrderCard.vue'
-import { useWorkOrderStore } from '@/stores/workOrder'
-import type { WorkOrder, WorkOrderStatus } from '@/types/workOrder'
+import { getWorkOrderUserListApi, updateWorkOrderUserAppointmentApi } from '@/api/workOrder'
+import type { WorkOrderUser, WorkOrderUserQuery } from '@/types/workOrder'
+import { getDictsByTypes, getDictLabelByValue } from '@/utils/common'
+import type { DictDataVO } from '@/types/common'
 
-type TabValue = WorkOrderStatus | 'all'
+interface WorkOrderUserView extends WorkOrderUser {
+  id: string
+  householdName: string
+  householdNo: string
+  userAddress: string
+  mobilePhone: string
+  meterNo: string
+  inspectionAreaName: string
+  communityName: string
+  appointmentTime: string
+  finishTime: string
+  statusText: string
+  statusClass: string
+}
 
-const store = useWorkOrderStore()
+const workOrderId = ref('')
+const orderNo = ref('')
+const title = ref('安检用户')
 const searchKeyword = ref('')
 const searchFocused = ref(false)
+const activeStatus = ref('all')
+const timeSort = ref<1 | 2>(2)
+const list = ref<WorkOrderUser[]>([])
+const total = ref(0)
+const pageNum = ref(1)
+const pageSize = 10
+const loading = ref(false)
+const refreshing = ref(false)
+const finished = ref(false)
+const error = ref('')
 const popupVisible = ref(false)
-const currentOrder = ref<WorkOrder | null>(null)
+const currentUser = ref<WorkOrderUserView | null>(null)
 const appointmentDate = ref('')
 const appointmentTime = ref('')
 const updating = ref(false)
-let searchTimer: ReturnType<typeof setTimeout> | null = null
+const tabs = ref<DictDataVO[]>([])
 
-const tabs: Array<{ label: string; value: TabValue }> = [
-  { label: '全部', value: 'all' },
-  { label: '待执行', value: 'pending' },
-  { label: '进行中', value: 'processing' },
-  { label: '已完成', value: 'completed' },
-]
 
-const activeStatus = computed(() => store.queryParams.status || 'all')
+const tabCountStyle = computed(() => ({
+  gridTemplateColumns: `repeat(${tabs.value.length}, minmax(0, 1fr))`
+}))
 
-const title = ref('')
+const timeSortIcon = computed(() => (
+  timeSort.value === 1 ? '/static/images/shijianzhengxu.png' : '/static/images/shijiandaoxu.png'
+))
 
-onLoad((options) => {
-  console.log('跳转数据',options);
-  
-  title.value = decodeURIComponent(options?.title || '----')
+const userViews = computed<WorkOrderUserView[]>(() => list.value.map(formatUser))
+
+getDictsByTypes(['order_user_status'], true).then((dicts) => {
+  tabs.value = dicts.order_user_status || []
 })
 
-
-onMounted(() => {
-  searchKeyword.value = store.queryParams.keyword || ''
-  store.refresh()
+onLoad((options) => {
+  workOrderId.value = decodeURIComponent(String(options?.id || ''))
+  orderNo.value = decodeURIComponent(String(options?.orderNo || ''))
+  title.value = decodeURIComponent(String(options?.title || '安检用户'))
+  refreshList()
 })
 
 onPullDownRefresh(async () => {
-  await store.refresh()
+  await refreshList()
   uni.stopPullDownRefresh()
 })
 
-onReachBottom(() => {
-  store.loadMore()
-})
+function buildQuery(): WorkOrderUserQuery {
+  const query: WorkOrderUserQuery = {
+    keyword: searchKeyword.value.trim(),
+    sort: timeSort.value,
+    pageNum: pageNum.value,
+    pageSize
+  }
 
-function focusSearch() {
-  searchFocused.value = false
+  if (activeStatus.value !== 'all') {
+    query.status = activeStatus.value
+  }
+
+  return query
+}
+
+async function fetchList(reset = false) {
+  if (loading.value) return
+  if (!workOrderId.value) {
+    error.value = '缺少工单ID'
+    return
+  }
+
+  loading.value = true
+  error.value = ''
+  try {
+    const result = await getWorkOrderUserListApi(workOrderId.value, buildQuery())
+    total.value = result.total || 0
+    list.value = reset ? result.list : [...list.value, ...result.list]
+    finished.value = list.value.length >= total.value
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '用户列表加载失败'
+  } finally {
+    loading.value = false
+    refreshing.value = false
+  }
+}
+
+async function refreshList() {
+  refreshing.value = true
+  pageNum.value = 1
+  finished.value = false
+  await fetchList(true)
+}
+
+async function loadMore() {
+  if (loading.value || finished.value) return
+  pageNum.value += 1
+  await fetchList(false)
+}
+
+function changeStatus(status: string) {
+  if (activeStatus.value === status) return
+  activeStatus.value = status
+  refreshList()
+}
+
+function handleSearch() {
+  refreshList()
+}
+
+function clearSearch() {
+  searchKeyword.value = ''
+  refreshList()
   nextTick(() => {
     searchFocused.value = true
   })
 }
 
-function changeStatus(status: TabValue) {
-  if (activeStatus.value === status) return
-  store.setStatus(status)
-  store.refresh()
-}
-
-function handleInput() {
-  if (searchTimer) {
-    clearTimeout(searchTimer)
-  }
-  searchTimer = setTimeout(() => {
-    handleSearch()
-  }, 300)
-}
-
-function handleSearch() {
-  store.setKeyword(searchKeyword.value.trim())
-  store.refresh()
-}
-
-function clearSearch() {
-  searchKeyword.value = ''
-  handleSearch()
-}
-
-function openFilter() {
-  uni.showActionSheet({
-    itemList: tabs.map((tab) => tab.label),
-    success: (res) => {
-      const selected = tabs[res.tapIndex]
-      if (selected) {
-        changeStatus(selected.value)
-      }
-    }
+function toggleTimeSort() {
+  timeSort.value = timeSort.value === 1 ? 2 : 1
+  refreshList()
+  uni.showToast({
+    title: timeSort.value === 1 ? '按时间升序排序' : '按时间降序排序',
+    icon: 'none'
   })
 }
 
-function handleCall(item: WorkOrder) {
-  if (!item.userPhone) {
+function formatValue(value?: string | number | null) {
+  if (value === undefined || value === null || value === '') return '--'
+  return String(value)
+}
+
+function formatUser(item: WorkOrderUser): WorkOrderUserView {
+  const status = String(item.status || '')
+  return {
+    ...item,
+    id: String(item.id),
+    householdName: formatValue(item.householdName),
+    householdNo: formatValue(item.householdNo),
+    userAddress: formatValue(item.userAddress),
+    mobilePhone: formatValue(item.mobilePhone),
+    meterNo: formatValue(item.meterNo),
+    inspectionAreaName: formatValue(item.inspectionAreaName),
+    communityName: formatValue(item.communityName),
+    appointmentTime: formatValue(item.appointmentTime),
+    finishTime: formatValue(item.finishTime || item.inspectionFinishTime),
+    statusText: getStatusText(status),
+    statusClass: getStatusClass(status)
+  }
+}
+
+function getStatusText(status: string) {
+  return getDictLabelByValue(tabs.value, status) || status || '--'
+}
+
+function getStatusClass(status: WorkOrderUser['status']) {
+  const classMap: Record<string, string> = {
+    '1': 'is-pending',
+    '2': 'is-processing',
+    '3': 'is-completed',
+    '4': 'is-canceled',
+    '5': 'is-ended'
+  }
+  return classMap[String(status)] || 'is-pending'
+}
+
+function handleCall(item: WorkOrderUserView) {
+  if (!item.mobilePhone || item.mobilePhone === '--') {
     uni.showToast({
       title: '用户手机号为空',
       icon: 'none'
@@ -203,33 +324,54 @@ function handleCall(item: WorkOrder) {
   }
 
   uni.makePhoneCall({
-    phoneNumber: item.userPhone
+    phoneNumber: item.mobilePhone
   })
 }
 
-function handleNavigate(item: WorkOrder) {
-  if (!item.latitude || !item.longitude) {
-    uni.showToast({
-      title: '暂无位置信息，无法导航',
-      icon: 'none'
-    })
-    return
-  }
-
+function handleNavigate(item: WorkOrderUserView) {
+  // uni.showToast({
+  //   title: item.userAddress === '--' ? '暂无地址信息' : '暂无坐标信息，无法导航',
+  //   icon: 'none'
+  // })
   uni.openLocation({
-    latitude: item.latitude,
-    longitude: item.longitude,
-    name: item.userName,
-    address: item.address,
+    latitude: 30.190330,
+    longitude: 120.175520,
+    name: item.householdName,
+    address: item.userAddress,
     scale: 16
   })
+
 }
 
-function openChangeTime(item: WorkOrder) {
-  currentOrder.value = item
-  const [date = '', time = ''] = (item.appointmentTime || '').split(' ')
-  appointmentDate.value = date
-  appointmentTime.value = time
+function openUserDetail(item: WorkOrderUserView) {
+  uni.navigateTo({
+    url: `/pages/work-order/user-detail?id=${encodeURIComponent(item.id)}&appointmentTime=${encodeURIComponent(item.appointmentTime)}`
+  })
+}
+
+function parseAppointmentValue(value?: string | null) {
+  const normalized = String(value || '').trim()
+
+  if (!normalized || normalized === '--') {
+    return { date: '', time: '' }
+  }
+
+  const [date = '', rawTime = ''] = normalized.split(/\s+/)
+  return {
+    date,
+    time: rawTime.slice(0, 5)
+  }
+}
+
+function buildAppointmentDateTime(date: string, time: string) {
+  return `${date} ${time.slice(0, 5)}:00`
+}
+
+function openChangeTime(item: WorkOrderUserView) {
+  currentUser.value = item
+  const parsed = parseAppointmentValue(item.appointmentTime)
+  appointmentDate.value = parsed.date
+  appointmentTime.value = parsed.time
   popupVisible.value = true
 }
 
@@ -247,7 +389,7 @@ function handleTimeChange(event: { detail: { value: string | number } }) {
 }
 
 async function confirmChangeTime() {
-  if (!currentOrder.value) return
+  if (!currentUser.value) return
   if (!appointmentDate.value || !appointmentTime.value) {
     uni.showToast({
       title: '请选择新的预约时间',
@@ -258,15 +400,19 @@ async function confirmChangeTime() {
 
   updating.value = true
   try {
-    await store.updateAppointmentTime(String(currentOrder.value.id), `${appointmentDate.value} ${appointmentTime.value}`)
+    await updateWorkOrderUserAppointmentApi(
+      currentUser.value.id,
+      buildAppointmentDateTime(appointmentDate.value, appointmentTime.value)
+    )
     popupVisible.value = false
     uni.showToast({
       title: '预约时间修改成功',
       icon: 'success'
     })
-  } catch (error) {
+    await refreshList()
+  } catch (err) {
     uni.showToast({
-      title: error instanceof Error ? error.message : '预约时间修改失败',
+      title: err instanceof Error ? err.message : '预约时间修改失败',
       icon: 'none'
     })
   } finally {
@@ -280,113 +426,330 @@ async function confirmChangeTime() {
 @import '@/styles/mixins.scss';
 
 .work-order-page {
-  padding: 0 24rpx 32rpx;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 0;
+  overflow: hidden;
+  background: $bg-page;
+}
+
+.tabs-wrap {
+  flex: 0 0 auto;
+  width: 100%;
+  background: #fff;
+  padding: 0 20rpx;
 }
 
 .tabs {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12rpx;
-  margin-top: 10rpx;
-  padding: 10rpx;
-  border-radius: 28rpx;
-  background: #eaf1ff;
+  align-items: center;
+  width: 100%;
+  gap: 4rpx;
+  padding: 6rpx;
 }
 
 .tab-item {
   @include flex-center;
-  height: 68rpx;
-  border-radius: 22rpx;
-  color: $text-secondary;
-  font-size: 25rpx;
-  font-weight: 600;
+  min-width: 0;
+  height: 60rpx;
+  padding: 0 2rpx;
+  border-radius: $status-radius;
+  color: $info-color;
+  font-size: 24rpx;
 }
 
 .tab-item.active {
   color: $primary-color;
-  background: #ffffff;
-  box-shadow: 0 8rpx 18rpx rgba(22, 119, 255, 0.12);
+  background: $primary-bg;
 }
 
 .search-panel {
-  display: flex;
-  gap: 16rpx;
-  margin-top: 22rpx;
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140rpx 80rpx;
+  gap: 12rpx;
+  align-items: center;
+  padding: 26rpx 24rpx 32rpx;
+  margin-bottom: 24rpx;
+  background: #ffffff;
 }
 
 .search-box {
+  position: relative;
   display: flex;
   align-items: center;
-  flex: 1;
   min-width: 0;
-  height: 84rpx;
-  padding: 0 18rpx;
-  border-radius: 42rpx;
-  background: #ffffff;
-  box-shadow: $shadow-card;
-}
-
-.search-icon {
-  margin-right: 10rpx;
-  color: $text-muted;
-  font-size: 28rpx;
+  height: 80rpx;
+  padding: 0 22rpx;
+  border: 2rpx solid $border-color;
+  border-radius: $common-radius;
+  background: $bg-page;
 }
 
 .search-input {
   flex: 1;
   min-width: 0;
-  height: 84rpx;
+  height: 80rpx;
   color: $text-main;
   font-size: 26rpx;
 }
 
 .placeholder {
-  color: #a7b3cc;
+  color: #A4B1C5;
 }
 
 .clear-btn {
   @include flex-center;
-  width: 48rpx;
-  height: 48rpx;
-  border-radius: 24rpx;
-  color: $text-secondary;
-  font-size: 32rpx;
-  background: #eef3fb;
-}
-
-.filter-btn {
-  @include flex-center;
   flex-shrink: 0;
-  width: 112rpx;
-  height: 84rpx;
-  border-radius: 42rpx;
-  color: #ffffff;
+  width: 44rpx;
+  height: 44rpx;
+  color: $text-muted;
   font-size: 26rpx;
-  font-weight: 700;
-  background: $primary-color;
-  box-shadow: 0 12rpx 24rpx rgba(22, 119, 255, 0.18);
 }
 
-.order-list {
+.search-btn {
+  @include flex-center;
+  gap: 6rpx;
+  height: 80rpx;
+  line-height: 0rpx;
+  border: 2rpx solid $border-color;
+  border-radius: $common-radius;
+  color: $primary-color;
+  font-size: 28rpx;
+  background: #fff;
+  box-shadow: 0 3px 14px rgba(4, 46, 138, 0.06), 0 2px 4px rgba(4, 46, 138, 0.03);
+}
+
+.time-sort-btn {
+  @include flex-center;
+  width: 80rpx;
+  height: 80rpx;
+  border: 2rpx solid $border-color;
+  border-radius: $common-radius;
+  background: #fff;
+  box-shadow: 0 3px 14px rgba(4, 46, 138, 0.06), 0 2px 4px rgba(4, 46, 138, 0.03);
+}
+
+.time-sort-icon {
+  width: 40rpx;
+  height: 40rpx;
+}
+
+.user-list {
+  box-sizing: border-box;
+  
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.user-list-content {
   display: flex;
   flex-direction: column;
   gap: 22rpx;
-  margin-top: 24rpx;
+  padding: 0 24rpx 32rpx;
+}
+
+.user-card {
+  padding: 28rpx 30rpx 30rpx;
+  border-radius: $card-radius;
+  background: #ffffff;
+  box-shadow: 0 16rpx 38rpx rgba(13, 39, 82, 0.06);
+}
+
+.card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.name-line {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 12rpx;
+}
+
+.household-name {
+  @include text-ellipsis;
+  color: $text-main;
+  font-size: 30rpx;
+  font-weight: 800;
+  line-height: 42rpx;
+}
+
+.phone-icon-btn {
+  @include flex-center;
+  flex: 0 0 36rpx;
+  width: 36rpx;
+  height: 36rpx;
+  padding: 0;
+  border-radius: 50%;
+  background: $primary-bg;
+}
+
+.phone-icon-btn::after,
+.navigate-btn::after {
+  border: 0;
+}
+
+.status-pill {
+  @include flex-center;
+  flex-shrink: 0;
+  min-width: 116rpx;
+  height: 60rpx;
+  padding: 0 20rpx;
+  border-radius: 40rpx;
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.status-pill.is-pending,
+.status-pill.is-processing {
+  color: $primary-color;
+  background: $primary-bg;
+}
+
+.status-pill.is-completed {
+  color: $success-color;
+  background: $success-bg;
+}
+
+.status-pill.is-ended,
+.status-pill.is-canceled {
+  color: $info-color;
+  background: $info-bg;
+}
+
+.status-pill.is-danger,
+.status-pill.is-failed {
+  color: $error-color;
+  background: $error-bg;
+}
+
+.status-pill.is-warning {
+  color: $warning-color;
+  background: $warning-bg;
+}
+.number-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24rpx;
+  margin-top: 38rpx;
+}
+
+.number-item {
+  min-width: 0;
+}
+
+.number-label {
+  display: block;
+  color: #9aa8c5;
+  font-size: 23rpx;
+  font-weight: 600;
+  line-height: 32rpx;
+}
+
+.number-value {
+  @include text-ellipsis;
+  display: block;
+  margin-top: 4rpx;
+  color: $text-main;
+  font-size: 28rpx;
+  font-weight: 800;
+  line-height: 38rpx;
+}
+
+.divider {
+  height: 2rpx;
+  margin: 28rpx 0 24rpx;
+  background: #edf1f6;
+}
+
+.info-row {
+  display: grid;
+  grid-template-columns: 34rpx 132rpx minmax(0, 1fr);
+  align-items: start;
+  column-gap: 8rpx;
+  min-width: 0;
+}
+
+.info-row+.info-row {
+  margin-top: 18rpx;
+}
+
+.info-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34rpx;
+  height: 34rpx;
+}
+
+.info-label {
+  color: #9aa8c5;
+  font-size: 25rpx;
+  font-weight: 600;
+  line-height: 36rpx;
+}
+
+.info-value {
+  @include text-ellipsis;
+  min-width: 0;
+  color: $text-main;
+  font-size: 26rpx;
+  font-weight: 700;
+  line-height: 36rpx;
+}
+
+.address-value {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.card-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72rpx;
+  gap: 24rpx;
+  margin-top: 34rpx;
+}
+
+.action-btn {
+  @include flex-center;
+  height: 72rpx;
+  padding: 0;
+  border-radius: 20rpx;
+  font-size: 26rpx;
+  font-weight: 800;
+}
+
+.appointment-btn {
+  color: $primary-color;
+  background: $primary-bg;
+}
+
+.navigate-btn {
+  width: 72rpx;
+  border-radius: 24rpx;
+  background: $primary-bg;
 }
 
 .loading-text,
 .footer-text {
   padding: 32rpx 0;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 25rpx;
   text-align: center;
 }
 
 .error-card {
-  margin-top: 28rpx;
+  margin: 0 24rpx;
   padding: 36rpx 28rpx;
-  background: #ffffff;
   border-radius: $card-radius;
+  background: #ffffff;
   box-shadow: $shadow-card;
 }
 
@@ -398,7 +761,7 @@ async function confirmChangeTime() {
 
 .error-desc {
   margin-top: 12rpx;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 25rpx;
 }
 
@@ -445,7 +808,7 @@ async function confirmChangeTime() {
 
 .label {
   display: block;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 24rpx;
 }
 
@@ -492,12 +855,12 @@ async function confirmChangeTime() {
 }
 
 .popup-btn.cancel {
-  color: $text-secondary;
-  background: #eef3fb;
+  color: $info-color;
+  background: $info-bg;
 }
 
 .popup-btn.confirm {
   color: #ffffff;
-  background: linear-gradient(135deg, #1677ff 0%, #38a4ff 100%);
+  background: $confirm-btn-bg;
 }
 </style>

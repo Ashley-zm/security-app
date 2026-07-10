@@ -551,7 +551,7 @@ function formatDuration(ms: number) {
 
 .card-subtitle {
   margin-top: 8rpx;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 23rpx;
   line-height: 1.4;
 }
@@ -563,7 +563,7 @@ function formatDuration(ms: number) {
   color: $primary-color;
   font-size: 22rpx;
   font-weight: 700;
-  background: $primary-light;
+  background: $primary-bg;
 }
 
 .button-row {
@@ -587,7 +587,7 @@ function formatDuration(ms: number) {
 }
 
 .action-btn.primary {
-  background: linear-gradient(135deg, #1677ff 0%, #38a4ff 100%);
+  background: $confirm-btn-bg;
   box-shadow: 0 14rpx 26rpx rgba(22, 119, 255, 0.2);
 }
 
@@ -608,7 +608,7 @@ function formatDuration(ms: number) {
   border-radius: 39rpx;
   color: $primary-color;
   font-size: 26rpx;
-  background: $primary-light;
+  background: $primary-bg;
 }
 
 .error-box {
@@ -636,7 +636,7 @@ function formatDuration(ms: number) {
 }
 
 .param-label {
-  color: $text-secondary;
+  color: $info-color;
   font-size: 23rpx;
 }
 

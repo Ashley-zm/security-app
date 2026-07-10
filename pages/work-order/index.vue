@@ -33,8 +33,16 @@
       <button class="retry-btn" @click="store.refresh()">重试</button>
     </view>
 
-    <view v-else class="order-list">
-      <view v-for="order in orderViews" :key="order.id" class="order-card" @click="openOrder(order)">
+    <scroll-view
+      v-else
+      class="order-list"
+      scroll-y
+      :show-scrollbar="false"
+      lower-threshold="120"
+      @scrolltolower="store.loadMore()"
+    >
+      <view class="order-list-content">
+        <view v-for="order in orderViews" :key="order.id" class="order-card" @click="openOrder(order)">
         <view class="order-top">
           <text class="plan-name">{{ order.planName }}</text>
           <text class="status-pill" :class="order.statusClass">{{ order.statusText }}</text>
@@ -53,11 +61,11 @@
         </view>
 
         <view class="time-row">
-          <text class="time-label">派单时间：</text>
+          <text class="time-label">派单时间</text>
           <text class="time-value">{{ order.dispatchTime }}</text>
         </view>
         <view class="time-row">
-          <text class="time-label">{{ order.finishLabel }}：</text>
+          <text class="time-label">{{ order.finishLabel }}</text>
           <text class="time-value">{{ order.finishTime }}</text>
         </view>
       </view>
@@ -66,14 +74,15 @@
         @retry="store.refresh()" />
       <view v-if="store.loading && store.list.length" class="footer-text">加载更多...</view>
       <view v-if="store.finished && store.list.length" class="footer-text">没有更多工单了</view>
-    </view>
+      </view>
+    </scroll-view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { onShow } from '@dcloudio/uni-app'
 import { computed, nextTick, ref } from 'vue'
-import { onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
+import { onPullDownRefresh } from '@dcloudio/uni-app'
 import AppEmpty from '@/components/AppEmpty.vue'
 import AppNavbar from '@/components/AppNavbar.vue'
 import { useWorkOrderStore } from '@/stores/workOrder'
@@ -126,11 +135,6 @@ onPullDownRefresh(async () => {
   await store.refresh()
   uni.stopPullDownRefresh()
 })
-
-onReachBottom(() => {
-  store.loadMore()
-})
-
 function changeStatus(status: string) {
   if (activeStatus.value === status) return
   store.setStatus(status)
@@ -221,12 +225,19 @@ function getFinishTime(item: WorkOrder) {
 @import '@/styles/mixins.scss';
 
 .work-order-page {
-  padding: 0 0 32rpx;
-  background: #F0F3F6;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 0;
+  overflow: hidden;
+  background: $bg-page;
 }
 
 .tabs-wrap {
+  flex: 0 0 auto;
   width: 100%;
+  background: #fff;
+  padding: 0 20rpx;
 }
 
 .tabs {
@@ -235,7 +246,6 @@ function getFinishTime(item: WorkOrder) {
   width: 100%;
   gap: 4rpx;
   padding: 6rpx;
-  background: #fefefe;
 }
 
 .tab-item {
@@ -243,19 +253,19 @@ function getFinishTime(item: WorkOrder) {
   min-width: 0;
   height: 60rpx;
   padding: 0 2rpx;
-  border-radius: 22rpx;
-  color: $text-secondary;
+  border-radius: $status-radius;
+  color: $info-color;
   font-size: 24rpx;
 }
 
 .tab-item.active {
   color: $primary-color;
-  background: #e8f2ff;
-  // box-shadow: 0 8rpx 18rpx rgba(22, 119, 255, 0.12);
+  background: $primary-bg;
 }
 
 .search-panel {
-  background: #fefefe;
+  flex: 0 0 auto;
+  background: #fff;
   margin-bottom: 24rpx;  
   display: grid;
   grid-template-columns: minmax(0, 1fr) 140rpx 80rpx;// 搜索框 140rpx 80rpx
@@ -271,9 +281,9 @@ function getFinishTime(item: WorkOrder) {
   min-width: 0;
   height: 80rpx;
   padding: 0 22rpx;
-  border-radius: 20rpx;
-  background: #F4F6F8;
-  border: 2rpx solid #EFF1F3;
+  border-radius: $common-radius;
+  background: $bg-page;
+  border: 2rpx solid $border-color;
 }
 
 .search-input {
@@ -302,12 +312,11 @@ function getFinishTime(item: WorkOrder) {
   gap: 6rpx;
   height: 80rpx;
   line-height: 0rpx;
-  border-radius: 20rpx;
+  border-radius: $common-radius;
   color: $primary-color;
   font-size: 28rpx;
-  // font-weight: 700;
   background: #fff;
-  border: 2rpx solid #EFF1F3;
+  border: 2rpx solid $border-color;
   box-shadow: 0 3px 14px rgba(4, 46, 138, 0.06), 0 2px 4px rgba(4, 46, 138, 0.03);
 }
 
@@ -316,9 +325,9 @@ function getFinishTime(item: WorkOrder) {
   gap: 8rpx;
   width: 80rpx;
   height: 80rpx;
-  border-radius: 20rpx;
+  border-radius: $common-radius;
   background: #fff;
-  border: 2rpx solid #EFF1F3;
+  border: 2rpx solid $border-color;
   box-shadow: 0 3px 14px rgba(4, 46, 138, 0.06), 0 2px 4px rgba(4, 46, 138, 0.03);
 }
 
@@ -328,10 +337,17 @@ function getFinishTime(item: WorkOrder) {
 }
 
 .order-list {
+  box-sizing: border-box;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.order-list-content {
   display: flex;
   flex-direction: column;
   gap: 22rpx;
-  padding: 0 24rpx;
+  padding: 0 24rpx 32rpx;
 }
 
 .order-card {
@@ -365,7 +381,7 @@ function getFinishTime(item: WorkOrder) {
   min-width: 116rpx;
   height: 60rpx;
   padding: 0 20rpx;
-  border-radius: 40rpx;
+  border-radius: $status-radius;
   font-size: 26rpx;
   font-weight: 600;
 }
@@ -373,35 +389,35 @@ function getFinishTime(item: WorkOrder) {
 .status-pill.is-pending,
 .status-pill.is-processing {
   color: $primary-color;
-  background: #dcecff;
+  background: $primary-bg;
 }
 
 .status-pill.is-completed {
   color: $success-color;
-  background: #ddf8d6;
+  background: $success-bg;
 }
 
 .status-pill.is-ended,
 .status-pill.is-canceled {
-  color: $text-secondary;
-  background: #eef3fb;
+  color: $info-color;
+  background: $info-bg;
 }
 
 .status-pill.is-danger {
   color: $error-color;
-  background: #fff0f0;
+  background: $error-bg;
 }
 
 .status-pill.is-warning {
   color: $warning-color;
-  background: #fff4df;
+  background: $warning-bg;
 }
 
 .plan-name {
   @include text-ellipsis;
   flex: 1;
   min-width: 0;
-  color: #021A4B;
+  color: $text-main;
   font-size: 34rpx;
   font-weight: 600;
   line-height: 1.35;
@@ -447,7 +463,7 @@ function getFinishTime(item: WorkOrder) {
 
 .stat-value {
   margin-top: 10rpx;
-  color: #021A4B;
+  color: $text-main;
 }
 
 .stat-number {
@@ -464,17 +480,17 @@ function getFinishTime(item: WorkOrder) {
 
 .stat-item.success .stat-number,
 .stat-item.success .stat-unit {
-  color: #02c987;
+  color: $success-color;
 }
 
 .stat-item.danger .stat-number,
 .stat-item.danger .stat-unit {
-  color: #ff4040;
+  color: $error-color;
 }
 
 .stat-item.primary .stat-number,
 .stat-item.primary .stat-unit {
-  color: #3f86ff;
+  color: $primary-color;
 }
 
 .time-row {
@@ -508,7 +524,7 @@ function getFinishTime(item: WorkOrder) {
 .loading-text,
 .footer-text {
   padding: 32rpx 0;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 25rpx;
   text-align: center;
 }
@@ -529,7 +545,7 @@ function getFinishTime(item: WorkOrder) {
 
 .error-desc {
   margin-top: 12rpx;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 25rpx;
 }
 

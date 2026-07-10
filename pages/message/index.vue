@@ -94,7 +94,7 @@ const messages = [
 
 .message-desc {
   margin-top: 10rpx;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 25rpx;
   line-height: 1.5;
 }

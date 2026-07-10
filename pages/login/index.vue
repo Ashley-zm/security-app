@@ -278,7 +278,7 @@ function showForgot() {
 
 .brand-subtitle {
   margin-top: 12rpx;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 27rpx;
 }
 
@@ -370,7 +370,7 @@ function showForgot() {
   display: flex;
   align-items: center;
   min-height: 52rpx;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 26rpx;
 }
 
@@ -412,7 +412,7 @@ function showForgot() {
   color: #ffffff;
   font-size: 32rpx;
   font-weight: 700;
-  background: linear-gradient(135deg, #1677ff 0%, #38a4ff 100%);
+  background: $confirm-btn-bg;
   box-shadow: 0 18rpx 30rpx rgba(22, 119, 255, 0.22);
 }
 
@@ -426,7 +426,7 @@ function showForgot() {
 }
 
 .agreement-text {
-  color: $text-secondary;
+  color: $info-color;
   font-size: 24rpx;
 }
 </style>
