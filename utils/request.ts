@@ -5,6 +5,7 @@ import { encrypt, decrypt } from '@/utils/jsencrypt';
 import { HttpStatus } from '@/utils/RespEnum';
 import { errorCode, errorMsg } from '@/utils/errorCode';
 import { useUserStore } from '@/stores/user'
+import { removeEmptyParams } from '@/utils/common'
 
 type RequestMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'OPTIONS' | 'HEAD' | 'TRACE' | 'CONNECT'
 type RequestHeaderFactory = () => Record<string, string>
@@ -23,7 +24,6 @@ export interface RequestOptions<T = unknown> {
   data?: T
   headers?: RequestHeaders
   timeout?: number
-  showError?: boolean
 }
 
 export interface ApiResponse<T> {
@@ -147,7 +147,12 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 function transformRequestData<T>(data: T | undefined, isEncrypt: boolean, aesKey?: CryptoJS.lib.WordArray) {
-  if (!isEncrypt || data === undefined || data === null || !aesKey) return data
+  if (!isEncrypt || data === undefined || data === null || !aesKey) {
+    if(data){
+      return removeEmptyParams(data)
+    }
+    return data
+  }
 
   const rawData = typeof data === 'string' ? data : JSON.stringify(data)
   return encryptWithAes(rawData, aesKey)
@@ -176,8 +181,6 @@ export function request<T, D = unknown>(options: RequestOptions<D>): Promise<T> 
   const method = options.method || 'GET'
   const runtimeConfig = getRouteRequestConfig(options.url)
 
-  const shouldShowError = options.showError !== false
-  console.log('shouldShowError', shouldShowError);
 
   if (runtimeConfig.useMock) {
     return mockRequest<T>({
@@ -210,7 +213,7 @@ export function request<T, D = unknown>(options: RequestOptions<D>): Promise<T> 
 
         if (!isHttpSuccess(statusCode)) {
           const message = getErrorMessage(response)
-          if (shouldShowError) showErrorToast(message)
+           showErrorToast(message)
           reject(new RequestError(message, { statusCode, response }))
           return
         }
@@ -232,19 +235,19 @@ export function request<T, D = unknown>(options: RequestOptions<D>): Promise<T> 
           const userStore = useUserStore()
 
           // 提示用户重新登录
-          showErrorToast('登录过期，请重新登录')
+           showErrorToast('登录过期，请重新登录')
           // 清除本地存储的 token
           userStore.logout()
           return
         }
 
         const message = getErrorMessage(response)
-        if (shouldShowError) showErrorToast(message)
+         showErrorToast(message)
         reject(new RequestError(message, { code: responseCode, statusCode, response }))
 
       },
       fail: (error) => {
-        if (shouldShowError) showErrorToast(errorMsg[error.errMsg] || error.errMsg || errorMsg['default'])
+         showErrorToast(errorMsg[error.errMsg] || error.errMsg || errorMsg['default'])
         reject(error)
       }
     })

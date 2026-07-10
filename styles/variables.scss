@@ -1,13 +1,29 @@
 $primary-color: #1677ff;
-$primary-light: #e9f3ff;
+$primary-bg: #e8f2ff;
+
 $success-color: #19be6b;
+$success-bg: #ddf8d6;
+
+
 $warning-color: #ff9900;
+$warning-bg: #fff4df;
+
 $error-color: #fa3534;
+$error-bg: #fff0f0;
+
+$info-color: #6b7897;
+$info-bg: #eef3fb;
+
 $text-main: #021A4B;
-// $text-main: #0b1f44;
-$text-secondary: #6b7897;
+$text-main-opacity: #eaf1ff;
 $text-muted: #9aa8c5;
-$bg-page: #f5f8ff;
-$card-radius: 24rpx;
 $border-color: #e8eefb;
 $shadow-card: 0 12rpx 32rpx rgba(28, 83, 171, 0.08);
+
+$bg-page: #f5f8ff;
+
+$card-radius: 24rpx;
+$common-radius: 22rpx;
+$status-radius: 40rpx;
+
+$confirm-btn-bg: linear-gradient(135deg, #1677ff 0%, #38a4ff 100%);
