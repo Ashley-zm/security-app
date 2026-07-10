@@ -140,9 +140,9 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
-import { askAssistantApi } from '@/api/assistant'
+import { askAssistantApi } from '@/modules/assistant/api'
 import AppNavbar from '@/components/AppNavbar.vue'
-import type { AssistantAnswer } from '@/types/assistant'
+import type { AssistantAnswer } from '@/modules/assistant/types'
 
 interface ChatMessage {
   id: string

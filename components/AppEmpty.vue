@@ -1,6 +1,6 @@
 <template>
   <view class="app-empty">
-    <view class="empty-icon">□</view>
+    <image class="empty-icon" src="/static/images/nodata.png" mode="aspectFit" />
     <view class="empty-title">{{ title }}</view>
     <view v-if="desc" class="empty-desc">{{ desc }}</view>
     <button v-if="showRetry" class="empty-btn" @click="$emit('retry')">重新加载</button>
@@ -34,13 +34,13 @@ defineEmits<{
   @include flex-center;
   flex-direction: column;
   padding: 88rpx 32rpx;
-  color: $text-secondary;
+  color: $info-color;
 }
 
 .empty-icon {
   @include flex-center;
-  width: 112rpx;
-  height: 112rpx;
+  width: 130rpx;
+  height: 130rpx;
   border-radius: 56rpx;
   color: #b8c6e2;
   font-size: 54rpx;
@@ -49,7 +49,6 @@ defineEmits<{
 
 .empty-title {
   margin-top: 24rpx;
-  color: $text-main;
   font-size: 30rpx;
   font-weight: 600;
 }

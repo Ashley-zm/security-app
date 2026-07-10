@@ -21,10 +21,10 @@
     "main.ts",
     "env.d.ts",
     "pages/**/*.vue",
-    "api/**/*.ts",
+    "modules/**/*.ts",
     "components/**/*.vue",
     "stores/**/*.ts",
-    "types/**/*.ts",
+    "mocks/**/*.ts",
     "utils/**/*.ts"
   ],
   "references": []

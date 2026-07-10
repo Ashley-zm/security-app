@@ -3,8 +3,9 @@ import type {
   WorkOrderQuery,
   WorkOrderUserDetailResult,
   WorkOrderUserListResult,
+  WorkOrderUserAppointmentPayload,
   WorkOrderUserQuery
-} from '@/types/workOrder'
+} from '@/modules/work-order/types'
 import { request } from '@/utils/request'
 
 // 获取工单列表
@@ -44,10 +45,6 @@ export function getWorkOrderUserDetailApi(workOrderUserId: string | number) {
   })
 }
 
-interface WorkOrderUserAppointmentPayload {
-  workOrderUserId: string | number
-  appointmentTime: string
-}
 
 export function updateWorkOrderUserAppointmentApi(workOrderUserId: string | number, appointmentTime: string) {
   return request<void, WorkOrderUserAppointmentPayload>({

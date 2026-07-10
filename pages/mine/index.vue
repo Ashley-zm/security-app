@@ -181,7 +181,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import { changePasswordApi } from '@/api/auth'
+import { changePasswordApi } from '@/modules/auth/api'
 import { useUserStore } from '@/stores/user'
 const statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 0
 

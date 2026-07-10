@@ -1,4 +1,6 @@
 
+export type WorkOrderStatus = string
+
 export interface WorkOrder {
   id: number | string
   workOrderNo?: string
@@ -162,4 +164,15 @@ export interface WorkOrderUserDetailResult {
   workOrderUser: WorkOrderUserDetail
   template?: InspectionTemplate
   historyList?: InspectionHistoryRecord[]
+}
+
+export interface WorkOrderUserAppointmentPayload {
+  workOrderUserId: string | number
+  appointmentTime: string
+}
+
+export interface WorkOrderUserInfoRow {
+  label: string
+  value: string
+  isAddress?: boolean
 }

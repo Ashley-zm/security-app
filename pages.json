@@ -19,7 +19,10 @@
       "style": {
         "navigationStyle": "custom",
         "enablePullDownRefresh": true,
-        "onReachBottomDistance": 80
+        "onReachBottomDistance": 80,
+				"app-plus": {
+					"bounce": "none"
+				}
       }
     },
     {
@@ -66,7 +69,20 @@
       "style": {
         "navigationStyle": "custom",
         "enablePullDownRefresh": true,
-        "onReachBottomDistance": 80
+        "onReachBottomDistance": 80,
+				"app-plus": {
+					"bounce": "none"
+				}
+      }
+    },
+    {
+      "path": "pages/work-order/user-detail",
+      "style": {
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": true,
+        "app-plus": {
+          "bounce": "none"
+        }
       }
     }
   ],

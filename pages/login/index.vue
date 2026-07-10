@@ -75,8 +75,8 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { getTenantListApi } from '@/api/auth'
-import type { LoginForm, TenantInfo } from '@/types/auth'
+import { getTenantListApi } from '@/modules/auth/api'
+import type { LoginForm, TenantInfo } from '@/modules/auth/types'
 import { clearRememberLogin, getRememberLogin, setRememberLogin } from '@/utils/storage'
 import { isMobile, required } from '@/utils/validate'
 

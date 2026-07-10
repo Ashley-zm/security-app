@@ -1,4 +1,4 @@
-import { mockRequest } from '@/api/mock'
+import { mockRequest } from '@/mocks'
 import { getToken } from '@/utils/storage'
 import { encryptWithAes, generateAesKey, encryptBase64, decryptBase64, decryptWithAes } from '@/utils/crypto'
 import { encrypt, decrypt } from '@/utils/jsencrypt';

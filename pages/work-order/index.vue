@@ -86,9 +86,9 @@ import { onPullDownRefresh } from '@dcloudio/uni-app'
 import AppEmpty from '@/components/AppEmpty.vue'
 import AppNavbar from '@/components/AppNavbar.vue'
 import { useWorkOrderStore } from '@/stores/workOrder'
-import type { WorkOrder, WorkOrderCardView } from '@/types/workOrder'
+import type { WorkOrder, WorkOrderCardView } from '@/modules/work-order/types'
 import { getDictsByTypes, getDictLabelByValue } from '@/utils/common'
-import type { DictDataVO } from '@/types/common'
+import type { DictDataVO } from '@/modules/common/types'
 
 
 const store = useWorkOrderStore()
@@ -369,7 +369,7 @@ function getFinishTime(item: WorkOrder) {
 .order-no {
   @include text-ellipsis;
   margin-top: 8rpx;
-  color: #9aa8c5;
+  color: $text-muted;
   font-size: 25rpx;
   font-weight: 600;
   line-height: 1.4;
@@ -456,7 +456,7 @@ function getFinishTime(item: WorkOrder) {
 }
 
 .stat-label {
-  color: #9aa8c5;
+  color: $text-muted;
   font-size: 24rpx;
   font-weight: 600;
 }
@@ -499,7 +499,7 @@ function getFinishTime(item: WorkOrder) {
   justify-content: space-between;
   gap: 20rpx;
   margin-top: 24rpx;
-  font-size: 27rpx;
+  font-size: 26rpx;
   line-height: 1.35;
 }
 
@@ -509,15 +509,15 @@ function getFinishTime(item: WorkOrder) {
 
 .time-label {
   flex-shrink: 0;
-  color: #9aa8c5;
+  color: $text-muted;
 }
 
 .time-value {
   @include text-ellipsis;
   flex: 1;
   min-width: 0;
-  color: #021A4B;
-  // font-weight: 600;
+  color: $text-main;
+  font-weight: 600;
   text-align: right;
 }
 

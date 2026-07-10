@@ -1,4 +1,4 @@
-import type { ChangePasswordParams, LoginParams, LoginResult, TenantListResult, UserInfoResult } from '@/types/auth'
+import type { ChangePasswordParams, LoginParams, LoginResult, TenantListResult, UserInfoResult } from '@/modules/auth/types'
 import { request } from '@/utils/request'
 // 登录
 export function loginApi(data: LoginParams) {

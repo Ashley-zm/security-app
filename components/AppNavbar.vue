@@ -1,5 +1,5 @@
 <template>
-  <view class="navbar" :style="{ paddingTop: `${statusBarHeight}px` }">
+  <view class="navbar" :style="{ paddingTop: `${statusBarHeight}px`,backgroundColor: backgroundColor }">
     <view class="navbar-inner">
       <button v-if="showBack" class="nav-icon" @click="handleBack">‹</button>
       <view v-else class="nav-placeholder" />
@@ -24,10 +24,12 @@ const props = withDefaults(
     title: string
     showBack?: boolean
     rightIcon?: string
+    backgroundColor?: string
   }>(),
   {
     showBack: false,
-    rightIcon: ''
+    rightIcon: '',
+    backgroundColor: `#fff`
   }
 )
 
@@ -57,7 +59,6 @@ function handleBack() {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: rgba(245, 248, 255, 0.96);
   backdrop-filter: blur(12px);
 }
 

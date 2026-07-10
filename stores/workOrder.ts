@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
-import { getWorkOrderListApi, updateAppointmentTimeApi } from '@/api/workOrder'
-import type {  WorkOrder, WorkOrderQuery } from '@/types/workOrder'
+import { getWorkOrderListApi, updateAppointmentTimeApi } from '@/modules/work-order/api'
+import type {  WorkOrder, WorkOrderQuery } from '@/modules/work-order/types'
 
 interface WorkOrderState {
   list: WorkOrder[]

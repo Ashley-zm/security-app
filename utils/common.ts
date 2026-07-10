@@ -1,5 +1,5 @@
-import type { DictDataVO } from '@/types/common'
-import { getDictsApi } from '@/api/common'
+import type { DictDataVO } from '@/modules/common/types'
+import { getDictsApi } from '@/modules/common/api'
 
 // 根据值获取数据字典某一项的名称
 export function getDictLabelByValue(dictData: DictDataVO[], value: string) {

@@ -1,4 +1,4 @@
-import type { HomeOverview } from '@/types/home'
+import type { HomeOverview } from '@/modules/home/types'
 import { request } from '@/utils/request'
 
 export function getHomeOverviewApi() {

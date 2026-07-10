@@ -118,7 +118,7 @@
           <text class="recent-address">{{ item.address }}</text>
           <text class="recent-time">{{ item.appointmentTime }}</text>
         </view>
-        <StatusTag :status="item.status" :status-name="item.statusName" />
+        <StatusTag :status="item.status" :status-name="item.statusName || ''" />
       </button>
     </view>
 
@@ -140,9 +140,9 @@
 <script setup lang="ts">
 import { onMounted, reactive } from 'vue'
 import { onPullDownRefresh } from '@dcloudio/uni-app'
-import { getHomeOverviewApi } from '@/api/home'
+import { getHomeOverviewApi } from '@/modules/home/api'
 import StatusTag from '@/components/StatusTag.vue'
-import type { HomeOverview, QuickEntry } from '@/types/home'
+import type { HomeOverview, QuickEntry } from '@/modules/home/types'
 
 const statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 0
 
@@ -212,6 +212,12 @@ async function fetchOverview() {
 function handleEntry(entry: QuickEntry) {
   if (entry.title === '扫一扫') {
     uni.scanCode({
+      success: (res) => {
+        uni.showToast({
+          title: res.result,
+          icon: 'none'
+        })
+      },
       fail: () => {
         uni.showToast({
           title: '当前环境暂不支持扫码',
@@ -272,7 +278,7 @@ function goAssistant() {
 
 .hello {
   margin-top: 8rpx;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 25rpx;
 }
 
@@ -361,7 +367,7 @@ function goAssistant() {
 
 .data-label {
   margin-top: 10rpx;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 24rpx;
 }
 
@@ -722,7 +728,7 @@ function goAssistant() {
 
 .quick-subtitle {
   margin-top: 8rpx;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 23rpx;
 }
 
@@ -762,7 +768,7 @@ function goAssistant() {
 
 .ai-desc {
   margin-top: 10rpx;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 24rpx;
 }
 
@@ -775,7 +781,7 @@ function goAssistant() {
   color: #ffffff;
   font-size: 26rpx;
   font-weight: 700;
-  background: linear-gradient(135deg, #1677ff 0%, #38a4ff 100%);
+  background: $confirm-btn-bg;
 }
 
 .recent-list {
@@ -815,7 +821,7 @@ function goAssistant() {
 
 .recent-address {
   margin-top: 8rpx;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 24rpx;
 }
 
@@ -840,7 +846,7 @@ function goAssistant() {
   display: flex;
   align-items: center;
   margin-top: 20rpx;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 26rpx;
 }
 

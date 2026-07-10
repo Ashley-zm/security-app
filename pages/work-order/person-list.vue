@@ -129,10 +129,10 @@ import { computed, nextTick, ref } from 'vue'
 import { onLoad, onPullDownRefresh } from '@dcloudio/uni-app'
 import AppEmpty from '@/components/AppEmpty.vue'
 import AppNavbar from '@/components/AppNavbar.vue'
-import { getWorkOrderUserListApi, updateWorkOrderUserAppointmentApi } from '@/api/workOrder'
-import type { WorkOrderUser, WorkOrderUserQuery } from '@/types/workOrder'
+import { getWorkOrderUserListApi, updateWorkOrderUserAppointmentApi } from '@/modules/work-order/api'
+import type { WorkOrderUser, WorkOrderUserQuery } from '@/modules/work-order/types'
 import { getDictsByTypes, getDictLabelByValue } from '@/utils/common'
-import type { DictDataVO } from '@/types/common'
+import type { DictDataVO } from '@/modules/common/types'
 
 interface WorkOrderUserView extends WorkOrderUser {
   id: string
@@ -638,6 +638,7 @@ async function confirmChangeTime() {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24rpx;
   margin-top: 38rpx;
+  font-size: 26rpx;
 }
 
 .number-item {
@@ -646,9 +647,7 @@ async function confirmChangeTime() {
 
 .number-label {
   display: block;
-  color: #9aa8c5;
-  font-size: 23rpx;
-  font-weight: 600;
+  color: $text-muted;
   line-height: 32rpx;
 }
 
@@ -657,8 +656,7 @@ async function confirmChangeTime() {
   display: block;
   margin-top: 4rpx;
   color: $text-main;
-  font-size: 28rpx;
-  font-weight: 800;
+  font-weight: 600;
   line-height: 38rpx;
 }
 
@@ -674,6 +672,7 @@ async function confirmChangeTime() {
   align-items: start;
   column-gap: 8rpx;
   min-width: 0;
+  font-size: 26rpx;
 }
 
 .info-row+.info-row {
@@ -689,18 +688,16 @@ async function confirmChangeTime() {
 }
 
 .info-label {
-  color: #9aa8c5;
-  font-size: 25rpx;
-  font-weight: 600;
+  color: $text-muted;
   line-height: 36rpx;
 }
 
 .info-value {
   @include text-ellipsis;
+  text-align: right;
   min-width: 0;
   color: $text-main;
-  font-size: 26rpx;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 36rpx;
 }
 

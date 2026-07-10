@@ -1,4 +1,4 @@
-import type { WorkOrder } from './workOrder'
+import type { WorkOrder } from '@/modules/work-order/types'
 
 export interface HomeOverview {
   pendingCount: number

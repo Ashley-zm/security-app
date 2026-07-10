@@ -37,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import type { WorkOrder } from '@/types/workOrder'
+import type { WorkOrder } from '@/modules/work-order/types'
 import StatusTag from './StatusTag.vue'
 
 defineProps<{

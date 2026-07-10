@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
-import { loginApi } from '@/api/auth'
-import type { LoginParams, UserInfo } from '@/types/auth'
+import { loginApi } from '@/modules/auth/api'
+import type { LoginParams, UserInfo } from '@/modules/auth/types'
 import {
   clearToken,
   clearUserInfoStorage,
@@ -9,7 +9,7 @@ import {
   setToken as setTokenStorage,
   setUserInfoStorage
 } from '@/utils/storage'
-import { getUserInfoApi } from '@/api/auth'
+import { getUserInfoApi } from '@/modules/auth/api'
 
 interface UserState {
   token: string

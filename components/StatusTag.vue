@@ -3,7 +3,7 @@
 </template>
 
 <script setup lang="ts">
-import type { WorkOrderStatus } from '@/types/workOrder'
+import type { WorkOrderStatus } from '@/modules/work-order/types'
 
 defineProps<{
   status: WorkOrderStatus
