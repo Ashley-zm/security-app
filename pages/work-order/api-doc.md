@@ -41,14 +41,14 @@ APP端查询当前登录安检员被指派的工单。后端会强制使用当�
 
 ● 请求地址
 
-GET `/app/workOrder/v0.2/list`
+GET `/inspection/app/workOrder/v0.2/list`
 
 ● 请求参数
 
 | 字段名 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | status | Integer | 否 | 工单状态：1未开始，2进行中，3已完成，4已取消，5已结束 |
-| workOrderNoOrName | String | 否 | 安检工单编号或者名称 模糊查询 |
+| workOrderName | String | 否 | 安检工单编号或者名称 模糊查询 |
 | sort | int | 否 | 工单时间排序(1:正序 2:倒序) |
 | pageNum | int | 否 | 当前页数 |
 | pageSize | int | 否 | 分页大小 |
@@ -58,7 +58,7 @@ GET `/app/workOrder/v0.2/list`
 ```jsonc
 {
   "status": 1, // 工单状态
-  "workOrderNoOrName": "啊啊", // 安检工单编号或者名称
+  "workOrderName": "啊啊", // 安检工单编号或者名称
   "sort":1,// 排序 
   "pageNum": 1, // 当前页数
   "pageSize": 10 // 分页大小
@@ -100,42 +100,7 @@ GET `/app/workOrder/v0.2/list`
   "total": 1 // 总记录数
 ```
 
-## 2：APP开始执行工单
-
-● 接口描述
-
-安检员进入工单后开始执行整张工单。工单状态会从未开始推进到进行中，派单状态会变为执行中。
-
-● 请求地址
-
-POST `/app/workOrder/v0.2/{id}/start`
-
-● 请求参数
-
-| 字段名 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| id | Long | 是 | 安检工单ID，路径参数 |
-| remark | String | 否 | 操作说明 |
-
-● 请求实例
-
-```jsonc
-{
-  "remark": "安检员开始执行工单" // 操作说明
-}
-
-```
-
-● 响应返回
-
-```jsonc
-{
-  "code": 200, // 响应状态码
-  "msg": "操作成功" // 响应消息
-}
-```
-
-## 3：查询工单下安检用户列表
+## 2：查询工单下安检用户列表
 
 ● 接口描述
 
@@ -143,21 +108,16 @@ APP端查询某张工单下的安检用户。前端筛选条件中：全部不�
 
 ● 请求地址
 
-GET `/app/workOrder/v0.2/{id}/users/list`
+GET `/inspection/app/workOrder/v0.2/{id}/users/list`
 
 ● 请求参数
 
 | 字段名 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | id | Long | 是 | 安检工单ID，路径参数 |
-| householdNo | String | 否 | 户号 |
-| householdName | String | 否 | 户名 |
-| mobilePhone | String | 否 | 手机号码 |
-| userAddress | String | 否 | 用户地址 |
-| meterNo | String | 否 | 表号 |
-| meterStatus | String | 否 | 表状态 |
-| inspectionResult | Integer | 否 | 安检结果：1合格，2不合格，3无法安检 |
-| status | Integer | 否 | 明细状态：1待安检，2安检中，3已完成，4失败，5已取消 |
+| keyword | String | 否 | 搜索关键词，支持户号、户名、手机号、地址、表号|
+| sort | int | 否 | 时间排序(1:正序 2:倒序) |
+| status | Integer | 否 | 字典项：order_user_status |
 | pageNum | int | 否 | 当前页数 |
 | pageSize | int | 否 | 分页大小 |
 
@@ -166,7 +126,7 @@ GET `/app/workOrder/v0.2/{id}/users/list`
 ```jsonc
 {
   "status": 1, // 明细状态
-  "householdName": "张三", // 户名
+  "keyword": "张三", // 户名
   "pageNum": 1, // 当前页数
   "pageSize": 10 // 分页大小
 }
@@ -212,7 +172,7 @@ GET `/app/workOrder/v0.2/{id}/users/list`
 }
 ```
 
-## 4：查询APP端单户安检详情
+## 3：查询APP端单户安检详情
 
 ● 接口描述
 
@@ -220,7 +180,7 @@ GET `/app/workOrder/v0.2/{id}/users/list`
 
 ● 请求地址
 
-GET `/app/workOrder/v0.2/users/{workOrderUserId}/detail`
+GET `/inspection/app/workOrder/v0.2/users/{workOrderUserId}/detail`
 
 ● 请求参数
 
@@ -300,7 +260,7 @@ GET `/app/workOrder/v0.2/users/{workOrderUserId}/detail`
 }
 ```
 
-## 5：APP开始执行单户安检
+## 4：APP开始执行单户安检
 
 ● 接口描述
 
@@ -308,7 +268,7 @@ GET `/app/workOrder/v0.2/users/{workOrderUserId}/detail`
 
 ● 请求地址
 
-POST `/app/workOrder/v0.1/users/{workOrderUserId}/start`
+POST `/inspection/app/workOrder/v0.1/users/{workOrderUserId}/start`
 
 ● 请求参数
 
@@ -334,7 +294,7 @@ POST `/app/workOrder/v0.1/users/{workOrderUserId}/start`
 }
 ```
 
-## 6：APP设置单户预约时间
+## 5：APP设置单户预约时间
 
 ● 接口描述
 
@@ -342,7 +302,7 @@ POST `/app/workOrder/v0.1/users/{workOrderUserId}/start`
 
 ● 请求地址
 
-POST `/app/workOrder/v0.1/users/{workOrderUserId}/appointment`
+POST `/inspection/app/workOrder/v0.1/users/{workOrderUserId}/appointment`
 
 ● 请求参数
 
@@ -350,14 +310,13 @@ POST `/app/workOrder/v0.1/users/{workOrderUserId}/appointment`
 | --- | --- | --- | --- |
 | workOrderUserId | Long | 是 | 工单用户明细ID，路径参数 |
 | appointmentTime | Date | 是 | 预约安检时间 |
-| remark | String | 否 | 操作说明 |
 
 ● 请求实例
 
 ```jsonc
 {
+  "workOrderUserId": 5001, // 工单用户明细ID
   "appointmentTime": "2026-07-02 15:00:00", // 预约安检时间
-  "remark": "已电话预约用户" // 操作说明
 }
 
 ```
@@ -371,7 +330,7 @@ POST `/app/workOrder/v0.1/users/{workOrderUserId}/appointment`
 }
 ```
 
-## 7：APP AI识别
+## 6：APP AI识别
 
 ● 接口描述
 
@@ -379,7 +338,7 @@ APP端拍照后调用该接口进行AI识别。当前接口提供后端入口和
 
 ● 请求地址
 
-POST `/app/workOrder/v0.2/ai/recognize`
+POST `/inspection/app/workOrder/v0.2/ai/recognize`
 
 ● 请求参数
 
@@ -425,7 +384,7 @@ POST `/app/workOrder/v0.2/ai/recognize`
 }
 ```
 
-## 8：APP正式提交安检结果
+## 7：APP正式提交安检结果
 
 ● 接口描述
 
@@ -433,7 +392,7 @@ APP端完整提交单户安检结果。该接口会保存安检记录主表、�
 
 ● 请求地址
 
-POST `/app/workOrder/v0.2/submit`
+POST `/inspection/app/workOrder/v0.2/submit`
 
 ● 请求参数
 
@@ -583,7 +542,7 @@ POST `/app/workOrder/v0.2/submit`
 }
 ```
 
-## 9：首页统计
+## 8：首页统计
 
 查询今日待安检用户数量，和今日安检过的高风险用户数量
 
@@ -595,7 +554,7 @@ POST `/app/workOrder/v0.2/submit`
 
 ● 请求地址
 
-POST `/app/workOrder/v0.2/statistics`
+POST `/inspection/app/workOrder/v0.2/statistics`
 
 ● 请求类型
 

@@ -34,7 +34,7 @@
     </view>
 
     <view v-else class="order-list">
-      <button v-for="order in orderViews" :key="order.id" class="order-card" @click="openOrder(order)">
+      <view v-for="order in orderViews" :key="order.id" class="order-card" @click="openOrder(order)">
         <view class="order-top">
           <text class="plan-name">{{ order.planName }}</text>
           <text class="status-pill" :class="order.statusClass">{{ order.statusText }}</text>
@@ -60,8 +60,7 @@
           <text class="time-label">{{ order.finishLabel }}：</text>
           <text class="time-value">{{ order.finishTime }}</text>
         </view>
-      </button>
-
+      </view>
       <view v-if="store.loading && !store.list.length" class="loading-text">工单加载中...</view>
       <AppEmpty v-if="!store.loading && !store.list.length" title="暂无工单" desc="调整状态或搜索条件后再试" show-retry
         @retry="store.refresh()" />
@@ -223,6 +222,7 @@ function getFinishTime(item: WorkOrder) {
 
 .work-order-page {
   padding: 0 0 32rpx;
+  background: #F0F3F6;
 }
 
 .tabs-wrap {
@@ -235,7 +235,7 @@ function getFinishTime(item: WorkOrder) {
   width: 100%;
   gap: 4rpx;
   padding: 6rpx;
-  background: #eaf1ff;
+  background: #fefefe;
 }
 
 .tab-item {
@@ -245,19 +245,20 @@ function getFinishTime(item: WorkOrder) {
   padding: 0 2rpx;
   border-radius: 22rpx;
   color: $text-secondary;
-  font-size: 23rpx;
-  // font-weight: 600;
+  font-size: 24rpx;
 }
 
 .tab-item.active {
   color: $primary-color;
-  background: #ffffff;
-  box-shadow: 0 8rpx 18rpx rgba(22, 119, 255, 0.12);
+  background: #e8f2ff;
+  // box-shadow: 0 8rpx 18rpx rgba(22, 119, 255, 0.12);
 }
 
 .search-panel {
+  background: #fefefe;
+  margin-bottom: 24rpx;  
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 120rpx 80rpx;// 搜索框 120rpx 80rpx
+  grid-template-columns: minmax(0, 1fr) 140rpx 80rpx;// 搜索框 140rpx 80rpx
   gap: 12rpx;
   align-items: center;
   padding: 26rpx 24rpx 32rpx; // 上下26rpx 左右24rpx 下32rpx
@@ -271,8 +272,8 @@ function getFinishTime(item: WorkOrder) {
   height: 80rpx;
   padding: 0 22rpx;
   border-radius: 20rpx;
-  background: #ffffff;
-  box-shadow: 0 6px 16px rgba(4, 46, 138, 0.06), 0 2px 4px rgba(4, 46, 138, 0.03);
+  background: #F4F6F8;
+  border: 2rpx solid #EFF1F3;
 }
 
 .search-input {
@@ -284,7 +285,7 @@ function getFinishTime(item: WorkOrder) {
 }
 
 .placeholder {
-  color: #b5bdcc;
+  color: #A4B1C5;
 }
 
 .clear-btn {
@@ -305,8 +306,9 @@ function getFinishTime(item: WorkOrder) {
   color: $primary-color;
   font-size: 28rpx;
   // font-weight: 700;
-  background: #ffffff;
-  box-shadow: 0 6px 16px rgba(4, 46, 138, 0.06), 0 2px 4px rgba(4, 46, 138, 0.03);
+  background: #fff;
+  border: 2rpx solid #EFF1F3;
+  box-shadow: 0 3px 14px rgba(4, 46, 138, 0.06), 0 2px 4px rgba(4, 46, 138, 0.03);
 }
 
 .time-sort-btn {
@@ -316,7 +318,8 @@ function getFinishTime(item: WorkOrder) {
   height: 80rpx;
   border-radius: 20rpx;
   background: #fff;
-  box-shadow: 0 6px 16px rgba(4, 46, 138, 0.06), 0 2px 4px rgba(4, 46, 138, 0.03);
+  border: 2rpx solid #EFF1F3;
+  box-shadow: 0 3px 14px rgba(4, 46, 138, 0.06), 0 2px 4px rgba(4, 46, 138, 0.03);
 }
 
 .time-sort-icon {

@@ -3,7 +3,7 @@
     <view class="card-header">
       <view class="order-info">
         <view class="order-no">{{ item.orderNo }}</view>
-        <StatusTag :status="item.status" :status-name="item.statusName" />
+        <StatusTag :status="item.status" :status-name="item.statusName || ''" />
       </view>
       <button class="phone-btn" @click="$emit('call', item)">☎</button>
     </view>
@@ -118,7 +118,7 @@ defineEmits<{
 .meta-label {
   display: block;
   margin-bottom: 8rpx;
-  color: $text-secondary;
+  color: $info-color;
   font-size: 23rpx;
 }
 
@@ -152,6 +152,6 @@ defineEmits<{
 
 .action-btn.primary {
   color: #ffffff;
-  background: linear-gradient(135deg, #1677ff 0%, #38a4ff 100%);
+  background: $confirm-btn-bg;
 }
 </style>
