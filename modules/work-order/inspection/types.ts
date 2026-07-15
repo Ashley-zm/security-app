@@ -49,6 +49,17 @@ export interface InspectionPhoto {
   errorMessage?: string;
 }
 
+export type SignatureUploadStatus = "idle" | "uploading" | "success" | "failed";
+
+export interface InspectionSignature {
+  localPath?: string;
+  fileId?: string;
+  fileUrl?: string;
+  uploadStatus: SignatureUploadStatus;
+  errorMessage?: string;
+  signedAt?: string;
+}
+
 export interface InspectionFormItem {
   groupId: string;
   itemId: string;
@@ -91,6 +102,8 @@ export interface SubmitInspectionRequest {
   templateId: string;
   inspectionMode: string; // 1: AI 自动回填，2: 人工填写，3: 手动填写
   groupResults: InspectionGroupResult[];
+  signatureFileId?: string; // 签名文件id
+  signatureUrl?: string; // 签名文件url
 }
 export interface SubmitInspectionResponse {
   inspectionRecordId: string;

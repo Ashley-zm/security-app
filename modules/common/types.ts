@@ -19,10 +19,7 @@ export interface DictDataOption {
 export const FILE_UPLOAD_TYPE = {
   INSPECTION_IMAGE: 1,
   AUDIO: 2,
-  USER_AVATAR: 3,
-  SIGNATURE: 4,
-  QRCODE: 5,
-  OTHER: 9,
+  SIGNATURE: 3,
 } as const;
 
 export type FileUploadType =

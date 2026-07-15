@@ -1,4 +1,4 @@
-import {
+﻿import {
   getRequestTransportConfig,
   request,
   RequestError,
@@ -76,3 +76,15 @@ export function uploadFilesApi(
     });
   });
 }
+/** 删除已上传文件。fileId 按字符串处理，避免后端 Long 类型精度丢失。 */
+export function deleteFileApi(fileId: string): Promise<void> {
+  const normalizedFileId = String(fileId || "").trim();
+  if (!normalizedFileId) {
+    return Promise.reject(new Error("文件 ID 不能为空"));
+  }
+  return request<void>({
+    url: `/inspection/file/v0.2/${encodeURIComponent(normalizedFileId)}`,
+    method: "DELETE",
+  });
+}
+

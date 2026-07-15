@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view class="inspection-page">
     <view class="topbar" :style="{ paddingTop: `${statusBarHeight}px` }">
       <view class="topbar-inner">
@@ -64,6 +64,38 @@
           @retry-photo="retryPhoto"
           @remove-photo="removePhoto"
         />
+        <view class="signature-entry" @click="openSignaturePopup">
+          <view class="signature-entry-head">
+            <view>
+              <text class="signature-entry-title">用户签名</text>
+              <text class="signature-entry-desc">
+                请用户本人确认本次安检结果
+              </text>
+            </view>
+            <text
+              class="signature-entry-status"
+              :class="{
+                success: signature.uploadStatus === 'success',
+                error: signature.uploadStatus === 'failed',
+              }"
+            >
+              {{ signatureStatusText }}
+            </text>
+          </view>
+          <view v-if="signaturePreview" class="signature-preview-wrap">
+            <image
+              class="signature-preview"
+              :src="signaturePreview"
+              mode="aspectFit"
+            />
+            <text class="resign-tip">点击重新签名</text>
+          </view>
+          <view v-else class="signature-empty">
+            <text class="signature-empty-icon">✎</text>
+            <text class="signature-empty-text">提交前需要完成用户签名</text>
+            <text class="signature-empty-action">去签名 ›</text>
+          </view>
+        </view>
       </view>
     </scroll-view>
 
@@ -73,12 +105,21 @@
       :photos="popupPhotos"
       :remark="popupRemark"
       :can-continue="popupCanContinue"
+      :deleting-photo-ids="deletingPhotoIds"
       @capture="captureFromPopup"
       @remove="removePopupPhoto"
       @retry="retryPopupPhoto"
       @remark-change="updateItemRemark"
       @cancel="cancelPhotoPopup"
       @confirm="confirmPhotoPopup"
+    />
+    <InspectionSignaturePopup
+      :visible="signaturePopupVisible"
+      :user-name="userName"
+      :address="address"
+      :confirm-loading="signatureUploading"
+      @cancel="closeSignaturePopup"
+      @confirm="confirmSignature"
     />
     <view v-if="!loading && !isEmpty && !loadError" class="submit-bar">
       <button
@@ -87,7 +128,7 @@
         :disabled="submitting"
         @click="submit"
       >
-        提交安检结果
+        {{ signature.fileId ? "确认并提交" : "提交安检结果" }}
       </button>
       <text class="progress-text">
         智能记录 {{ totalProgress.completed }}/{{ totalProgress.total }} 项
@@ -101,11 +142,14 @@ import { computed, onBeforeUnmount, reactive, ref } from "vue";
 import { onBackPress, onLoad } from "@dcloudio/uni-app";
 import InspectionGroup from "@/pages/work-order/inspection/components/InspectionGroup.vue";
 import InspectionPhotoPopup from "@/pages/work-order/inspection/components/InspectionPhotoPopup.vue";
+import InspectionSignaturePopup from "@/pages/work-order/inspection/components/InspectionSignaturePopup.vue";
 import { normalizeMaxPhotoCount } from "@/pages/work-order/inspection/constants/inspection";
 import { useInspectionForm } from "@/pages/work-order/inspection/composables/useInspectionForm";
 import { useInspectionDictionaries } from "@/pages/work-order/inspection/composables/useInspectionDictionaries";
 import { captureInspectionPhotos } from "@/pages/work-order/inspection/composables/useInspectionCamera";
 import { getWorkOrderUserDetailApi } from "@/modules/work-order/api";
+import { deleteFileApi, uploadFilesApi } from "@/modules/common/api";
+import { FILE_UPLOAD_TYPE } from "@/modules/common/types";
 import {
   submitInspectionRecordApi,
   uploadInspectionPhoto,
@@ -113,6 +157,7 @@ import {
 import { useInspectionStore } from "@/stores/inspection";
 import type {
   InspectionPhoto,
+  InspectionSignature,
   InspectionTemplate,
   InspectionTemplateItem,
 } from "@/modules/work-order/inspection/types";
@@ -139,6 +184,12 @@ const submitted = ref(false);
 const navigatingBack = ref(false);
 const photoPopupVisible = ref(false);
 const cameraOpening = ref(false);
+const deletingPhotoIds = ref<string[]>([]);
+const signaturePopupVisible = ref(false);
+const signatureUploading = ref(false);
+const signature = reactive<InspectionSignature>({
+  uploadStatus: "idle",
+});
 const photoPopupItem = ref<InspectionTemplateItem | null>(null);
 let photoPopupSnapshot: InspectionPhoto[] = [];
 let photoPopupRemarkSnapshot = "";
@@ -169,6 +220,15 @@ const popupCanContinue = computed(() => {
     popupPhotos.value.length < normalizeMaxPhotoCount(item.maxPhotoCount),
   );
 });
+const signaturePreview = computed(
+  () => signature.localPath || signature.fileUrl || "",
+);
+const signatureStatusText = computed(() => {
+  if (signatureUploading.value) return "上传中";
+  if (signature.uploadStatus === "success") return "已签名";
+  if (signature.uploadStatus === "failed") return "上传失败";
+  return "未签名";
+});
 const isEmpty = computed(
   () =>
     !template.value ||
@@ -184,6 +244,14 @@ onLoad((options) => {
   loadTemplate();
 });
 onBackPress(() => {
+  if (signaturePopupVisible.value) {
+    if (signatureUploading.value) {
+      uni.showToast({ title: "签名正在上传，请稍候", icon: "none" });
+    } else {
+      closeSignaturePopup();
+    }
+    return true;
+  }
   if (photoPopupVisible.value) {
     cancelPhotoPopup();
     return true;
@@ -318,7 +386,7 @@ function captureFromPopup() {
 // 删除照片
 function removePopupPhoto(photoId: string) {
   const item = photoPopupItem.value;
-  if (item) removePhoto(item, photoId);
+  if (item) void removePhoto(item, photoId);
 }
 // 重试照片
 function retryPopupPhoto(photoId: string) {
@@ -440,12 +508,112 @@ function retryPhoto(item: InspectionTemplateItem, id: string) {
   const photo = formData[String(item.id)].photos.find((x) => x.id === id);
   if (photo) uploadPhoto(item, photo);
 }
-// 删除照片
-function removePhoto(item: InspectionTemplateItem, id: string) {
+function setPhotoDeleting(photoId: string, deleting: boolean) {
+  deletingPhotoIds.value = deleting
+    ? [...new Set([...deletingPhotoIds.value, photoId])]
+    : deletingPhotoIds.value.filter((id) => id !== photoId);
+}
+
+// 删除照片：服务器文件删除成功后，才同步移除前端状态。
+async function removePhoto(item: InspectionTemplateItem, id: string) {
   const state = formData[String(item.id)];
-  state.photos = state.photos.filter((x) => x.id !== id);
+  const photo = state.photos.find((current) => current.id === id);
+  if (!photo || deletingPhotoIds.value.includes(id)) return;
+
+  if (photo.uploadStatus === "uploading") {
+    uni.showToast({ title: "照片正在上传，请稍候再删除", icon: "none" });
+    return;
+  }
+
+  const fileId = String(photo.fileId || "").trim();
+  if (fileId) {
+    setPhotoDeleting(id, true);
+    try {
+      await deleteFileApi(fileId);
+      // 服务端删除不可撤销，弹窗取消时也不能恢复该照片。
+      photoPopupSnapshot = photoPopupSnapshot.filter(
+        (current) => current.id !== id,
+      );
+    } catch {
+      // request 封装会展示后端错误；删除失败时保留照片，允许用户重试。
+      return;
+    } finally {
+      setPhotoDeleting(id, false);
+    }
+  }
+
+  state.photos = state.photos.filter((current) => current.id !== id);
   updateCompleted(item);
   dirty.value = true;
+}
+function openSignaturePopup() {
+  if (submitting.value || signatureUploading.value) return;
+  signaturePopupVisible.value = true;
+}
+
+function closeSignaturePopup() {
+  if (signatureUploading.value) return;
+  signaturePopupVisible.value = false;
+}
+
+async function confirmSignature(localPath: string) {
+  if (!localPath || signatureUploading.value) return;
+  const previousFileId = String(signature.fileId || "").trim();
+  const hadUploadedSignature = Boolean(previousFileId);
+  const previousSignature = { ...signature };
+  signatureUploading.value = true;
+  signature.uploadStatus = "uploading";
+  signature.errorMessage = undefined;
+  try {
+    const files = await uploadFilesApi(
+      [localPath],
+      FILE_UPLOAD_TYPE.SIGNATURE,
+    );
+    const uploaded = files[0];
+    if (!uploaded?.fileId) throw new Error("签名上传结果为空");
+
+    const newFileId = String(uploaded.fileId);
+    signature.localPath = localPath;
+    signature.fileId = newFileId;
+    signature.fileUrl = uploaded.url;
+    signature.uploadStatus = "success";
+    signature.signedAt = new Date().toISOString();
+    signaturePopupVisible.value = false;
+    dirty.value = true;
+
+    let previousDeleteFailed = false;
+    if (previousFileId && previousFileId !== newFileId) {
+      try {
+        // 新签名保存成功后再删除旧文件，避免删除成功但新签名上传失败。
+        await deleteFileApi(previousFileId);
+      } catch {
+        previousDeleteFailed = true;
+        signature.errorMessage = "旧签名文件删除失败";
+      }
+    }
+
+    uni.showToast({
+      title: previousDeleteFailed
+        ? "新签名已保存，旧签名删除失败"
+        : "签名保存成功",
+      icon: previousDeleteFailed ? "none" : "success",
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "签名上传失败";
+    if (hadUploadedSignature) {
+      Object.assign(signature, previousSignature, {
+        uploadStatus: "success",
+        errorMessage: message,
+      });
+    } else {
+      signature.localPath = localPath;
+      signature.uploadStatus = "failed";
+      signature.errorMessage = message;
+    }
+    uni.showToast({ title: message, icon: "none" });
+  } finally {
+    signatureUploading.value = false;
+  }
 }
 // 切换人工填写
 function switchManual() {
@@ -478,12 +646,23 @@ async function submit() {
     uni.showToast({ title: error.message, icon: "none" });
     return;
   }
+  if (signatureUploading.value) {
+    uni.showToast({ title: "用户签名正在上传，请稍候", icon: "none" });
+    return;
+  }
+  if (signature.uploadStatus !== "success" || !signature.fileId) {
+    openSignaturePopup();
+    return;
+  }
+
   submitting.value = true;
   try {
     const payload = buildSubmitRequest({
       workOrderUserId: workOrderUserId.value,
       templateId: String(template.value.id),
       inspectionMode: inspectionMode.value,
+      signatureFileId: signature.fileId,
+      signatureUrl: signature.fileUrl,
     });
     await submitInspectionRecordApi(payload);
     submitted.value = true;
@@ -504,6 +683,7 @@ async function submit() {
     submitting.value = false;
   }
 }
+
 // 聚焦错误项
 function focusError(groupId: string, itemId: string) {
   expandedGroups[groupId] = true;
@@ -741,4 +921,113 @@ function requestBack() {
   line-height: 70rpx;
   background: #3478e8;
 }
+.signature-entry {
+  margin-top: 28rpx;
+  padding: 26rpx;
+  border: 2rpx solid #e5eaf4;
+  border-radius: 24rpx;
+  background: #fff;
+  box-shadow: 0 8rpx 28rpx rgba(39, 76, 140, 0.06);
+}
+
+.signature-entry-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.signature-entry-title,
+.signature-entry-desc {
+  display: block;
+}
+
+.signature-entry-title {
+  color: #223b64;
+  font-size: 28rpx;
+  font-weight: 800;
+}
+
+.signature-entry-desc {
+  margin-top: 5rpx;
+  color: #8a99b1;
+  font-size: 21rpx;
+}
+
+.signature-entry-status {
+  flex: 0 0 auto;
+  padding: 7rpx 14rpx;
+  border-radius: 12rpx;
+  color: #8a97ac;
+  font-size: 20rpx;
+  background: #f0f3f7;
+}
+
+.signature-entry-status.success {
+  color: #287d58;
+  background: #e8f7ef;
+}
+
+.signature-entry-status.error {
+  color: #d45663;
+  background: #fff0f2;
+}
+
+.signature-empty {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  min-height: 82rpx;
+  margin-top: 20rpx;
+  padding: 0 20rpx;
+  border: 2rpx dashed #c8d2e2;
+  border-radius: 18rpx;
+  background: #f8faff;
+}
+
+.signature-empty-icon {
+  color: #665be5;
+  font-size: 36rpx;
+}
+
+.signature-empty-text {
+  flex: 1;
+  color: #70819d;
+  font-size: 22rpx;
+}
+
+.signature-empty-action {
+  color: #3978df;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.signature-preview-wrap {
+  position: relative;
+  height: 150rpx;
+  margin-top: 20rpx;
+  overflow: hidden;
+  border: 2rpx solid #e4eaf3;
+  border-radius: 18rpx;
+  background: #fafbfe;
+}
+
+.signature-preview {
+  width: 100%;
+  height: 100%;
+}
+
+.resign-tip {
+  position: absolute;
+  right: 12rpx;
+  bottom: 10rpx;
+  padding: 5rpx 12rpx;
+  border-radius: 10rpx;
+  color: #fff;
+  font-size: 19rpx;
+  background: rgba(37, 55, 89, 0.66);
+}
+
 </style>
+
+

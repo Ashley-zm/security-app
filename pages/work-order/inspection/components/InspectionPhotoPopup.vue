@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view v-if="visible" class="popup-mask" @click="$emit('cancel')">
     <view class="popup" @click.stop>
       <view class="popup-title">已拍照片</view>
@@ -37,9 +37,10 @@
             </button>
             <button
               class="photo-action delete-btn"
+              :disabled="isDeleting(photo.id)"
               @click="$emit('remove', photo.id)"
             >
-              ×
+              {{ isDeleting(photo.id) ? "…" : "×" }}
             </button>
           </view>
           <view
@@ -87,6 +88,7 @@ const props = defineProps<{
   photos: InspectionPhoto[];
   remark: string;
   canContinue: boolean;
+  deletingPhotoIds?: string[];
 }>();
 
 const emit = defineEmits<{
@@ -106,6 +108,10 @@ function handleRemarkInput(event: Event) {
   const detailValue = (event as UniInputEvent).detail?.value;
   const targetValue = (event.target as HTMLTextAreaElement | null)?.value;
   emit("remarkChange", String(detailValue ?? targetValue ?? ""));
+}
+
+function isDeleting(photoId: string) {
+  return props.deletingPhotoIds?.includes(photoId) === true;
 }
 
 function statusText(photo: InspectionPhoto) {
@@ -240,6 +246,10 @@ function preview(photo: InspectionPhoto) {
   border-radius: 50%;
   font-size: 28rpx;
 }
+
+.delete-btn[disabled] {
+  opacity: 0.65;
+}
 .retry-btn {
   right: 7rpx;
   bottom: 38rpx;
@@ -313,3 +323,4 @@ function preview(photo: InspectionPhoto) {
   background: $confirm-btn-bg;
 }
 </style>
+
