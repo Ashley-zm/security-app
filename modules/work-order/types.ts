@@ -132,7 +132,7 @@ export interface InspectionTemplateItem {
   inputType?: string | number
   photoRule?: string | number
   maxPhotoCount?: number
-  detectLabels?: Array<string | number>
+  detectLabels?: string
   enabled?: number
 }
 

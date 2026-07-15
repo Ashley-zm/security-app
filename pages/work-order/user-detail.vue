@@ -1,5 +1,5 @@
 <template>
-  <view class="user-detail-page page safe-page">
+  <view class="user-detail-page page">
     <AppNavbar title="用户信息" show-back />
 
     <view v-if="loading" class="state-view">加载中...</view>
@@ -10,16 +10,27 @@
       <button class="retry-btn" @click="loadDetail">重新加载</button>
     </view>
 
-    <scroll-view v-else-if="detail" class="detail-scroll" scroll-y :show-scrollbar="false">
+    <scroll-view
+      v-else-if="detail"
+      class="detail-scroll"
+      scroll-y
+      :show-scrollbar="false"
+    >
       <view class="detail-content">
         <view class="section-block">
           <text class="section-title">工单信息</text>
           <view class="work-order-card">
             <view class="work-order-top">
-              <text class="work-order-no">{{ displayValue(detail.workOrder.workOrderNo) }}</text>
-              <text class="status-tag" :class="workOrderStatusClass">{{ workOrderStatusText }}</text>
+              <text class="work-order-no">{{
+                displayValue(detail.workOrder.workOrderNo)
+              }}</text>
+              <text class="status-tag" :class="workOrderStatusClass">{{
+                workOrderStatusText
+              }}</text>
             </view>
-            <text class="work-order-name">{{ displayValue(detail.workOrder.workOrderName) }}</text>
+            <text class="work-order-name">{{
+              displayValue(detail.workOrder.workOrderName)
+            }}</text>
           </view>
         </view>
 
@@ -28,12 +39,19 @@
           <view class="info-card">
             <view class="info-row with-action">
               <text class="info-label">户名：</text>
-              <text class="info-value">{{ displayValue(detail.workOrderUser.householdName) }}</text>
+              <text class="info-value">{{
+                displayValue(detail.workOrderUser.householdName)
+              }}</text>
               <button class="phone-btn" @click="makePhoneCall">
                 <u-icon name="phone-fill" color="#1677FF" size="17" />
               </button>
             </view>
-            <view v-for="item in userInfoRows" :key="item.label" class="info-row" :class="{ 'address-row': item.isAddress }">
+            <view
+              v-for="item in userInfoRows"
+              :key="item.label"
+              class="info-row"
+              :class="{ 'address-row': item.isAddress }"
+            >
               <text class="info-label">{{ item.label }}：</text>
               <text class="info-value">{{ item.value }}</text>
             </view>
@@ -43,23 +61,36 @@
         <view class="section-block history-section">
           <text class="section-title">安检历史</text>
           <view v-if="historyList.length" class="history-list">
-            <view v-for="record in historyList" :key="record.id" class="history-card">
+            <view
+              v-for="record in historyList"
+              :key="record.id"
+              class="history-card"
+            >
               <view class="history-main">
                 <view class="history-row">
                   <text class="info-label">安检时间：</text>
-                  <text class="info-value">{{ displayValue(record.inspectionFinishTime) }}</text>
+                  <text class="info-value">{{
+                    displayValue(record.inspectionFinishTime)
+                  }}</text>
                 </view>
                 <view class="history-row">
                   <text class="info-label">安检员：</text>
-                  <text class="info-value">{{ displayValue(record.inspectorName) }}</text>
+                  <text class="info-value">{{
+                    displayValue(record.inspectorName)
+                  }}</text>
                 </view>
                 <view class="history-row">
                   <text class="info-label">隐患数：</text>
-                  <text class="info-value">{{ displayValue(record.dangerCount) }}</text>
+                  <text class="info-value">{{
+                    displayValue(record.dangerCount)
+                  }}</text>
                 </view>
                 <view class="history-row result-row">
                   <text class="info-label">安检结果：</text>
-                  <text class="result-tag" :class="getResultClass(record.inspectionResult)">
+                  <text
+                    class="result-tag"
+                    :class="getResultClass(record.inspectionResult)"
+                  >
                     {{ getResultText(record.inspectionResult) }}
                   </text>
                 </view>
@@ -73,9 +104,18 @@
     </scroll-view>
 
     <view v-if="detail" class="inspection-actions">
-      <button v-for="action in inspectionActions" :key="action.mode" class="inspection-action"
-        :class="action.className" @click="handleInspectionAction(action.label)">
-        <image class="action-icon" :src="getActionIcon(action.mode)" mode="aspectFit" />
+      <button
+        v-for="action in inspectionActions"
+        :key="action.mode"
+        class="inspection-action"
+        :class="action.className"
+        @click="handleInspectionAction(action.mode, action.label)"
+      >
+        <image
+          class="action-icon"
+          :src="getActionIcon(action.mode)"
+          mode="aspectFit"
+        />
         <text class="action-title">{{ action.label }}</text>
         <text class="action-desc">{{ action.desc }}</text>
       </button>
@@ -84,166 +124,258 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { onLoad, onPullDownRefresh } from '@dcloudio/uni-app'
-import AppNavbar from '@/components/AppNavbar.vue'
-import { getWorkOrderUserDetailApi } from '@/modules/work-order/api'
-import type { DictDataVO } from '@/modules/common/types'
-import type { InspectionHistoryRecord, WorkOrderUserDetailResult, WorkOrderUserInfoRow } from '@/modules/work-order/types'
-import { getDictLabelByType, getDictLabelByValue, getDictsByTypes } from '@/utils/common'
+import { computed, ref } from "vue";
+import { onLoad, onPullDownRefresh, onUnload } from "@dcloudio/uni-app";
+import AppNavbar from "@/components/AppNavbar.vue";
+import { getWorkOrderUserDetailApi } from "@/modules/work-order/api";
+import type { DictDataVO } from "@/modules/common/types";
+import type {
+  InspectionHistoryRecord,
+  WorkOrderUserDetailResult,
+  WorkOrderUserInfoRow,
+} from "@/modules/work-order/types";
+import {
+  getDictLabelByType,
+  getDictLabelByValue,
+  getDictsByTypes,
+} from "@/utils/common";
+import { useInspectionStore } from "@/stores/inspection";
 
-
-const workOrderUserId = ref('')
-const appointmentTimeFallback = ref('')
-const detail = ref<WorkOrderUserDetailResult | null>(null)
-const loading = ref(false)
-const error = ref('')
-const workOrderStatusText = ref('--')
-const inspectionResultDict = ref<DictDataVO[]>([])
+const workOrderUserId = ref("");
+const appointmentTimeFallback = ref("");
+const detail = ref<WorkOrderUserDetailResult | null>(null);
+const loading = ref(false);
+const error = ref("");
+const workOrderStatusText = ref("--");
+const inspectionResultDict = ref<DictDataVO[]>([]);
+const inspectionStore = useInspectionStore();
+const navigatingToInspection = ref(false);
 
 const inspectionActions = [
-  { mode: 1, label: 'AI 安检', desc: '智能识别记录', icon: 'AI', className: 'is-ai' },
-  { mode: 2, label: '人工安检', desc: '手动逐项录入', icon: '人', className: 'is-manual' },
-  { mode: 3, label: '无法安检', desc: '异常情况记录', icon: '−', className: 'is-unable' }
-]
+  {
+    mode: "1",
+    label: "AI 安检",
+    desc: "智能识别记录",
+    icon: "AI",
+    className: "is-ai",
+  },
+  {
+    mode: "2",
+    label: "人工安检",
+    desc: "手动逐项录入",
+    icon: "人",
+    className: "is-manual",
+  },
+  {
+    mode: "3",
+    label: "无法安检",
+    desc: "异常情况记录",
+    icon: "−",
+    className: "is-unable",
+  },
+];
 
-const historyList = computed<InspectionHistoryRecord[]>(() => detail.value?.historyList || [])
+const historyList = computed<InspectionHistoryRecord[]>(
+  () => detail.value?.historyList || [],
+);
 
 const userInfoRows = computed<WorkOrderUserInfoRow[]>(() => {
-  const user = detail.value?.workOrderUser
+  const user = detail.value?.workOrderUser;
   return [
-    { label: '户号', value: displayValue(user?.householdNo) },
-    { label: '手机号码', value: displayValue(user?.mobilePhone) },
-    { label: '表号', value: displayValue(user?.meterNo) },
-    { label: '预约时间', value: displayValue(user?.appointmentTime || appointmentTimeFallback.value) },
-    { label: '地址', value: displayValue(user?.userAddress), isAddress: true }
-  ]
-})
+    { label: "户号", value: displayValue(user?.householdNo) },
+    { label: "手机号码", value: displayValue(user?.mobilePhone) },
+    { label: "表号", value: displayValue(user?.meterNo) },
+    {
+      label: "预约时间",
+      value: displayValue(
+        user?.appointmentTime || appointmentTimeFallback.value,
+      ),
+    },
+    { label: "地址", value: displayValue(user?.userAddress), isAddress: true },
+  ];
+});
 
-const workOrderStatusClass = computed(() => getUserStatusClass(detail.value?.workOrder.status))
+const workOrderStatusClass = computed(() =>
+  getUserStatusClass(detail.value?.workOrder.status),
+);
 
 onLoad((options) => {
-  workOrderUserId.value = decodeURIComponent(String(options?.id || options?.workOrderUserId || ''))
-  appointmentTimeFallback.value = decodeURIComponent(String(options?.appointmentTime || ''))
-  loadDictionaries()
-  loadDetail()
-})
+  workOrderUserId.value = decodeURIComponent(
+    String(options?.id || options?.workOrderUserId || ""),
+  );
+  appointmentTimeFallback.value = decodeURIComponent(
+    String(options?.appointmentTime || ""),
+  );
+  loadDictionaries();
+  loadDetail();
+  uni.$on("inspection-submitted", handleInspectionSubmitted);
+});
+
+onUnload(() => {
+  uni.$off("inspection-submitted", handleInspectionSubmitted);
+});
 
 onPullDownRefresh(async () => {
-  await Promise.all([loadDictionaries(), loadDetail()])
-  uni.stopPullDownRefresh()
-})
+  await Promise.all([loadDictionaries(), loadDetail()]);
+  uni.stopPullDownRefresh();
+});
 
 async function loadDictionaries() {
-  const dicts = await getDictsByTypes(['inspection_result'])
-  inspectionResultDict.value = dicts.inspection_result || []
+  const dicts = await getDictsByTypes(["inspection_result"]);
+  inspectionResultDict.value = dicts.inspection_result || [];
 }
 
 async function loadDetail() {
   if (!workOrderUserId.value) {
-    error.value = '缺少安检用户 ID'
-    return
+    error.value = "缺少安检用户 ID";
+    return;
   }
 
-  loading.value = true
-  error.value = ''
+  loading.value = true;
+  error.value = "";
   try {
-    const result = await getWorkOrderUserDetailApi(workOrderUserId.value)
-    detail.value = result
-    await resolveWorkOrderStatus(result.workOrder.status)
+    const result = await getWorkOrderUserDetailApi(workOrderUserId.value);
+    // detail.value = result
+    detail.value = result;
+    // 造点历史数据
+    // detail.value.historyList = [
+    //   {
+    //     id: "123456",
+    //     recordNo: "123456",
+    //     inspectionResult: "1",
+    //     dangerCount: 0,
+    //     inspectionFinishTime: "2023-08-01 10:00:00",
+    //   },
+    //   {
+    //     id: "123457",
+    //     recordNo: "123457",
+    //     inspectionResult: "2",
+    //     dangerCount: 1,
+    //     inspectionFinishTime: "2023-08-02 10:00:00",
+    //   },
+    //   {
+    //     id: "123458",
+    //     recordNo: "123458",
+    //     inspectionResult: "3",
+    //     dangerCount: 0,
+    //     inspectionFinishTime: "2023-08-03 10:00:00",
+    //   },
+    // ];
+    await resolveWorkOrderStatus(result.workOrder.status);
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '用户详情加载失败'
+    error.value = err instanceof Error ? err.message : "用户详情加载失败";
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 async function resolveWorkOrderStatus(status?: string | number | null) {
   try {
-    workOrderStatusText.value = await getDictLabelByType('work_order_status', String(status ?? ''))
+    workOrderStatusText.value = await getDictLabelByType(
+      "work_order_status",
+      String(status ?? ""),
+    );
   } catch (error) {
-    workOrderStatusText.value = ''
+    workOrderStatusText.value = "";
   }
-  workOrderStatusText.value = workOrderStatusText.value || statusLabelFallback(status)
+  workOrderStatusText.value = workOrderStatusText.value;
 }
 
 function displayValue(value?: string | number | null) {
-  if (value === undefined || value === null || value === '') return '--'
-  return String(value)
-}
-
-function statusLabelFallback(status?: string | number | null) {
-  const labelMap: Record<string, string> = {
-    '1': '待安检',
-    '2': '安检中',
-    '3': '已完成',
-    '4': '安检失败',
-    '5': '已取消'
-  }
-  return labelMap[String(status ?? '')] || '--'
+  if (value === undefined || value === null || value === "") return "--";
+  return String(value);
 }
 
 function getUserStatusClass(status?: string | number | null) {
   const classMap: Record<string, string> = {
-    '1': 'is-pending',
-    '2': 'is-processing',
-    '3': 'is-completed',
-    '4': 'is-failed',
-    '5': 'is-canceled'
-  }
-  return classMap[String(status ?? '')] || 'is-pending'
+    "1": "is-pending",
+    "2": "is-processing",
+    "3": "is-completed",
+    "4": "is-failed",
+    "5": "is-canceled",
+  };
+  return classMap[String(status ?? "")] || "is-pending";
 }
 
 function getResultText(result?: string | number | null) {
-  if (result === undefined || result === null || result === '') return '--'
-  const value = String(result)
+  if (result === undefined || result === null || result === "") return "--";
+  const value = String(result);
   const fallback: Record<string, string> = {
-    '1': '合格',
-    '2': '不合格',
-    '3': '无法安检'
-  }
-  return getDictLabelByValue(inspectionResultDict.value, value) || fallback[value] || value
+    "1": "合格",
+    "2": "不合格",
+    "3": "无法安检",
+  };
+  return (
+    getDictLabelByValue(inspectionResultDict.value, value) ||
+    fallback[value] ||
+    value
+  );
 }
 
 function getResultClass(result?: string | number | null) {
   const classMap: Record<string, string> = {
-    '1': 'is-passed',
-    '2': 'is-failed',
-    '3': 'is-unable'
-  }
-  return classMap[String(result ?? '')] || 'is-unable'
+    "1": "is-passed",
+    "2": "is-failed",
+    "3": "is-unable",
+  };
+  return classMap[String(result ?? "")] || "is-unable";
 }
 
 function makePhoneCall() {
-  const phone = detail.value?.workOrderUser.mobilePhone
+  const phone = detail.value?.workOrderUser.mobilePhone;
   if (!phone) {
-    uni.showToast({ title: '用户手机号码为空', icon: 'none' })
-    return
+    uni.showToast({ title: "用户手机号码为空", icon: "none" });
+    return;
   }
-  uni.makePhoneCall({ phoneNumber: phone })
+  uni.makePhoneCall({ phoneNumber: phone });
 }
 
-function getActionIcon(mode: number) {
-  const iconMap: Record<number, string> = {
-    1: '/static/images/ai.svg',
-    2: '/static/images/person.svg',
-    3: '/static/images/unable.svg'
-  }
-  return iconMap[mode] || ''
+function getActionIcon(mode: string) {
+  const iconMap: Record<string, string> = {
+    "1": "/static/images/ai.svg",
+    "2": "/static/images/person.svg",
+    "3": "/static/images/unable.svg",
+  };
+  return iconMap[mode] || "";
 }
 
+function handleInspectionAction(mode: string, actionName: string) {
+  if (mode === "1") {
+    if (navigatingToInspection.value) return;
+    if (!detail.value?.template) {
+      uni.showToast({ title: "未配置安检模板", icon: "none" });
+      return;
+    }
+    const currentWorkOrderUserId = String(
+      detail.value.workOrderUser.id || workOrderUserId.value || "",
+    );
+    if (!currentWorkOrderUserId) {
+      uni.showToast({ title: "缺少工单或用户参数", icon: "none" });
+      return;
+    }
+    navigatingToInspection.value = true;
+    inspectionStore.setDetail(detail.value);
+    uni.navigateTo({
+      url: `/pages/work-order/inspection/index?workOrderUserId=${encodeURIComponent(currentWorkOrderUserId)}&inspectionMode=${mode}`,
+      complete: () => {
+        setTimeout(() => {
+          navigatingToInspection.value = false;
+        }, 500);
+      },
+    });
+    return;
+  }
+  uni.showToast({ title: actionName + "功能待接入", icon: "none" });
+}
 
-function handleInspectionAction(actionName: string) {
-  uni.showToast({
-    title: actionName + '功能待接入',
-    icon: 'none'
-  })
+function handleInspectionSubmitted() {
+  void loadDetail();
 }
 </script>
 
 <style lang="scss" scoped>
-@import '@/styles/variables.scss';
-@import '@/styles/mixins.scss';
+@import "@/styles/variables.scss";
+@import "@/styles/mixins.scss";
 
 .user-detail-page {
   display: flex;
@@ -357,6 +489,7 @@ function handleInspectionAction(actionName: string) {
   align-items: flex-start;
   min-width: 0;
   padding: 10rpx 0;
+  font-size: 26rpx;
 }
 
 .info-row.with-action {
@@ -367,7 +500,6 @@ function handleInspectionAction(actionName: string) {
   width: 130rpx;
   flex: 0 0 auto;
   color: #8b9ab7;
-  font-size: 26rpx;
   font-weight: 600;
   line-height: 38rpx;
 }
@@ -375,8 +507,7 @@ function handleInspectionAction(actionName: string) {
 .info-value {
   min-width: 0;
   color: $text-main;
-  font-size: 27rpx;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 38rpx;
   word-break: break-all;
 }
@@ -469,7 +600,8 @@ function handleInspectionAction(actionName: string) {
   gap: 14rpx;
   padding: 18rpx 24rpx calc(18rpx + env(safe-area-inset-bottom));
   background: #fff;
-  box-shadow: 0 -8rpx 24rpx rgba(28, 83, 171, 0.05);
+  box-shadow: 0 8rpx 24rpx rgba(28, 83, 171, 0.2);
+  z-index: 100;
 }
 
 .inspection-action {
@@ -506,7 +638,7 @@ function handleInspectionAction(actionName: string) {
 .action-title {
   margin-top: 5rpx;
   color: $primary-color;
-  font-size: 25rpx;
+  font-size: 26rpx;
   font-weight: 800;
   line-height: 34rpx;
   white-space: nowrap;
@@ -516,7 +648,7 @@ function handleInspectionAction(actionName: string) {
   margin-top: 2rpx;
   overflow: hidden;
   color: $text-muted;
-  font-size: 19rpx;
+  font-size: 20rpx;
   line-height: 26rpx;
   text-overflow: ellipsis;
   white-space: nowrap;
