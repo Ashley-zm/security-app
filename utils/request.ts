@@ -173,6 +173,14 @@ function buildRequestHeader(headers: RequestHeaders | undefined, runtimeConfig: 
   return requestHeaders
 }
 
+export function getRequestTransportConfig(url: string, headers?: RequestHeaders) {
+  const runtimeConfig = getRouteRequestConfig(url)
+  return {
+    url: normalizeUrl(runtimeConfig.baseUrl, url),
+    header: buildRequestHeader(headers, runtimeConfig),
+    timeout: runtimeConfig.timeout
+  }
+}
 function isHttpSuccess(statusCode: number) {
   return statusCode >= 200 && statusCode < 300
 }

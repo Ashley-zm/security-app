@@ -84,6 +84,14 @@
           "bounce": "none"
         }
       }
+    },
+    {
+      "path": "pages/work-order/inspection/index",
+      "style": {
+        "navigationStyle": "custom",
+        "disableScroll": true,
+        "app-plus": { "bounce": "none" }
+      }
     }
   ],
   "globalStyle": {
