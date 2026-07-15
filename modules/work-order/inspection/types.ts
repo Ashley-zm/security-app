@@ -1,4 +1,4 @@
-export type BusinessId = string;
+﻿export type BusinessId = string;
 export type UploadStatus = "pending" | "uploading" | "success" | "failed";
 
 export interface InspectionTemplateSubItem {
@@ -125,3 +125,14 @@ export interface InspectionValidationError {
   itemId: string;
   message: string;
 }
+
+export type InspectionAudioStatus =
+  | "idle"
+  | "starting"
+  | "recording"
+  | "stopping"
+  | "stopped"
+  | "uploading"
+  | "uploaded"
+  | "upload_failed"
+  | "error";

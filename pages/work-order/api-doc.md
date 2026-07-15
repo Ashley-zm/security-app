@@ -4,26 +4,26 @@
 
 **HTTP方法**
 
-| GET | 查询数据 |
-| --- | --- |
+| GET  | 查询数据 |
+| ---- | -------- |
 | POST | 新增数据 |
 | POST | 更新数据 |
 | POST | 删除数据 |
 
 **状态码规范**
 
-| 200 | 成功 |
-| --- | --- |
-| 400 | 请求参数不正确 |
-| 401 | 账号未登录 |
-| 403 | 没有该操作权限 |
-| 404 | 请求未找到 |
-| 405 | 请求方法不正确 |
-| 423 | 请求失败，请稍后重试 |
+| 200 | 成功                     |
+| --- | ------------------------ |
+| 400 | 请求参数不正确           |
+| 401 | 账号未登录               |
+| 403 | 没有该操作权限           |
+| 404 | 请求未找到               |
+| 405 | 请求方法不正确           |
+| 423 | 请求失败，请稍后重试     |
 | 429 | 请求过于频繁，请稍后重试 |
-| 500 | 系统异常 |
-| 501 | 功能未实现/未开启 |
-| 502 | 错误的配置项 |
+| 500 | 系统异常                 |
+| 501 | 功能未实现/未开启        |
+| 502 | 错误的配置项             |
 
 **请求头**
 
@@ -45,13 +45,13 @@ GET `/inspection/app/workOrder/v0.2/list`
 
 ● 请求参数
 
-| 字段名 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| status | Integer | 否 | 工单状态：1未开始，2进行中，3已完成，4已取消，5已结束 |
-| workOrderName | String | 否 | 安检工单编号或者名称 模糊查询 |
-| sort | int | 否 | 工单时间排序(1:正序 2:倒序) |
-| pageNum | int | 否 | 当前页数 |
-| pageSize | int | 否 | 分页大小 |
+| 字段名        | 类型    | 必填 | 说明                                                  |
+| ------------- | ------- | ---- | ----------------------------------------------------- |
+| status        | Integer | 否   | 工单状态：1未开始，2进行中，3已完成，4已取消，5已结束 |
+| workOrderName | String  | 否   | 安检工单编号或者名称 模糊查询                         |
+| sort          | int     | 否   | 工单时间排序(1:正序 2:倒序)                           |
+| pageNum       | int     | 否   | 当前页数                                              |
+| pageSize      | int     | 否   | 分页大小                                              |
 
 ● 请求实例
 
@@ -59,11 +59,10 @@ GET `/inspection/app/workOrder/v0.2/list`
 {
   "status": 1, // 工单状态
   "workOrderName": "啊啊", // 安检工单编号或者名称
-  "sort":1,// 排序 
+  "sort": 1, // 排序
   "pageNum": 1, // 当前页数
-  "pageSize": 10 // 分页大小
+  "pageSize": 10, // 分页大小
 }
-
 ```
 
 ● 响应返回
@@ -112,14 +111,14 @@ GET `/inspection/app/workOrder/v0.2/{id}/users/list`
 
 ● 请求参数
 
-| 字段名 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| id | Long | 是 | 安检工单ID，路径参数 |
-| keyword | String | 否 | 搜索关键词，支持户号、户名、手机号、地址、表号|
-| sort | int | 否 | 时间排序(1:正序 2:倒序) |
-| status | Integer | 否 | 字典项：order_user_status |
-| pageNum | int | 否 | 当前页数 |
-| pageSize | int | 否 | 分页大小 |
+| 字段名   | 类型    | 必填 | 说明                                           |
+| -------- | ------- | ---- | ---------------------------------------------- |
+| id       | Long    | 是   | 安检工单ID，路径参数                           |
+| keyword  | String  | 否   | 搜索关键词，支持户号、户名、手机号、地址、表号 |
+| sort     | int     | 否   | 时间排序(1:正序 2:倒序)                        |
+| status   | Integer | 否   | 字典项：order_user_status                      |
+| pageNum  | int     | 否   | 当前页数                                       |
+| pageSize | int     | 否   | 分页大小                                       |
 
 ● 请求实例
 
@@ -128,9 +127,8 @@ GET `/inspection/app/workOrder/v0.2/{id}/users/list`
   "status": 1, // 明细状态
   "keyword": "张三", // 户名
   "pageNum": 1, // 当前页数
-  "pageSize": 10 // 分页大小
+  "pageSize": 10, // 分页大小
 }
-
 ```
 
 ● 响应返回
@@ -165,10 +163,10 @@ GET `/inspection/app/workOrder/v0.2/{id}/users/list`
       "inspectionRecordId": null, // 安检记录ID
       "finishTime": null, // 用户安检完成时间
       "status": 1, // 明细状态
-      "remark": "" // 备注
-    }
+      "remark": "", // 备注
+    },
   ],
-  "total": 1 // 总记录数
+  "total": 1, // 总记录数
 }
 ```
 
@@ -184,17 +182,16 @@ GET `/inspection/app/workOrder/v0.2/users/{workOrderUserId}/detail`
 
 ● 请求参数
 
-| 字段名 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| workOrderUserId | Long | 是 | 工单用户明细ID，路径参数 |
+| 字段名          | 类型 | 必填 | 说明                     |
+| --------------- | ---- | ---- | ------------------------ |
+| workOrderUserId | Long | 是   | 工单用户明细ID，路径参数 |
 
 ● 请求实例
 
 ```jsonc
 {
-  "workOrderUserId": 5001 // 工单用户明细ID
+  "workOrderUserId": 5001, // 工单用户明细ID
 }
-
 ```
 
 ● 响应返回
@@ -204,16 +201,15 @@ GET `/inspection/app/workOrder/v0.2/users/{workOrderUserId}/detail`
   "code": 200, // 响应状态码
   "msg": "操作成功", // 响应消息
   "data": {
-    "workOrder": { // 工单信息
+    "workOrder": {
+      // 工单信息
       "id": 1001, // 安检工单ID
       "workOrderNo": "AJGD20260702103001", // 安检工单号
       "workOrderName": "片区A居民安检工单", // 安检工单名称
-      "templateId": 3, // 安检模板ID
-      "templateName": "居民安检模板", // 安检模板名称
-      "status": 2, // 工单状态
-      "assignStatus": 4 // 派单状态
+      "status": "1", // 工单状态 字典项：work_order_status
     },
-    "workOrderUser": { // 工单用户明细
+    "workOrderUser": {
+      // 工单用户明细
       "id": 5001, // 工单用户明细ID
       "gasUserId": 2001, // 燃气用户ID
       "householdNo": "HZ001", // 户号
@@ -221,80 +217,69 @@ GET `/inspection/app/workOrder/v0.2/users/{workOrderUserId}/detail`
       "userAddress": "阳光小区1幢101", // 用户地址
       "mobilePhone": "13500000000", // 手机号码
       "meterNo": "B001", // 表号
-      "meterStatus": "1", // 表状态
-      "status": 1 // 明细状态
+      "status": "1", // 用户状态 字典项：order_user_status
     },
-    "template": { // 安检模板完整树
+    "template": {
+      // 安检模板完整树
       "id": 3, // 模板ID
       "templateName": "居民安检模板", // 安检模板名称
       "templateType": "1", // 模板类型
       "templateVersion": "V1.0", // 模板版本
-      "groupList": [ // 一级分组列表
+      "groupList": [
+        // 一级分组列表
         {
           "id": 31, // 分组ID
           "groupName": "燃气表检查", // 分组名称
-          "itemList": [ // 二级安检项列表
+          "itemList": [
+            // 二级安检项列表
             {
               "id": 301, // 安检项ID
               "itemName": "表读数", // 安检项名称
+              "itemDesc": "请填写当前表读数", // 安检项描述
               "checkStandard": "填写当前表读数", // 检查标准
-              "inputType": "4", // 录入类型
-              "photoRule": "3", // 拍照规则
-              "required": 1, // 是否必检
-              "subItemList": [] // 三级隐患项列表
-            }
-          ]
-        }
-      ]
+              "inputType": "4", // 录入类型 字典项：input_type
+              "photoRule": "3", // 拍照规则 字典项：photo_rule
+              "maxPhotoCount": 1, // 最大拍照数量
+              "detectLabels": ["1", "2"], // 识别标签 字典项：detect_label
+              "enabled": 1, // 是否启用 0否，1是
+              "subItemList": [
+                {
+                  "id": "2071850846356570113",
+                  "subItemName": "正常",// 三级隐患项名称
+                  "subItemType": "1",// 三级隐患项类型 字典项：sub_item_type
+                  "dangerType": null,// 隐患类型 字典维护：danger_type
+                  "dangerLevelName": null,// 隐患等级 字典维护：danger_level
+                  "enabled": 1,// 是否启用 0否，1是
+                },
+                {
+                  "id": "2071850846339792898",
+                  "subItemName": "表面严重腐蚀",// 三级隐患项名称
+                  "subItemType": "2",// 三级隐患项类型 字典项：sub_item_type
+                  "dangerType": "gas_leak",// 隐患类型 字典维护：danger_type
+                  "dangerLevelName": "1",// 隐患等级 字典维护：danger_level
+                  "enabled": 1,// 是否启用 0否，1是
+                },
+              ], // 三级隐患项列表
+            },
+          ],
+        },
+      ],
     },
-    "historyList": [ // 历史安检记录
+    "historyList": [
+      // 历史安检记录
       {
         "id": 7999, // 安检记录ID
         "recordNo": "AJJL20250101101001", // 安检记录编号
         "inspectionFinishTime": "2025-01-01 10:10:00", // 安检完成时间
         "inspectionResult": 1, // 安检结果
-        "dangerCount": 0 // 隐患数量
-      }
-    ]
-  }
+        "dangerCount": 0, // 隐患数量
+      },
+    ],
+  },
 }
 ```
 
-## 4：APP开始执行单户安检
-
-● 接口描述
-
-安检员进入某户的模板填写页前调用，将工单用户明细从待安检推进到安检中。
-
-● 请求地址
-
-POST `/inspection/app/workOrder/v0.1/users/{workOrderUserId}/start`
-
-● 请求参数
-
-| 字段名 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| workOrderUserId | Long | 是 | 工单用户明细ID，路径参数 |
-
-● 请求实例
-
-```jsonc
-{
-  "workOrderUserId": 5001 // 工单用户明细ID
-}
-
-```
-
-● 响应返回
-
-```jsonc
-{
-  "code": 200, // 响应状态码
-  "msg": "操作成功" // 响应消息
-}
-```
-
-## 5：APP设置单户预约时间
+## 4：APP设置单户预约时间
 
 ● 接口描述
 
@@ -302,14 +287,14 @@ POST `/inspection/app/workOrder/v0.1/users/{workOrderUserId}/start`
 
 ● 请求地址
 
-POST `/inspection/app/workOrder/v0.1/users/{workOrderUserId}/appointment`
+POST `/inspection/app/workOrder/v0.2/users/{workOrderUserId}/appointment`
 
 ● 请求参数
 
-| 字段名 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| workOrderUserId | Long | 是 | 工单用户明细ID，路径参数 |
-| appointmentTime | Date | 是 | 预约安检时间 |
+| 字段名          | 类型 | 必填 | 说明                     |
+| --------------- | ---- | ---- | ------------------------ |
+| workOrderUserId | Long | 是   | 工单用户明细ID，路径参数 |
+| appointmentTime | Date | 是   | 预约安检时间             |
 
 ● 请求实例
 
@@ -318,7 +303,6 @@ POST `/inspection/app/workOrder/v0.1/users/{workOrderUserId}/appointment`
   "workOrderUserId": 5001, // 工单用户明细ID
   "appointmentTime": "2026-07-02 15:00:00", // 预约安检时间
 }
-
 ```
 
 ● 响应返回
@@ -326,11 +310,11 @@ POST `/inspection/app/workOrder/v0.1/users/{workOrderUserId}/appointment`
 ```jsonc
 {
   "code": 200, // 响应状态码
-  "msg": "操作成功" // 响应消息
+  "msg": "操作成功", // 响应消息
 }
 ```
 
-## 6：APP AI识别
+## 5：APP AI识别
 
 ● 接口描述
 
@@ -342,11 +326,11 @@ POST `/inspection/app/workOrder/v0.2/ai/recognize`
 
 ● 请求参数
 
-| 字段名 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| workOrderUserId | Long | 是 | 工单用户明细ID |
-| itemId | Long | 是 | 模板检查项ID |
-| photoUrl | String | 是 | 图片地址 |
+| 字段名          | 类型   | 必填 | 说明           |
+| --------------- | ------ | ---- | -------------- |
+| workOrderUserId | Long   | 是   | 工单用户明细ID |
+| itemId          | Long   | 是   | 模板检查项ID   |
+| photoUrl        | String | 是   | 图片地址       |
 
 ● 请求实例
 
@@ -354,9 +338,8 @@ POST `/inspection/app/workOrder/v0.2/ai/recognize`
 {
   "workOrderUserId": 5001, // 工单用户明细ID
   "itemId": 301, // 模板检查项ID
-  "photoUrl": "/inspection/upload/2026/07/02/meter.jpg" // 图片地址
+  "photoUrl": "/inspection/upload/2026/07/02/meter.jpg", // 图片地址
 }
-
 ```
 
 ● 响应返回
@@ -379,12 +362,12 @@ POST `/inspection/app/workOrder/v0.2/ai/recognize`
     "status": 1, // 识别状态
     "errorMessage": null, // 失败原因
     "analysisTime": "2026-07-02 10:30:00", // 识别时间
-    "remark": "" // 备注
-  }
+    "remark": "", // 备注
+  },
 }
 ```
 
-## 7：APP正式提交安检结果
+## 6：APP正式提交安检结果
 
 ● 接口描述
 
@@ -396,42 +379,42 @@ POST `/inspection/app/workOrder/v0.2/submit`
 
 ● 请求参数
 
-| 字段名 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| workOrderUserId | Long | 是 | 工单用户明细ID |
-| inspectionMode | Integer | 是 | 安检方式：1 AI安检，2人工安检，3无法安检 |
-| inspectionResult | Integer | 是 | 安检结果：1合格，2不合格，3无法安检 |
-| unableReason | Integer | 否 | 无法安检原因：1到访不遇，2拒绝安检 |
-| signatureUrl | String | 否 | 用户签名图片地址 |
-| remark | String | 否 | 备注 |
-| itemList | Array | 否 | 检查项结果列表，无法安检时可为空 |
-| unablePhotoList | Array | 否 | 无法安检证明图片列表 |
-| itemList\[\].itemId | Long | 是 | 模板检查项ID |
-| itemList\[\].checkResult | Integer | 否 | 检查结果：1合格，2异常；文本/数字录入项可为空 |
-| itemList\[\].resultValue | String | 否 | 填写值/选择值，例如表读数 |
-| itemList\[\].aiSuggestion | String | 否 | AI建议 |
-| itemList\[\].photoList | Array | 否 | 检查项图片列表 |
-| itemList\[\].dangerList | Array | 否 | 检查项隐患列表 |
-| itemList\[\].aiLogList | Array | 否 | AI识别日志列表 |
-| photoList\[\].photoUrl | String | 是 | 图片地址 |
-| photoList\[\].photoName | String | 否 | 图片名称 |
-| photoList\[\].photoType | Integer | 否 | 图片类型：1检查项图片，2隐患图片，3无法安检图片，4签名图片 |
-| photoList\[\].uploadSource | Integer | 否 | 上传来源：1人工上传，2AI拍照 |
-| photoList\[\].sortNo | Integer | 否 | 排序号 |
-| dangerList\[\].templateDangerId | Long | 否 | 模板隐患项ID |
-| dangerList\[\].dangerType | Integer | 否 | 隐患类型 |
-| dangerList\[\].dangerName | String | 是 | 隐患名称 |
-| dangerList\[\].dangerLevel | Integer | 否 | 隐患等级：1一级，2二级，3三级 |
-| dangerList\[\].dangerDesc | String | 否 | 隐患描述 |
-| dangerList\[\].rectifyDays | Integer | 否 | 整改时限，单位天 |
-| aiLogList\[\].photoUrl | String | 否 | 识别图片地址 |
-| aiLogList\[\].requestJson | String | 否 | AI请求报文 |
-| aiLogList\[\].responseJson | String | 否 | AI响应报文 |
-| aiLogList\[\].aiResult | String | 否 | AI识别结果 |
-| aiLogList\[\].aiSuggestion | String | 否 | AI建议 |
-| aiLogList\[\].confidence | BigDecimal | 否 | 置信度 |
-| aiLogList\[\].status | Integer | 否 | 识别状态：1成功，2失败 |
-| aiLogList\[\].errorMessage | String | 否 | 失败原因 |
+| 字段名                          | 类型       | 必填 | 说明                                                       |
+| ------------------------------- | ---------- | ---- | ---------------------------------------------------------- |
+| workOrderUserId                 | Long       | 是   | 工单用户明细ID                                             |
+| inspectionMode                  | Integer    | 是   | 安检方式：1 AI安检，2人工安检，3无法安检                   |
+| inspectionResult                | Integer    | 是   | 安检结果：1合格，2不合格，3无法安检                        |
+| unableReason                    | Integer    | 否   | 无法安检原因：1到访不遇，2拒绝安检                         |
+| signatureUrl                    | String     | 否   | 用户签名图片地址                                           |
+| remark                          | String     | 否   | 备注                                                       |
+| itemList                        | Array      | 否   | 检查项结果列表，无法安检时可为空                           |
+| unablePhotoList                 | Array      | 否   | 无法安检证明图片列表                                       |
+| itemList\[\].itemId             | Long       | 是   | 模板检查项ID                                               |
+| itemList\[\].checkResult        | Integer    | 否   | 检查结果：1合格，2异常；文本/数字录入项可为空              |
+| itemList\[\].resultValue        | String     | 否   | 填写值/选择值，例如表读数                                  |
+| itemList\[\].aiSuggestion       | String     | 否   | AI建议                                                     |
+| itemList\[\].photoList          | Array      | 否   | 检查项图片列表                                             |
+| itemList\[\].dangerList         | Array      | 否   | 检查项隐患列表                                             |
+| itemList\[\].aiLogList          | Array      | 否   | AI识别日志列表                                             |
+| photoList\[\].photoUrl          | String     | 是   | 图片地址                                                   |
+| photoList\[\].photoName         | String     | 否   | 图片名称                                                   |
+| photoList\[\].photoType         | Integer    | 否   | 图片类型：1检查项图片，2隐患图片，3无法安检图片，4签名图片 |
+| photoList\[\].uploadSource      | Integer    | 否   | 上传来源：1人工上传，2AI拍照                               |
+| photoList\[\].sortNo            | Integer    | 否   | 排序号                                                     |
+| dangerList\[\].templateDangerId | Long       | 否   | 模板隐患项ID                                               |
+| dangerList\[\].dangerType       | Integer    | 否   | 隐患类型                                                   |
+| dangerList\[\].dangerName       | String     | 是   | 隐患名称                                                   |
+| dangerList\[\].dangerLevel      | Integer    | 否   | 隐患等级：1一级，2二级，3三级                              |
+| dangerList\[\].dangerDesc       | String     | 否   | 隐患描述                                                   |
+| dangerList\[\].rectifyDays      | Integer    | 否   | 整改时限，单位天                                           |
+| aiLogList\[\].photoUrl          | String     | 否   | 识别图片地址                                               |
+| aiLogList\[\].requestJson       | String     | 否   | AI请求报文                                                 |
+| aiLogList\[\].responseJson      | String     | 否   | AI响应报文                                                 |
+| aiLogList\[\].aiResult          | String     | 否   | AI识别结果                                                 |
+| aiLogList\[\].aiSuggestion      | String     | 否   | AI建议                                                     |
+| aiLogList\[\].confidence        | BigDecimal | 否   | 置信度                                                     |
+| aiLogList\[\].status            | Integer    | 否   | 识别状态：1成功，2失败                                     |
+| aiLogList\[\].errorMessage      | String     | 否   | 失败原因                                                   |
 
 ● 请求实例：AI安检/人工安检
 
@@ -441,7 +424,6 @@ POST `/inspection/app/workOrder/v0.2/submit`
   "inspectionMode": 1, // 安检方式
   "inspectionResult": 2, // 安检结果
   "signatureUrl": "/inspection/upload/2026/07/02/sign.png", // 用户签名图片地址
-  "remark": "用户已签字确认", // 备注
   "itemList": [ // 检查项结果列表
     {
       "itemId": 301, // 模板检查项ID
@@ -506,17 +488,17 @@ POST `/inspection/app/workOrder/v0.2/submit`
   "inspectionResult": 3, // 安检结果
   "unableReason": 1, // 无法安检原因
   "remark": "到访不遇，已拍照留证", // 备注
-  "unablePhotoList": [ // 无法安检证明图片列表
+  "unablePhotoList": [
+    // 无法安检证明图片列表
     {
       "photoUrl": "/inspection/upload/2026/07/02/unable.jpg", // 图片地址
       "photoName": "unable.jpg", // 图片名称
       "photoType": 3, // 图片类型
       "uploadSource": 1, // 上传来源
-      "sortNo": 1 // 排序号
-    }
-  ]
+      "sortNo": 1, // 排序号
+    },
+  ],
 }
-
 ```
 
 ● 响应返回
@@ -537,12 +519,12 @@ POST `/inspection/app/workOrder/v0.2/submit`
     "inspectionResult": 2, // 安检结果
     "dangerCount": 1, // 隐患数量
     "signatureUrl": "/inspection/upload/2026/07/02/sign.png", // 用户签名图片地址
-    "status": 2 // 记录状态
-  }
+    "status": 2, // 记录状态
+  },
 }
 ```
 
-## 8：首页统计
+## 7：首页统计
 
 查询今日待安检用户数量，和今日安检过的高风险用户数量
 
@@ -562,9 +544,9 @@ POST `/inspection/app/workOrder/v0.2/statistics`
 
 ● 请求参数
 
-| 字段名 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| userId | Long | 是 | 用户id |
+| 字段名 | 类型 | 必填 | 说明   |
+| ------ | ---- | ---- | ------ |
+| userId | Long | 是   | 用户id |
 
 ● 请求实例
 
@@ -572,7 +554,6 @@ POST `/inspection/app/workOrder/v0.2/statistics`
 {
   "userId": 63236, // 用户id
 }
-
 ```
 
 ● 响应返回

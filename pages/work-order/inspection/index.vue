@@ -121,6 +121,12 @@
       @cancel="closeSignaturePopup"
       @confirm="confirmSignature"
     />
+    <InspectionAudioFloat
+      v-if="workOrderUserId"
+      :status="audioStatus"
+      :duration="audioDuration"
+      :error-message="audioErrorMessage"
+    />
     <view v-if="!loading && !isEmpty && !loadError" class="submit-bar">
       <button
         class="submit-btn"
@@ -128,7 +134,7 @@
         :disabled="submitting"
         @click="submit"
       >
-        {{ signature.fileId ? "确认并提交" : "提交安检结果" }}
+        {{ submitButtonText }}
       </button>
       <text class="progress-text">
         智能记录 {{ totalProgress.completed }}/{{ totalProgress.total }} 项
@@ -143,9 +149,11 @@ import { onBackPress, onLoad } from "@dcloudio/uni-app";
 import InspectionGroup from "@/pages/work-order/inspection/components/InspectionGroup.vue";
 import InspectionPhotoPopup from "@/pages/work-order/inspection/components/InspectionPhotoPopup.vue";
 import InspectionSignaturePopup from "@/pages/work-order/inspection/components/InspectionSignaturePopup.vue";
+import InspectionAudioFloat from "@/pages/work-order/inspection/components/InspectionAudioFloat.vue";
 import { normalizeMaxPhotoCount } from "@/pages/work-order/inspection/constants/inspection";
 import { useInspectionForm } from "@/pages/work-order/inspection/composables/useInspectionForm";
 import { useInspectionDictionaries } from "@/pages/work-order/inspection/composables/useInspectionDictionaries";
+import { useInspectionAudioRecorder } from "@/pages/work-order/inspection/composables/useInspectionAudioRecorder";
 import { captureInspectionPhotos } from "@/pages/work-order/inspection/composables/useInspectionCamera";
 import { getWorkOrderUserDetailApi } from "@/modules/work-order/api";
 import { deleteFileApi, uploadFilesApi } from "@/modules/common/api";
@@ -175,6 +183,7 @@ const template = ref<InspectionTemplate | null>(null);
 const loading = ref(true);
 const loadError = ref("");
 const submitting = ref(false);
+const inspectionSubmittedToServer = ref(false);
 const inspectionMode = ref<string>("1");
 const expandedGroups = reactive<Record<string, boolean>>({});
 const scrollTarget = ref("");
@@ -205,6 +214,17 @@ const {
   validate,
   buildSubmitRequest,
 } = useInspectionForm();
+const {
+  status: audioStatus,
+  duration: audioDuration,
+  uploadedFile: uploadedAudioFile,
+  errorMessage: audioErrorMessage,
+  startRecording,
+  stopRecording,
+  uploadRecording,
+  stopForPageClose,
+  dispose: disposeAudioRecorder,
+} = useInspectionAudioRecorder();
 const popupPhotos = computed(() => {
   const item = photoPopupItem.value;
   return item ? formData[String(item.id)]?.photos || [] : [];
@@ -229,6 +249,16 @@ const signatureStatusText = computed(() => {
   if (signature.uploadStatus === "failed") return "上传失败";
   return "未签名";
 });
+const submitButtonText = computed(() => {
+  if (submitting.value) return "正在提交...";
+  if (
+    inspectionSubmittedToServer.value &&
+    !uploadedAudioFile.value?.fileId
+  ) {
+    return "重试上传录音";
+  }
+  return signature.fileId ? "确认并提交" : "提交安检结果";
+});
 const isEmpty = computed(
   () =>
     !template.value ||
@@ -241,6 +271,7 @@ onLoad((options) => {
     String(options?.workOrderUserId || ""),
   );
   inspectionMode.value = String(options?.inspectionMode || "1");
+  void startRecording(workOrderUserId.value);
   loadTemplate();
 });
 onBackPress(() => {
@@ -256,12 +287,13 @@ onBackPress(() => {
     cancelPhotoPopup();
     return true;
   }
-  if (!dirty.value || submitted.value || navigatingBack.value) return false;
+  if (navigatingBack.value) return false;
   requestBack();
   return true;
 });
 onBeforeUnmount(() => {
   if (highlightTimer) clearTimeout(highlightTimer);
+  disposeAudioRecorder();
 });
 // 加载安检模板
 async function loadTemplate() {
@@ -657,6 +689,8 @@ async function submit() {
 
   submitting.value = true;
   try {
+    // 所有业务校验通过后才结束录音，校验失败不会中断录音。
+    await stopRecording();
     const payload = buildSubmitRequest({
       workOrderUserId: workOrderUserId.value,
       templateId: String(template.value.id),
@@ -664,7 +698,34 @@ async function submit() {
       signatureFileId: signature.fileId,
       signatureUrl: signature.fileUrl,
     });
-    await submitInspectionRecordApi(payload);
+
+    // 首次提交并发上传录音和提交安检结果；部分成功后仅重试失败的一方。
+    const audioTask = uploadedAudioFile.value?.fileId
+      ? Promise.resolve(uploadedAudioFile.value)
+      : uploadRecording(workOrderUserId.value);
+    const inspectionTask = inspectionSubmittedToServer.value
+      ? Promise.resolve()
+      : submitInspectionRecordApi(payload).then(() => {
+          inspectionSubmittedToServer.value = true;
+        });
+    const [audioResult, inspectionResult] = await Promise.allSettled([
+      audioTask,
+      inspectionTask,
+    ]);
+    const audioSucceeded = audioResult.status === "fulfilled";
+    const inspectionSucceeded = inspectionResult.status === "fulfilled";
+
+    if (!audioSucceeded || !inspectionSucceeded) {
+      let message = "录音上传及安检结果提交失败，请重试";
+      if (inspectionSucceeded && !audioSucceeded) {
+        message = "安检结果已提交，录音上传失败，请重新提交";
+      } else if (audioSucceeded && !inspectionSucceeded) {
+        message = "录音已上传，安检结果提交失败，请重试";
+      }
+      uni.showToast({ title: message, icon: "none" });
+      return;
+    }
+
     submitted.value = true;
     dirty.value = false;
     store.clear();
@@ -673,17 +734,21 @@ async function submit() {
       userId: userId.value,
     });
     uni.showToast({ title: "提交成功", icon: "success" });
-    setTimeout(() => uni.navigateBack(), 500);
+    setTimeout(() => {
+      void navigateBackAfterStopping();
+    }, 500);
   } catch (error) {
     uni.showToast({
-      title: error instanceof Error ? error.message : "提交失败",
+      title:
+        error instanceof Error
+          ? error.message
+          : "录音结束失败，暂无法提交",
       icon: "none",
     });
   } finally {
     submitting.value = false;
   }
 }
-
 // 聚焦错误项
 function focusError(groupId: string, itemId: string) {
   expandedGroups[groupId] = true;
@@ -697,21 +762,34 @@ function focusError(groupId: string, itemId: string) {
     errorItemId.value = "";
   }, 1800);
 }
+// 页面关闭前自动结束录音，但未提交时不上传录音文件。
+async function navigateBackAfterStopping(clearStore = false) {
+  if (navigatingBack.value) return;
+  navigatingBack.value = true;
+  await stopForPageClose();
+  if (clearStore) store.clear();
+  uni.navigateBack();
+}
+
 // 确认退出
 function requestBack() {
-  if (!dirty.value || submitted.value) {
-    navigatingBack.value = true;
-    uni.navigateBack();
+  if (submitting.value) {
+    uni.showToast({ title: "正在提交，请稍候", icon: "none" });
     return;
   }
+  if (!dirty.value || submitted.value) {
+    void navigateBackAfterStopping();
+    return;
+  }
+  const content = inspectionSubmittedToServer.value
+    ? "安检结果已提交，但录音尚未上传，确定退出吗？"
+    : "当前安检结果尚未提交，确定退出吗？";
   uni.showModal({
     title: "确认退出",
-    content: "当前安检结果尚未提交，确定退出吗？",
+    content,
     success: (result) => {
       if (result.confirm) {
-        navigatingBack.value = true;
-        store.clear();
-        uni.navigateBack();
+        void navigateBackAfterStopping(true);
       }
     },
   });
@@ -1029,5 +1107,7 @@ function requestBack() {
 }
 
 </style>
+
+
 
 

@@ -28,21 +28,32 @@ function parseUploadResponse(rawData: string): UploadApiResponse {
   return parsed as UploadApiResponse;
 }
 
-/** 批量上传文件；uploadType 默认为 1（安检图片）。 */
+/**
+ * 批量上传文件；uploadType 默认为 1（安检图片）\2（录音）\3（签名）。
+ * businessId 通用业务关联值；当前仅录音使用uploadType为2时，传工单用户明细id:workOrderUserId
+ * */
 export function uploadFilesApi(
   filePaths: string[],
   uploadType: FileUploadType = 1,
+  businessId?: string,
 ): Promise<UploadedFileVO[]> {
   const paths = [...new Set(filePaths.filter(Boolean))];
   if (!paths.length) return Promise.reject(new Error("请选择需要上传的文件"));
 
   const transport = getRequestTransportConfig("/inspection/file/v0.2/upload");
   return new Promise((resolve, reject) => {
+    let params: Record<string, string> = {
+      uploadType: String(uploadType),
+    };
+    if (businessId) {
+      params["businessId"] = businessId;
+    }
+    console.log("params", params);
     uni.uploadFile({
       url: transport.url,
       files: paths.map((uri) => ({ name: "files", uri })),
       header: transport.header,
-      formData: { uploadType: String(uploadType) },
+      formData: params,
       timeout: transport.timeout,
       success: (result) => {
         console.log("44444上传成功", result);
@@ -87,4 +98,3 @@ export function deleteFileApi(fileId: string): Promise<void> {
     method: "DELETE",
   });
 }
-
