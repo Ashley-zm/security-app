@@ -101,9 +101,6 @@ const tabs = ref<DictDataVO[]>([])
 const tabCountStyle = computed(() => ({
   gridTemplateColumns: `repeat(${tabs.value.length}, minmax(0, 1fr))`
 }))
-getDictsByTypes(['work_order_status'], true).then((dicts) => {
-  tabs.value = dicts.work_order_status || []
-})
 
 const activeStatus = computed<string>(() => store.queryParams.status || 'all')
 const timeSortIcon = computed(() => (
@@ -120,6 +117,9 @@ const orderViews = computed<WorkOrderCardView[]>(() => {
 //   store.refresh()
 // })
 onShow(() => {
+getDictsByTypes(['work_order_status'], true).then((dicts) => {
+  tabs.value = dicts.work_order_status || []
+})
   searchKeyword.value = store.queryParams.workOrderName || ''
   timeSort.value = store.queryParams.sort || 2
   store.refresh()
