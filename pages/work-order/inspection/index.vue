@@ -7,12 +7,12 @@
           <text class="title">AI Agent 安检</text>
           <text class="subtitle">智能识别回填，请确认结果</text>
         </view>
-        <button
-          class="manual-btn"
-          :disabled="inspectionMode === '2'"
-          @click="switchManual"
-        >
-          {{ inspectionMode === "2" ? "人工填写" : "切换人工" }}
+        <button class="manual-btn" @click="switchManual">
+          {{
+            inspectionMode === INSPECTION_ACTIONS.MANUAL.mode
+              ? "人工填写"
+              : "切换人工"
+          }}
         </button>
       </view>
     </view>
@@ -153,7 +153,10 @@ import InspectionGroup from "@/pages/work-order/inspection/components/Inspection
 import InspectionPhotoPopup from "@/pages/work-order/inspection/components/InspectionPhotoPopup.vue";
 import InspectionSignaturePopup from "@/pages/work-order/inspection/components/InspectionSignaturePopup.vue";
 import InspectionAudioFloat from "@/pages/work-order/inspection/components/InspectionAudioFloat.vue";
-import { normalizeMaxPhotoCount } from "@/pages/work-order/inspection/constants/inspection";
+import {
+  normalizeMaxPhotoCount,
+  INSPECTION_ACTIONS,
+} from "@/pages/work-order/inspection/constants/inspection";
 import { useInspectionForm } from "@/pages/work-order/inspection/composables/useInspectionForm";
 import { useInspectionDictionaries } from "@/pages/work-order/inspection/composables/useInspectionDictionaries";
 import { useInspectionAudioRecorder } from "@/pages/work-order/inspection/composables/useInspectionAudioRecorder";
@@ -186,7 +189,7 @@ const loading = ref(true);
 const loadError = ref("");
 const submitting = ref(false);
 const inspectionSubmittedToServer = ref(false);
-const inspectionMode = ref<string>("1");
+const inspectionMode = ref<string>(INSPECTION_ACTIONS.AI.mode);
 const expandedGroups = reactive<Record<string, boolean>>({});
 const scrollTarget = ref("");
 const errorItemId = ref("");
@@ -266,10 +269,8 @@ const isEmpty = computed(
 );
 
 onLoad((options) => {
-  workOrderUserId.value = decodeURIComponent(
-    String(options?.workOrderUserId || ""),
-  );
-  inspectionMode.value = String(options?.inspectionMode || "1");
+  workOrderUserId.value = decodeURIComponent(options?.workOrderUserId || "");
+  inspectionMode.value = options?.inspectionMode;
   void startRecording(workOrderUserId.value);
   loadTemplate();
 });
@@ -644,13 +645,13 @@ async function confirmSignature(localPath: string) {
 }
 // 切换人工填写
 function switchManual() {
-  if (inspectionMode.value === "2") return;
+  if (inspectionMode.value === INSPECTION_ACTIONS.MANUAL.mode) return;
   uni.showModal({
     title: "切换人工填写",
     content: "切换人工填写后，AI 自动回填结果将保留，您可以手动修改。",
     success: (result) => {
       if (result.confirm) {
-        inspectionMode.value = "2";
+        inspectionMode.value = INSPECTION_ACTIONS.MANUAL.mode;
         dirty.value = true;
       }
     },

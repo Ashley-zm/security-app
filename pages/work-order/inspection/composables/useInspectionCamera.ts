@@ -42,6 +42,8 @@ function getAiResult(
   detectMode: string,
   isSingleImage: boolean = false,
 ): string {
+  console.log("getAiResult", result);
+
   if (detectMode === "photo_only") {
     return "";
   }

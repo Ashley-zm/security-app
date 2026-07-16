@@ -19,26 +19,26 @@ export function normalizeMaxPhotoCount(value?: number | null) {
     : DEFAULT_MAX_PHOTO_COUNT;
 }
 
-export const INSPECTION_ACTIONS = [
-  {
+export const INSPECTION_ACTIONS = {
+  AI: {
     mode: "1",
     label: "AI安检",
     desc: "智能安检",
     className: "is-ai",
   },
-  {
+  MANUAL: {
     mode: "2",
     label: "人工安检",
     desc: "手动逐项录入",
     className: "is-manual",
   },
-  {
+  UNABLE: {
     mode: "3",
     label: "无法安检",
     desc: "异常情况记录",
     className: "is-unable",
   },
-];
+};
 export const UNABLE_INSPECTION_MAX_PHOTO_COUNT = 5;
 
 export const UNABLE_INSPECTION_REASON_OPTIONS = [

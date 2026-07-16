@@ -77,10 +77,6 @@ export interface InspectionFormItem {
   completed: boolean;
 }
 
-export interface InspectionPhotoResult {
-  fileId: string;
-  fileUrl?: string;
-}
 export interface InspectionItemResult {
   itemId: string;
   itemName: string;
@@ -88,7 +84,7 @@ export interface InspectionItemResult {
   selectedSubItemIds: string[];
   inputValue: string;
   remark?: string;
-  photoList: InspectionPhotoResult[];
+  photoList: UploadedInspectionFile[];
   aiSuggestion?: string;
   selectedDisposalMeasures: string[];
 }
@@ -106,7 +102,7 @@ export interface SubmitInspectionRequest {
   signatureUrl?: string; // 签名文件url
   unableReason?: string; // 无法安检原因:1到访不遇，2拒绝安检
   remark?: string; // 无法安检备注
-  unablePhotoList?: InspectionPhotoResult[]; // 无法安检照片列表
+  unablePhotoList?: UploadedInspectionFile[]; // 无法安检照片列表
 }
 export interface SubmitInspectionResponse {
   inspectionRecordId: string;
@@ -114,6 +110,59 @@ export interface SubmitInspectionResponse {
   status: string;
   dangerCount?: number;
   highestDangerLevel?: string;
+}
+
+export interface InspectionHistorySelectedItem {
+  id: string | number;
+  subItemName?: string;
+  itemName?: string;
+  dangerLevelName?: string | null;
+}
+
+export interface InspectionHistoryItemDetail {
+  itemId: string;
+  itemName?: string;
+  inputType?: string | number;
+  selectedSubItemIds?: Array<string | number>;
+  selectedSubItems?: InspectionHistorySelectedItem[];
+  inputValue?: string | number | null;
+  remark?: string | null;
+  photoList?: UploadedInspectionFile[];
+  aiSuggestion?: string | null;
+  selectedDisposalMeasures?: Array<string | number>;
+  disposalMeasureNames?: string[];
+}
+
+export interface InspectionHistoryGroupDetail {
+  groupId: string | number;
+  groupName?: string;
+  itemResults?: InspectionHistoryItemDetail[];
+}
+
+/** 历史安检详情。部分展示字段允许为空，兼容旧版本记录。 */
+export interface InspectionHistoryDetail {
+  id?: string | number;
+  recordId?: string | number;
+  recordNo?: string;
+  workOrderUserId?: string | number;
+  householdName?: string;
+  userName?: string;
+  userAddress?: string;
+  address?: string;
+  inspectorName?: string;
+  inspectionMode?: string | number;
+  inspectionResult?: string | number | null;
+  inspectionStartTime?: string | null;
+  inspectionFinishTime?: string | null;
+  dangerCount?: number | null;
+  templateName?: string;
+  unableReason?: string | number | null;
+  remark?: string | null;
+  unablePhotoList?: UploadedInspectionFile[];
+  signatureFileId?: string | number;
+  signatureUrl?: string;
+  groupResults?: InspectionHistoryGroupDetail[];
+  template?: InspectionTemplate;
 }
 export interface InspectionAiResult {
   result?: string;

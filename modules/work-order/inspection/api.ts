@@ -3,11 +3,22 @@ import { uploadFilesApi } from "@/modules/common/api";
 import { FILE_UPLOAD_TYPE } from "@/modules/common/types";
 import type {
   InspectionPhoto,
+  InspectionHistoryDetail,
   SubmitInspectionRequest,
   SubmitInspectionResponse,
   UploadedInspectionFile,
 } from "@/modules/work-order/inspection/types";
 
+// 查询历史安检记录详情
+export function getInspectionHistoryDetailApi(
+  workOrderUserId: string,
+  recordId: string,
+) {
+  return request<InspectionHistoryDetail>({
+    url: `/inspection/app/workOrder/v0.2/users/${encodeURIComponent(workOrderUserId)}/history/${encodeURIComponent(recordId)}/detail`,
+    method: "GET",
+  });
+}
 // 提交安检工单
 export function submitInspectionRecordApi(data: SubmitInspectionRequest) {
   return request<SubmitInspectionResponse, SubmitInspectionRequest>({
