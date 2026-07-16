@@ -21,12 +21,12 @@
           <text class="section-title">工单信息</text>
           <view class="work-order-card">
             <view class="work-order-top">
-              <text class="work-order-no">{{
-                displayValue(detail.workOrder.workOrderNo)
-              }}</text>
-              <text class="status-tag" :class="workOrderStatusClass">{{
-                workOrderStatusText
-              }}</text>
+              <text class="work-order-no">
+                {{ displayValue(detail.workOrder.workOrderNo) }}
+              </text>
+              <text class="status-tag" :class="workOrderStatusClass">
+                {{ workOrderStatusText }}
+              </text>
             </view>
             <text class="work-order-name">{{
               displayValue(detail.workOrder.workOrderName)
@@ -65,6 +65,7 @@
               v-for="record in historyList"
               :key="record.id"
               class="history-card"
+              @click="navigateToDetail(record)"
             >
               <view class="history-main">
                 <view class="history-row">
@@ -103,9 +104,9 @@
       </view>
     </scroll-view>
 
-    <view v-if="detail" class="inspection-actions">
+    <view v-if="userStatus === '1'" class="inspection-actions">
       <button
-        v-for="action in inspectionActions"
+        v-for="action in INSPECTION_ACTIONS"
         :key="action.mode"
         class="inspection-action"
         :class="action.className"
@@ -120,6 +121,23 @@
         <text class="action-desc">{{ action.desc }}</text>
       </button>
     </view>
+    <!-- 无法安检弹窗 -->
+    <UnableInspectionPopup
+      :visible="unablePopupVisible"
+      :reason-options="UNABLE_INSPECTION_REASON_OPTIONS"
+      :selected-reason="unableReason"
+      :remark="unableRemark"
+      :photos="unablePhotos"
+      :max-photo-count="UNABLE_INSPECTION_MAX_PHOTO_COUNT"
+      :operating="unableOperating"
+      :deleting-photo-ids="unableDeletingPhotoIds"
+      @reason-change="unableReason = $event"
+      @remark-change="unableRemark = $event"
+      @capture="captureUnablePhoto"
+      @remove-photo="removeUnablePhoto"
+      @cancel="cancelUnableInspection"
+      @confirm="submitUnableInspection"
+    />
   </view>
 </template>
 
@@ -127,53 +145,49 @@
 import { computed, ref } from "vue";
 import { onLoad, onPullDownRefresh, onUnload } from "@dcloudio/uni-app";
 import AppNavbar from "@/components/AppNavbar.vue";
+import UnableInspectionPopup from "@/pages/work-order/inspection/components/UnableInspectionPopup.vue";
 import { getWorkOrderUserDetailApi } from "@/modules/work-order/api";
-import type { DictDataVO } from "@/modules/common/types";
+import { submitInspectionRecordApi } from "@/modules/work-order/inspection/api";
+import { captureInspectionPhotos } from "@/pages/work-order/inspection/composables/useInspectionCamera";
+import { deleteFileApi, uploadFilesApi } from "@/modules/common/api";
+import { FILE_UPLOAD_TYPE } from "@/modules/common/types";
+import type { InspectionPhoto } from "@/modules/work-order/inspection/types";
 import type {
   InspectionHistoryRecord,
   WorkOrderUserDetailResult,
   WorkOrderUserInfoRow,
 } from "@/modules/work-order/types";
-import {
-  getDictLabelByType,
-  getDictLabelByValue,
-  getDictsByTypes,
-} from "@/utils/common";
+import { getDictLabelByType } from "@/utils/common";
 import { useInspectionStore } from "@/stores/inspection";
+import {
+  UNABLE_INSPECTION_DEFAULT_REASON,
+  UNABLE_INSPECTION_MAX_PHOTO_COUNT,
+  INSPECTION_ACTIONS,
+  UNABLE_INSPECTION_REASON_OPTIONS,
+} from "@/pages/work-order/inspection/constants/inspection";
 
 const workOrderUserId = ref("");
-const appointmentTimeFallback = ref("");
+const userStatus = ref("");
 const detail = ref<WorkOrderUserDetailResult | null>(null);
 const loading = ref(false);
 const error = ref("");
 const workOrderStatusText = ref("--");
-const inspectionResultDict = ref<DictDataVO[]>([]);
 const inspectionStore = useInspectionStore();
 const navigatingToInspection = ref(false);
-
-const inspectionActions = [
-  {
-    mode: "1",
-    label: "AI 安检",
-    desc: "智能识别记录",
-    icon: "AI",
-    className: "is-ai",
-  },
-  {
-    mode: "2",
-    label: "人工安检",
-    desc: "手动逐项录入",
-    icon: "人",
-    className: "is-manual",
-  },
-  {
-    mode: "3",
-    label: "无法安检",
-    desc: "异常情况记录",
-    icon: "−",
-    className: "is-unable",
-  },
-];
+const unablePopupVisible = ref(false);
+const unableReason = ref<string>(UNABLE_INSPECTION_DEFAULT_REASON);
+const unableRemark = ref("");
+const unablePhotos = ref<InspectionPhoto[]>([]);
+const unableSubmitting = ref(false);
+const unableCameraOpening = ref(false);
+const unableCancelling = ref(false);
+const unableDeletingPhotoIds = ref<string[]>([]);
+const unableOperating = computed(
+  () =>
+    unableSubmitting.value ||
+    unableCameraOpening.value ||
+    unableCancelling.value,
+);
 
 const historyList = computed<InspectionHistoryRecord[]>(
   () => detail.value?.historyList || [],
@@ -187,9 +201,7 @@ const userInfoRows = computed<WorkOrderUserInfoRow[]>(() => {
     { label: "表号", value: displayValue(user?.meterNo) },
     {
       label: "预约时间",
-      value: displayValue(
-        user?.appointmentTime || appointmentTimeFallback.value,
-      ),
+      value: displayValue(user?.appointmentTime),
     },
     { label: "地址", value: displayValue(user?.userAddress), isAddress: true },
   ];
@@ -200,30 +212,21 @@ const workOrderStatusClass = computed(() =>
 );
 
 onLoad((options) => {
-  workOrderUserId.value = decodeURIComponent(
-    String(options?.id || options?.workOrderUserId || ""),
-  );
-  appointmentTimeFallback.value = decodeURIComponent(
-    String(options?.appointmentTime || ""),
-  );
-  loadDictionaries();
+  workOrderUserId.value = decodeURIComponent(options?.workOrderUserId || "");
+  userStatus.value = decodeURIComponent(options?.userStatus || "");
   loadDetail();
   uni.$on("inspection-submitted", handleInspectionSubmitted);
 });
 
 onUnload(() => {
   uni.$off("inspection-submitted", handleInspectionSubmitted);
+  cleanupUnableUploadedFiles();
 });
 
 onPullDownRefresh(async () => {
-  await Promise.all([loadDictionaries(), loadDetail()]);
+  await loadDetail();
   uni.stopPullDownRefresh();
 });
-
-async function loadDictionaries() {
-  const dicts = await getDictsByTypes(["inspection_result"]);
-  inspectionResultDict.value = dicts.inspection_result || [];
-}
 
 async function loadDetail() {
   if (!workOrderUserId.value) {
@@ -235,32 +238,7 @@ async function loadDetail() {
   error.value = "";
   try {
     const result = await getWorkOrderUserDetailApi(workOrderUserId.value);
-    // detail.value = result
     detail.value = result;
-    // 造点历史数据
-    // detail.value.historyList = [
-    //   {
-    //     id: "123456",
-    //     recordNo: "123456",
-    //     inspectionResult: "1",
-    //     dangerCount: 0,
-    //     inspectionFinishTime: "2023-08-01 10:00:00",
-    //   },
-    //   {
-    //     id: "123457",
-    //     recordNo: "123457",
-    //     inspectionResult: "2",
-    //     dangerCount: 1,
-    //     inspectionFinishTime: "2023-08-02 10:00:00",
-    //   },
-    //   {
-    //     id: "123458",
-    //     recordNo: "123458",
-    //     inspectionResult: "3",
-    //     dangerCount: 0,
-    //     inspectionFinishTime: "2023-08-03 10:00:00",
-    //   },
-    // ];
     await resolveWorkOrderStatus(result.workOrder.status);
   } catch (err) {
     error.value = err instanceof Error ? err.message : "用户详情加载失败";
@@ -269,11 +247,11 @@ async function loadDetail() {
   }
 }
 
-async function resolveWorkOrderStatus(status?: string | number | null) {
+async function resolveWorkOrderStatus(status: string) {
   try {
     workOrderStatusText.value = await getDictLabelByType(
       "work_order_status",
-      String(status ?? ""),
+      status,
     );
   } catch (error) {
     workOrderStatusText.value = "";
@@ -305,11 +283,7 @@ function getResultText(result?: string | number | null) {
     "2": "不合格",
     "3": "无法安检",
   };
-  return (
-    getDictLabelByValue(inspectionResultDict.value, value) ||
-    fallback[value] ||
-    value
-  );
+  return fallback[value] || value;
 }
 
 function getResultClass(result?: string | number | null) {
@@ -339,16 +313,15 @@ function getActionIcon(mode: string) {
   return iconMap[mode] || "";
 }
 
+// 处理安检操作
 function handleInspectionAction(mode: string, actionName: string) {
-  if (mode === "1") {
+  if (mode === INSPECTION_ACTIONS[0].mode) {
     if (navigatingToInspection.value) return;
     if (!detail.value?.template) {
       uni.showToast({ title: "未配置安检模板", icon: "none" });
       return;
     }
-    const currentWorkOrderUserId = String(
-      detail.value.workOrderUser.id || workOrderUserId.value || "",
-    );
+    const currentWorkOrderUserId = workOrderUserId.value;
     if (!currentWorkOrderUserId) {
       uni.showToast({ title: "缺少工单或用户参数", icon: "none" });
       return;
@@ -365,11 +338,220 @@ function handleInspectionAction(mode: string, actionName: string) {
     });
     return;
   }
+  if (mode === INSPECTION_ACTIONS[2].mode) {
+    openUnableInspection();
+    return;
+  }
   uni.showToast({ title: actionName + "功能待接入", icon: "none" });
 }
 
-function handleInspectionSubmitted() {
-  void loadDetail();
+// 导航到工单详情
+function navigateToDetail(record: any) {
+  console.log(record);
+  if (!record.workOrderId) {
+    uni.showToast({ title: "缺少工单 ID", icon: "none" });
+    return;
+  }
+  // 无法安检工单，不导航到详情页
+  if (record.inspectionMode === INSPECTION_ACTIONS[2].mode) {
+    unablePopupVisible.value = true;
+    unableReason.value = record.unableReason;
+    unableRemark.value = record.remark;
+    return;
+  }
+  // uni.navigateTo({
+  //   url: `/pages/work-order/detail/index?workOrderUserId=${encodeURIComponent(workOrderUserId.value)}&workOrderId=${encodeURIComponent(record.workOrderId)}`,
+  // });
+}
+
+function resetUnableInspectionForm() {
+  unableReason.value = UNABLE_INSPECTION_DEFAULT_REASON;
+  unableRemark.value = "";
+  unablePhotos.value = [];
+  unableDeletingPhotoIds.value = [];
+}
+
+function openUnableInspection() {
+  if (unableOperating.value) return;
+  if (!workOrderUserId.value) {
+    uni.showToast({ title: "缺少工单用户参数", icon: "none" });
+    return;
+  }
+  resetUnableInspectionForm();
+  unablePopupVisible.value = true;
+}
+
+async function captureUnablePhoto() {
+  if (
+    unableOperating.value ||
+    unablePhotos.value.length >= UNABLE_INSPECTION_MAX_PHOTO_COUNT
+  ) {
+    return;
+  }
+  unableCameraOpening.value = true;
+  try {
+    const remaining =
+      UNABLE_INSPECTION_MAX_PHOTO_COUNT - unablePhotos.value.length;
+    const results = await captureInspectionPhotos("manual");
+    const existingPaths = new Set(
+      unablePhotos.value.map((photo) => photo.localPath).filter(Boolean),
+    );
+    const photos = results
+      .filter((result) => result.path && !existingPaths.has(result.path))
+      .slice(0, remaining)
+      .map<InspectionPhoto>((result) => ({
+        id: "unable-" + Date.now() + "-" + Math.random().toString(36).slice(2),
+        localPath: result.path,
+        uploadStatus: "pending",
+      }));
+    unablePhotos.value.push(...photos);
+  } catch (error) {
+    uni.showToast({
+      title: error instanceof Error ? error.message : "拍照失败，请重试",
+      icon: "none",
+    });
+  } finally {
+    unableCameraOpening.value = false;
+  }
+}
+
+function setUnablePhotoDeleting(photoId: string, deleting: boolean) {
+  unableDeletingPhotoIds.value = deleting
+    ? [...new Set([...unableDeletingPhotoIds.value, photoId])]
+    : unableDeletingPhotoIds.value.filter((id) => id !== photoId);
+}
+
+async function removeUnablePhoto(photoId: string) {
+  const photo = unablePhotos.value.find((item) => item.id === photoId);
+  if (!photo || unableDeletingPhotoIds.value.includes(photoId)) return;
+  if (photo.uploadStatus === "uploading") {
+    uni.showToast({ title: "照片正在上传，请稍候", icon: "none" });
+    return;
+  }
+
+  const fileId = String(photo.fileId || "").trim();
+  if (fileId) {
+    setUnablePhotoDeleting(photoId, true);
+    try {
+      await deleteFileApi(fileId);
+    } catch {
+      return;
+    } finally {
+      setUnablePhotoDeleting(photoId, false);
+    }
+  }
+  unablePhotos.value = unablePhotos.value.filter((item) => item.id !== photoId);
+}
+
+async function deleteUnableUploadedFiles() {
+  const fileIds = [
+    ...new Set(
+      unablePhotos.value
+        .map((photo) => String(photo.fileId || "").trim())
+        .filter(Boolean),
+    ),
+  ];
+  if (!fileIds.length) return;
+  await Promise.allSettled(fileIds.map((fileId) => deleteFileApi(fileId)));
+}
+
+function cleanupUnableUploadedFiles() {
+  if (unableSubmitting.value) return;
+  void deleteUnableUploadedFiles();
+}
+
+async function cancelUnableInspection() {
+  if (unableOperating.value) return;
+  unableCancelling.value = true;
+  try {
+    // 提交失败后可能已有服务器文件，取消时清理，避免孤儿文件。
+    await deleteUnableUploadedFiles();
+  } finally {
+    unableCancelling.value = false;
+    unablePopupVisible.value = false;
+    resetUnableInspectionForm();
+  }
+}
+
+async function uploadUnablePhotos() {
+  const targets = unablePhotos.value.filter((photo) => !photo.fileId);
+  if (!targets.length) return;
+  const paths = targets.map((photo) => photo.localPath || "");
+  if (paths.some((path) => !path)) throw new Error("无法安检照片路径无效");
+
+  targets.forEach((photo) => {
+    photo.uploadStatus = "uploading";
+    photo.errorMessage = undefined;
+  });
+  try {
+    const uploadedFiles = await uploadFilesApi(
+      paths,
+      FILE_UPLOAD_TYPE.INSPECTION_IMAGE,
+    );
+    if (uploadedFiles.length < targets.length) {
+      throw new Error("无法安检照片上传结果不完整");
+    }
+    targets.forEach((photo, index) => {
+      const uploaded = uploadedFiles[index];
+      if (!uploaded?.fileId) throw new Error("照片上传结果为空");
+      photo.fileId = String(uploaded.fileId);
+      photo.fileUrl = uploaded.url;
+      photo.uploadStatus = "success";
+    });
+  } catch (error) {
+    targets.forEach((photo) => {
+      if (photo.uploadStatus !== "success") {
+        photo.uploadStatus = "failed";
+        photo.errorMessage =
+          error instanceof Error ? error.message : "照片上传失败";
+      }
+    });
+    throw error;
+  }
+}
+
+async function submitUnableInspection() {
+  if (unableSubmitting.value) return;
+  if (!unableReason.value) {
+    uni.showToast({ title: "请选择无法安检原因", icon: "none" });
+    return;
+  }
+  if (!workOrderUserId.value) {
+    uni.showToast({ title: "缺少工单用户参数", icon: "none" });
+    return;
+  }
+
+  unableSubmitting.value = true;
+  try {
+    await uploadUnablePhotos();
+    await submitInspectionRecordApi({
+      workOrderUserId: workOrderUserId.value,
+      inspectionMode: INSPECTION_ACTIONS[2].mode,
+      unableReason: unableReason.value,
+      remark: unableRemark.value.trim(),
+      unablePhotoList: unablePhotos.value
+        .filter((photo) => photo.fileId)
+        .map((photo) => ({
+          fileId: String(photo.fileId),
+          fileUrl: photo.fileUrl,
+        })),
+    });
+    unablePopupVisible.value = false;
+    resetUnableInspectionForm();
+    await loadDetail();
+    uni.showToast({ title: "提交成功", icon: "success" });
+  } catch (error) {
+    uni.showToast({
+      title:
+        error instanceof Error ? error.message : "无法安检提交失败，请重试",
+      icon: "none",
+    });
+  } finally {
+    unableSubmitting.value = false;
+  }
+}
+async function handleInspectionSubmitted() {
+  await loadDetail();
 }
 </script>
 

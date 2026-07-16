@@ -99,11 +99,14 @@ export interface InspectionGroupResult {
 }
 export interface SubmitInspectionRequest {
   workOrderUserId: string;
-  templateId: string;
-  inspectionMode: string; // 1: AI 自动回填，2: 人工填写，3: 手动填写
-  groupResults: InspectionGroupResult[];
+  inspectionMode: string; // 1: AI 安检，2: 人工安检，3: 无法安检
+  templateId?: string;
+  groupResults?: InspectionGroupResult[];
   signatureFileId?: string; // 签名文件id
   signatureUrl?: string; // 签名文件url
+  unableReason?: string; // 无法安检原因:1到访不遇，2拒绝安检
+  remark?: string; // 无法安检备注
+  unablePhotoList?: InspectionPhotoResult[]; // 无法安检照片列表
 }
 export interface SubmitInspectionResponse {
   inspectionRecordId: string;
@@ -124,6 +127,12 @@ export interface InspectionValidationError {
   groupId: string;
   itemId: string;
   message: string;
+}
+
+export interface UploadedInspectionFile {
+  fileId: string;
+  fileUrl?: string;
+  aiResult?: Record<string, unknown>;
 }
 
 export type InspectionAudioStatus =

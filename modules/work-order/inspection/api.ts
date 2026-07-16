@@ -5,8 +5,10 @@ import type {
   InspectionPhoto,
   SubmitInspectionRequest,
   SubmitInspectionResponse,
+  UploadedInspectionFile,
 } from "@/modules/work-order/inspection/types";
 
+// 提交安检工单
 export function submitInspectionRecordApi(data: SubmitInspectionRequest) {
   return request<SubmitInspectionResponse, SubmitInspectionRequest>({
     url: "/inspection/app/workOrder/v0.2/submit",
@@ -15,18 +17,11 @@ export function submitInspectionRecordApi(data: SubmitInspectionRequest) {
   });
 }
 
-export interface UploadedInspectionFile {
-  fileId: string;
-  fileUrl?: string;
-  aiResult?: Record<string, unknown>;
-}
-
 /** 安检拍照上传适配层，统一调用公共批量文件上传接口。 */
 export async function uploadInspectionPhoto(
   photo: InspectionPhoto,
 ): Promise<UploadedInspectionFile> {
   if (!photo.localPath) throw new Error("本地图片不存在");
-  console.log("1调用接口", photo);
   const files = await uploadFilesApi(
     [photo.localPath],
     FILE_UPLOAD_TYPE.INSPECTION_IMAGE,

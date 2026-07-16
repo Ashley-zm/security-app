@@ -107,6 +107,22 @@ export interface WorkOrderUserQuery {
   pageSize: number
 }
 
+export interface WorkOrderUserView extends WorkOrderUser {
+  id: string;
+  householdName: string;
+  householdNo: string;
+  userAddress: string;
+  mobilePhone: string;
+  meterNo: string;
+  inspectionAreaName: string;
+  communityName: string;
+  appointmentTime: string;
+  finishTime: string;
+  statusText: string;
+  statusClass: string;
+}
+
+
 export interface WorkOrderUserListResult {
   list: WorkOrderUser[]
   total: number

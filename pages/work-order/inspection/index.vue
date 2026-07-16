@@ -46,6 +46,7 @@
             <text class="user-address">{{ address || "暂无地址" }}</text>
           </view>
         </view>
+        <!-- 安检项目 -->
         <InspectionGroup
           v-for="group in enabledGroups"
           :key="String(group.id)"
@@ -98,7 +99,7 @@
         </view>
       </view>
     </scroll-view>
-
+    <!-- 无法安检弹窗 -->
     <InspectionPhotoPopup
       :visible="photoPopupVisible"
       :item-name="photoPopupItem?.itemName || ''"
@@ -113,6 +114,7 @@
       @cancel="cancelPhotoPopup"
       @confirm="confirmPhotoPopup"
     />
+    <!-- 用户签名弹窗 -->
     <InspectionSignaturePopup
       :visible="signaturePopupVisible"
       :user-name="userName"
@@ -121,6 +123,7 @@
       @cancel="closeSignaturePopup"
       @confirm="confirmSignature"
     />
+    <!-- 安检录音弹窗 -->
     <InspectionAudioFloat
       v-if="workOrderUserId"
       :status="audioStatus"
@@ -175,7 +178,6 @@ const { dictionaries, loadInspectionDictionaries } =
   useInspectionDictionaries();
 const statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 0;
 const workOrderId = ref("");
-const userId = ref("");
 const workOrderUserId = ref("");
 const userName = ref("");
 const address = ref("");
@@ -251,10 +253,7 @@ const signatureStatusText = computed(() => {
 });
 const submitButtonText = computed(() => {
   if (submitting.value) return "正在提交...";
-  if (
-    inspectionSubmittedToServer.value &&
-    !uploadedAudioFile.value?.fileId
-  ) {
+  if (inspectionSubmittedToServer.value && !uploadedAudioFile.value?.fileId) {
     return "重试上传录音";
   }
   return signature.fileId ? "确认并提交" : "提交安检结果";
@@ -312,7 +311,6 @@ async function loadTemplate() {
     }
     template.value = detail.template as InspectionTemplate;
     workOrderId.value = String(detail.workOrder.id);
-    userId.value = String(detail.workOrderUser.id);
     userName.value = detail.workOrderUser.householdName || "";
     address.value = detail.workOrderUser.userAddress || "";
     initialize(template.value);
@@ -597,10 +595,7 @@ async function confirmSignature(localPath: string) {
   signature.uploadStatus = "uploading";
   signature.errorMessage = undefined;
   try {
-    const files = await uploadFilesApi(
-      [localPath],
-      FILE_UPLOAD_TYPE.SIGNATURE,
-    );
+    const files = await uploadFilesApi([localPath], FILE_UPLOAD_TYPE.SIGNATURE);
     const uploaded = files[0];
     if (!uploaded?.fileId) throw new Error("签名上传结果为空");
 
@@ -731,7 +726,6 @@ async function submit() {
     store.clear();
     uni.$emit("inspection-submitted", {
       workOrderId: workOrderId.value,
-      userId: userId.value,
     });
     uni.showToast({ title: "提交成功", icon: "success" });
     setTimeout(() => {
@@ -740,9 +734,7 @@ async function submit() {
   } catch (error) {
     uni.showToast({
       title:
-        error instanceof Error
-          ? error.message
-          : "录音结束失败，暂无法提交",
+        error instanceof Error ? error.message : "录音结束失败，暂无法提交",
       icon: "none",
     });
   } finally {
@@ -1105,9 +1097,4 @@ function requestBack() {
   font-size: 19rpx;
   background: rgba(37, 55, 89, 0.66);
 }
-
 </style>
-
-
-
-

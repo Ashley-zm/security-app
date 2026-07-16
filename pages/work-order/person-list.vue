@@ -4,8 +4,13 @@
 
     <view class="tabs-wrap">
       <view class="tabs" :style="tabCountStyle">
-        <button v-for="tab in tabs" :key="tab.dictValue" class="tab-item"
-          :class="{ active: activeStatus === tab.dictValue }" @click="changeStatus(tab.dictValue)">
+        <button
+          v-for="tab in tabs"
+          :key="tab.dictValue"
+          class="tab-item"
+          :class="{ active: activeStatus === tab.dictValue }"
+          @click="changeStatus(tab.dictValue)"
+        >
           {{ tab.dictLabel }}
         </button>
       </view>
@@ -13,10 +18,20 @@
 
     <view class="search-panel">
       <view class="search-box">
-        <input id="keywordInput" v-model="searchKeyword" class="search-input" confirm-type="search"
-          placeholder="请输入户号、户名、手机号、地址、表号" placeholder-class="placeholder" :focus="searchFocused"
-          @confirm="handleSearch" @blur="searchFocused = false" />
-        <button v-if="searchKeyword" class="clear-btn" @click="clearSearch">X</button>
+        <input
+          id="keywordInput"
+          v-model="searchKeyword"
+          class="search-input"
+          confirm-type="search"
+          placeholder="请输入户号、户名、手机号、地址、表号"
+          placeholder-class="placeholder"
+          :focus="searchFocused"
+          @confirm="handleSearch"
+          @blur="searchFocused = false"
+        />
+        <button v-if="searchKeyword" class="clear-btn" @click="clearSearch">
+          X
+        </button>
       </view>
       <button class="search-btn" @click="handleSearch">
         <u-icon name="search" color="$primary-color" size="20"></u-icon>
@@ -33,18 +48,31 @@
       <button class="retry-btn" @click="refreshList">重试</button>
     </view>
 
-    <scroll-view v-else class="user-list" scroll-y
-      :show-scrollbar="false" lower-threshold="120" @scrolltolower="loadMore">
+    <scroll-view
+      v-else
+      class="user-list"
+      scroll-y
+      :show-scrollbar="false"
+      lower-threshold="120"
+      @scrolltolower="loadMore"
+    >
       <view class="user-list-content">
-        <view v-for="item in userViews" :key="item.id" class="user-card" @click="openUserDetail(item)">
+        <view
+          v-for="item in userViews"
+          :key="item.id"
+          class="user-card"
+          @click="openUserDetail(item)"
+        >
           <view class="card-header">
             <view class="name-line">
               <text class="household-name">{{ item.householdName }}</text>
               <button class="phone-icon-btn" @click.stop="handleCall(item)">
-                <u-icon name="phone-fill" color="#1677ff" size="15"></u-icon>
+                <u-icon name="phone-fill" color="#1677ff" size="18"></u-icon>
               </button>
             </view>
-            <text class="status-pill" :class="item.statusClass">{{ item.statusText }}</text>
+            <text class="status-pill" :class="item.statusClass">
+              {{ item.statusText }}
+            </text>
           </view>
 
           <view class="number-row">
@@ -76,17 +104,37 @@
           </view>
 
           <view class="card-actions" @click.stop>
-            <button class="action-btn appointment-btn" @click="openChangeTime(item)">修改预约时间</button>
-            <button class="action-btn navigate-btn" @click="handleNavigate(item)">
+            <button
+              class="action-btn appointment-btn"
+              @click="openChangeTime(item)"
+            >
+              修改预约时间
+            </button>
+            <button
+              class="action-btn navigate-btn"
+              @click="handleNavigate(item)"
+            >
               <u-icon name="map-fill" color="#1677ff" size="25"></u-icon>
             </button>
           </view>
         </view>
 
-        <view v-if="loading && !list.length" class="loading-text">用户加载中...</view>
-        <AppEmpty v-if="!loading && !list.length" title="暂无安检用户" desc="调整状态或搜索条件后再试" show-retry @retry="refreshList" />
-        <view v-if="loading && list.length" class="footer-text">加载更多...</view>
-        <view v-if="finished && list.length" class="footer-text">没有更多用户了</view>
+        <view v-if="loading && !list.length" class="loading-text"
+          >用户加载中...</view
+        >
+        <AppEmpty
+          v-if="!loading && !list.length"
+          title="暂无安检用户"
+          desc="调整状态或搜索条件后再试"
+          show-retry
+          @retry="refreshList"
+        />
+        <view v-if="loading && list.length" class="footer-text">
+          加载更多...
+        </view>
+        <view v-if="finished && list.length" class="footer-text">
+          没有更多用户了
+        </view>
       </view>
     </scroll-view>
 
@@ -95,28 +143,42 @@
         <view class="popup-title">修改预约时间</view>
         <view class="current-time">
           <text class="label">当前预约时间</text>
-          <text class="value">{{ currentUser?.appointmentTime || '暂未预约' }}</text>
+          <text class="value">
+            {{ currentUser?.appointmentTime || "暂未预约" }}
+          </text>
         </view>
 
         <view class="picker-row">
-          <picker mode="date" :value="appointmentDate" @change="handleDateChange">
+          <picker
+            mode="date"
+            :value="appointmentDate"
+            @change="handleDateChange"
+          >
             <view class="picker-field">
               <text>日期</text>
-              <text>{{ appointmentDate || '请选择日期' }}</text>
+              <text>{{ appointmentDate || "请选择日期" }}</text>
             </view>
           </picker>
-          <picker mode="time" :value="appointmentTime" @change="handleTimeChange">
+          <picker
+            mode="time"
+            :value="appointmentTime"
+            @change="handleTimeChange"
+          >
             <view class="picker-field">
               <text>时间</text>
-              <text>{{ appointmentTime || '请选择时间' }}</text>
+              <text>{{ appointmentTime || "请选择时间" }}</text>
             </view>
           </picker>
         </view>
 
         <view class="popup-actions">
           <button class="popup-btn cancel" @click="closePopup">取消</button>
-          <button class="popup-btn confirm" :disabled="updating" @click="confirmChangeTime">
-            {{ updating ? '提交中...' : '确认修改' }}
+          <button
+            class="popup-btn confirm"
+            :disabled="updating"
+            @click="confirmChangeTime"
+          >
+            {{ updating ? "提交中..." : "确认修改" }}
           </button>
         </view>
       </view>
@@ -125,163 +187,159 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
-import { onLoad, onPullDownRefresh } from '@dcloudio/uni-app'
-import AppEmpty from '@/components/AppEmpty.vue'
-import AppNavbar from '@/components/AppNavbar.vue'
-import { getWorkOrderUserListApi, updateWorkOrderUserAppointmentApi } from '@/modules/work-order/api'
-import type { WorkOrderUser, WorkOrderUserQuery } from '@/modules/work-order/types'
-import { getDictsByTypes, getDictLabelByValue } from '@/utils/common'
-import type { DictDataVO } from '@/modules/common/types'
+import { computed, nextTick, ref } from "vue";
+import { onLoad, onPullDownRefresh } from "@dcloudio/uni-app";
+import AppEmpty from "@/components/AppEmpty.vue";
+import AppNavbar from "@/components/AppNavbar.vue";
+import {
+  getWorkOrderUserListApi,
+  updateWorkOrderUserAppointmentApi,
+} from "@/modules/work-order/api";
+import type {
+  WorkOrderUser,
+  WorkOrderUserQuery,
+  WorkOrderUserView,
+} from "@/modules/work-order/types";
+import { getDictsByTypes, getDictLabelByValue } from "@/utils/common";
+import type { DictDataVO } from "@/modules/common/types";
 
-interface WorkOrderUserView extends WorkOrderUser {
-  id: string
-  householdName: string
-  householdNo: string
-  userAddress: string
-  mobilePhone: string
-  meterNo: string
-  inspectionAreaName: string
-  communityName: string
-  appointmentTime: string
-  finishTime: string
-  statusText: string
-  statusClass: string
-}
-
-const workOrderId = ref('')
-const orderNo = ref('')
-const title = ref('安检用户')
-const searchKeyword = ref('')
-const searchFocused = ref(false)
-const activeStatus = ref('all')
-const timeSort = ref<1 | 2>(2)
-const list = ref<WorkOrderUser[]>([])
-const total = ref(0)
-const pageNum = ref(1)
-const pageSize = 10
-const loading = ref(false)
-const refreshing = ref(false)
-const finished = ref(false)
-const error = ref('')
-const popupVisible = ref(false)
-const currentUser = ref<WorkOrderUserView | null>(null)
-const appointmentDate = ref('')
-const appointmentTime = ref('')
-const updating = ref(false)
-const tabs = ref<DictDataVO[]>([])
-
+const workOrderId = ref("");
+const title = ref("安检用户");
+const searchKeyword = ref("");
+const searchFocused = ref(false);
+const activeStatus = ref("all");
+const timeSort = ref<1 | 2>(2);
+const list = ref<WorkOrderUser[]>([]);
+const total = ref(0);
+const pageNum = ref(1);
+const pageSize = 10;
+const loading = ref(false);
+const refreshing = ref(false);
+const finished = ref(false);
+const error = ref("");
+const popupVisible = ref(false);
+const currentUser = ref<WorkOrderUserView | null>(null);
+const appointmentDate = ref("");
+const appointmentTime = ref("");
+const updating = ref(false);
+const tabs = ref<DictDataVO[]>([]);
 
 const tabCountStyle = computed(() => ({
-  gridTemplateColumns: `repeat(${tabs.value.length}, minmax(0, 1fr))`
-}))
+  gridTemplateColumns: `repeat(${tabs.value.length}, minmax(0, 1fr))`,
+}));
 
-const timeSortIcon = computed(() => (
-  timeSort.value === 1 ? '/static/images/shijianzhengxu.png' : '/static/images/shijiandaoxu.png'
-))
+const timeSortIcon = computed(() =>
+  timeSort.value === 1
+    ? "/static/images/shijianzhengxu.png"
+    : "/static/images/shijiandaoxu.png",
+);
 
-const userViews = computed<WorkOrderUserView[]>(() => list.value.map(formatUser))
+const userViews = computed<WorkOrderUserView[]>(() =>
+  list.value.map(formatUser),
+);
 
-getDictsByTypes(['order_user_status'], true).then((dicts) => {
-  tabs.value = dicts.order_user_status || []
-})
+getDictsByTypes(["order_user_status"], true).then((dicts) => {
+  tabs.value = dicts.order_user_status || [];
+});
 
 onLoad((options) => {
-  workOrderId.value = decodeURIComponent(String(options?.id || ''))
-  orderNo.value = decodeURIComponent(String(options?.orderNo || ''))
-  title.value = decodeURIComponent(String(options?.title || '安检用户'))
-  refreshList()
-})
+  workOrderId.value = decodeURIComponent(options?.workOrderId || "");
+  title.value = decodeURIComponent(options?.title || "安检用户");
+  refreshList();
+});
 
 onPullDownRefresh(async () => {
-  await refreshList()
-  uni.stopPullDownRefresh()
-})
+  await refreshList();
+  uni.stopPullDownRefresh();
+});
 
 function buildQuery(): WorkOrderUserQuery {
   const query: WorkOrderUserQuery = {
     keyword: searchKeyword.value.trim(),
     sort: timeSort.value,
     pageNum: pageNum.value,
-    pageSize
+    pageSize,
+  };
+
+  if (activeStatus.value !== "all") {
+    query.status = activeStatus.value;
   }
 
-  if (activeStatus.value !== 'all') {
-    query.status = activeStatus.value
-  }
-
-  return query
+  return query;
 }
 
 async function fetchList(reset = false) {
-  if (loading.value) return
+  if (loading.value) return;
   if (!workOrderId.value) {
-    error.value = '缺少工单ID'
-    return
+    error.value = "缺少工单ID";
+    return;
   }
 
-  loading.value = true
-  error.value = ''
+  loading.value = true;
+  error.value = "";
   try {
-    const result = await getWorkOrderUserListApi(workOrderId.value, buildQuery())
-    total.value = result.total || 0
-    list.value = reset ? result.list : [...list.value, ...result.list]
-    finished.value = list.value.length >= total.value
+    const result = await getWorkOrderUserListApi(
+      workOrderId.value,
+      buildQuery(),
+    );
+    total.value = result.total || 0;
+    list.value = reset ? result.list : [...list.value, ...result.list];
+    finished.value = list.value.length >= total.value;
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '用户列表加载失败'
+    error.value = err instanceof Error ? err.message : "用户列表加载失败";
   } finally {
-    loading.value = false
-    refreshing.value = false
+    loading.value = false;
+    refreshing.value = false;
   }
 }
 
 async function refreshList() {
-  refreshing.value = true
-  pageNum.value = 1
-  finished.value = false
-  await fetchList(true)
+  refreshing.value = true;
+  pageNum.value = 1;
+  finished.value = false;
+  await fetchList(true);
 }
 
 async function loadMore() {
-  if (loading.value || finished.value) return
-  pageNum.value += 1
-  await fetchList(false)
+  if (loading.value || finished.value) return;
+  pageNum.value += 1;
+  await fetchList(false);
 }
 
 function changeStatus(status: string) {
-  if (activeStatus.value === status) return
-  activeStatus.value = status
-  refreshList()
+  if (activeStatus.value === status) return;
+  activeStatus.value = status;
+  refreshList();
 }
 
 function handleSearch() {
-  refreshList()
+  refreshList();
 }
 
 function clearSearch() {
-  searchKeyword.value = ''
-  refreshList()
+  searchKeyword.value = "";
+  refreshList();
   nextTick(() => {
-    searchFocused.value = true
-  })
+    searchFocused.value = true;
+  });
 }
 
 function toggleTimeSort() {
-  timeSort.value = timeSort.value === 1 ? 2 : 1
-  refreshList()
+  timeSort.value = timeSort.value === 1 ? 2 : 1;
+  refreshList();
   uni.showToast({
-    title: timeSort.value === 1 ? '按时间升序排序' : '按时间降序排序',
-    icon: 'none'
-  })
+    title: timeSort.value === 1 ? "按时间升序排序" : "按时间降序排序",
+    icon: "none",
+  });
 }
 
 function formatValue(value?: string | number | null) {
-  if (value === undefined || value === null || value === '') return '--'
-  return String(value)
+  if (value === undefined || value === null || value === "") return "--";
+  return String(value);
 }
 
 function formatUser(item: WorkOrderUser): WorkOrderUserView {
-  const status = String(item.status || '')
+  const status = String(item.status || "");
   return {
     ...item,
     id: String(item.id),
@@ -295,37 +353,36 @@ function formatUser(item: WorkOrderUser): WorkOrderUserView {
     appointmentTime: formatValue(item.appointmentTime),
     finishTime: formatValue(item.finishTime || item.inspectionFinishTime),
     statusText: getStatusText(status),
-    statusClass: getStatusClass(status)
-  }
+    statusClass: getStatusClass(status),
+  };
 }
 
 function getStatusText(status: string) {
-  return getDictLabelByValue(tabs.value, status) || status || '--'
+  return getDictLabelByValue(tabs.value, status) || status || "--";
 }
 
-function getStatusClass(status: WorkOrderUser['status']) {
+function getStatusClass(status: WorkOrderUser["status"]) {
   const classMap: Record<string, string> = {
-    '1': 'is-pending',
-    '2': 'is-processing',
-    '3': 'is-completed',
-    '4': 'is-canceled',
-    '5': 'is-ended'
-  }
-  return classMap[String(status)] || 'is-pending'
+    "1": "is-pending",
+    "2": "is-completed",
+    "3": "is-canceled",
+    "4": "is-ended",
+  };
+  return classMap[String(status)] || "is-pending";
 }
 
 function handleCall(item: WorkOrderUserView) {
-  if (!item.mobilePhone || item.mobilePhone === '--') {
+  if (!item.mobilePhone || item.mobilePhone === "--") {
     uni.showToast({
-      title: '用户手机号为空',
-      icon: 'none'
-    })
-    return
+      title: "用户手机号为空",
+      icon: "none",
+    });
+    return;
   }
 
   uni.makePhoneCall({
-    phoneNumber: item.mobilePhone
-  })
+    phoneNumber: item.mobilePhone,
+  });
 }
 
 function handleNavigate(item: WorkOrderUserView) {
@@ -334,96 +391,95 @@ function handleNavigate(item: WorkOrderUserView) {
   //   icon: 'none'
   // })
   uni.openLocation({
-    latitude: 30.190330,
-    longitude: 120.175520,
+    latitude: 30.19033,
+    longitude: 120.17552,
     name: item.householdName,
     address: item.userAddress,
-    scale: 16
-  })
-
+    scale: 16,
+  });
 }
 
 function openUserDetail(item: WorkOrderUserView) {
   uni.navigateTo({
-    url: `/pages/work-order/user-detail?id=${encodeURIComponent(item.id)}&appointmentTime=${encodeURIComponent(item.appointmentTime)}`
-  })
+    url: `/pages/work-order/user-detail?workOrderUserId=${encodeURIComponent(item.id)}&userStatus=${item.status}`,
+  });
 }
 
 function parseAppointmentValue(value?: string | null) {
-  const normalized = String(value || '').trim()
+  const normalized = String(value || "").trim();
 
-  if (!normalized || normalized === '--') {
-    return { date: '', time: '' }
+  if (!normalized || normalized === "--") {
+    return { date: "", time: "" };
   }
 
-  const [date = '', rawTime = ''] = normalized.split(/\s+/)
+  const [date = "", rawTime = ""] = normalized.split(/\s+/);
   return {
     date,
-    time: rawTime.slice(0, 5)
-  }
+    time: rawTime.slice(0, 5),
+  };
 }
 
 function buildAppointmentDateTime(date: string, time: string) {
-  return `${date} ${time.slice(0, 5)}:00`
+  return `${date} ${time.slice(0, 5)}:00`;
 }
 
 function openChangeTime(item: WorkOrderUserView) {
-  currentUser.value = item
-  const parsed = parseAppointmentValue(item.appointmentTime)
-  appointmentDate.value = parsed.date
-  appointmentTime.value = parsed.time
-  popupVisible.value = true
+  currentUser.value = item;
+  const parsed = parseAppointmentValue(item.appointmentTime);
+  appointmentDate.value = parsed.date;
+  appointmentTime.value = parsed.time;
+  popupVisible.value = true;
 }
 
 function closePopup() {
-  if (updating.value) return
-  popupVisible.value = false
+  if (updating.value) return;
+  popupVisible.value = false;
 }
 
 function handleDateChange(event: { detail: { value: string | number } }) {
-  appointmentDate.value = String(event.detail.value)
+  appointmentDate.value = String(event.detail.value);
 }
 
 function handleTimeChange(event: { detail: { value: string | number } }) {
-  appointmentTime.value = String(event.detail.value)
+  appointmentTime.value = String(event.detail.value);
 }
 
 async function confirmChangeTime() {
-  if (!currentUser.value) return
+  if (!currentUser.value) return;
   if (!appointmentDate.value || !appointmentTime.value) {
     uni.showToast({
-      title: '请选择新的预约时间',
-      icon: 'none'
-    })
-    return
+      title: "请选择新的预约时间",
+      icon: "none",
+    });
+    return;
   }
 
-  updating.value = true
+  updating.value = true;
   try {
     await updateWorkOrderUserAppointmentApi(
       currentUser.value.id,
-      buildAppointmentDateTime(appointmentDate.value, appointmentTime.value)
-    )
-    popupVisible.value = false
+      buildAppointmentDateTime(appointmentDate.value, appointmentTime.value),
+    );
+    popupVisible.value = false;
     uni.showToast({
-      title: '预约时间修改成功',
-      icon: 'success'
-    })
-    await refreshList()
+      title: "预约时间修改成功",
+      icon: "success",
+    });
+    await refreshList();
   } catch (err) {
     uni.showToast({
-      title: err instanceof Error ? err.message : '预约时间修改失败',
-      icon: 'none'
-    })
+      title: err instanceof Error ? err.message : "预约时间修改失败",
+      icon: "none",
+    });
   } finally {
-    updating.value = false
+    updating.value = false;
   }
 }
 </script>
 
 <style lang="scss" scoped>
-@import '@/styles/variables.scss';
-@import '@/styles/mixins.scss';
+@import "@/styles/variables.scss";
+@import "@/styles/mixins.scss";
 
 .work-order-page {
   display: flex;
@@ -496,7 +552,7 @@ async function confirmChangeTime() {
 }
 
 .placeholder {
-  color: #A4B1C5;
+  color: #a4b1c5;
 }
 
 .clear-btn {
@@ -518,7 +574,9 @@ async function confirmChangeTime() {
   color: $primary-color;
   font-size: 28rpx;
   background: #fff;
-  box-shadow: 0 3px 14px rgba(4, 46, 138, 0.06), 0 2px 4px rgba(4, 46, 138, 0.03);
+  box-shadow:
+    0 3px 14px rgba(4, 46, 138, 0.06),
+    0 2px 4px rgba(4, 46, 138, 0.03);
 }
 
 .time-sort-btn {
@@ -528,7 +586,9 @@ async function confirmChangeTime() {
   border: 2rpx solid $border-color;
   border-radius: $common-radius;
   background: #fff;
-  box-shadow: 0 3px 14px rgba(4, 46, 138, 0.06), 0 2px 4px rgba(4, 46, 138, 0.03);
+  box-shadow:
+    0 3px 14px rgba(4, 46, 138, 0.06),
+    0 2px 4px rgba(4, 46, 138, 0.03);
 }
 
 .time-sort-icon {
@@ -538,7 +598,7 @@ async function confirmChangeTime() {
 
 .user-list {
   box-sizing: border-box;
-  
+
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -583,8 +643,8 @@ async function confirmChangeTime() {
 .phone-icon-btn {
   @include flex-center;
   flex: 0 0 36rpx;
-  width: 36rpx;
-  height: 36rpx;
+  width: 40rpx;
+  height: 40rpx;
   padding: 0;
   border-radius: 50%;
   background: $primary-bg;
@@ -675,7 +735,7 @@ async function confirmChangeTime() {
   font-size: 26rpx;
 }
 
-.info-row+.info-row {
+.info-row + .info-row {
   margin-top: 18rpx;
 }
 

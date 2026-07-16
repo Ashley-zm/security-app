@@ -4,8 +4,13 @@
 
     <view class="tabs-wrap">
       <view class="tabs" :style="tabCountStyle">
-        <button v-for="tab in tabs" :key="tab.dictValue" class="tab-item"
-          :class="{ active: activeStatus === tab.dictValue }" @click="changeStatus(tab.dictValue)">
+        <button
+          v-for="tab in tabs"
+          :key="tab.dictValue"
+          class="tab-item"
+          :class="{ active: activeStatus === tab.dictValue }"
+          @click="changeStatus(tab.dictValue)"
+        >
           {{ tab.dictLabel }}
         </button>
       </view>
@@ -13,10 +18,20 @@
 
     <view class="search-panel">
       <view class="search-box">
-        <input id="keywordInput" v-model="searchKeyword" class="search-input" confirm-type="search"
-          placeholder="请输入安检工单编号、名称" placeholder-class="placeholder" :focus="searchFocused" @confirm="handleSearch"
-          @blur="searchFocused = false" />
-        <button v-if="searchKeyword" class="clear-btn" @click="clearSearch">×</button>
+        <input
+          id="keywordInput"
+          v-model="searchKeyword"
+          class="search-input"
+          confirm-type="search"
+          placeholder="请输入安检工单编号、名称"
+          placeholder-class="placeholder"
+          :focus="searchFocused"
+          @confirm="handleSearch"
+          @blur="searchFocused = false"
+        />
+        <button v-if="searchKeyword" class="clear-btn" @click="clearSearch">
+          ×
+        </button>
       </view>
       <button class="search-btn" @click="handleSearch">
         <u-icon name="search" color="$primary-color" size="20"></u-icon>
@@ -42,73 +57,97 @@
       @scrolltolower="store.loadMore()"
     >
       <view class="order-list-content">
-        <view v-for="order in orderViews" :key="order.id" class="order-card" @click="openOrder(order)">
-        <view class="order-top">
-          <text class="plan-name">{{ order.planName }}</text>
-          <text class="status-pill" :class="order.statusClass">{{ order.statusText }}</text>
-        </view>
+        <view
+          v-for="order in orderViews"
+          :key="order.id"
+          class="order-card"
+          @click="openOrder(order)"
+        >
+          <view class="order-top">
+            <text class="plan-name">{{ order.planName }}</text>
+            <text class="status-pill" :class="order.statusClass">{{
+              order.statusText
+            }}</text>
+          </view>
 
-        <view class="order-no">{{ order.orderNo }}</view>
+          <view class="order-no">{{ order.orderNo }}</view>
 
-        <view class="stats-grid">
-          <view v-for="stat in order.stats" :key="stat.label" class="stat-item" :class="stat.type">
-            <text class="stat-label">{{ stat.label }}</text>
-            <text class="stat-value">
-              <text class="stat-number">{{ stat.value }}</text>
-              <text class="stat-unit">户</text>
-            </text>
+          <view class="stats-grid">
+            <view
+              v-for="stat in order.stats"
+              :key="stat.label"
+              class="stat-item"
+              :class="stat.type"
+            >
+              <text class="stat-label">{{ stat.label }}</text>
+              <text class="stat-value">
+                <text class="stat-number">{{ stat.value }}</text>
+                <text class="stat-unit">户</text>
+              </text>
+            </view>
+          </view>
+
+          <view class="time-row">
+            <text class="time-label">派单时间</text>
+            <text class="time-value">{{ order.dispatchTime }}</text>
+          </view>
+          <view class="time-row">
+            <text class="time-label">{{ order.finishLabel }}</text>
+            <text class="time-value">{{ order.finishTime }}</text>
           </view>
         </view>
-
-        <view class="time-row">
-          <text class="time-label">派单时间</text>
-          <text class="time-value">{{ order.dispatchTime }}</text>
+        <view v-if="store.loading && !store.list.length" class="loading-text">
+          工单加载中...
         </view>
-        <view class="time-row">
-          <text class="time-label">{{ order.finishLabel }}</text>
-          <text class="time-value">{{ order.finishTime }}</text>
+        <AppEmpty
+          v-if="!store.loading && !store.list.length"
+          title="暂无工单"
+          desc="调整状态或搜索条件后再试"
+          show-retry
+          @retry="store.refresh()"
+        />
+        <view v-if="store.loading && store.list.length" class="footer-text">
+          加载更多...
         </view>
-      </view>
-      <view v-if="store.loading && !store.list.length" class="loading-text">工单加载中...</view>
-      <AppEmpty v-if="!store.loading && !store.list.length" title="暂无工单" desc="调整状态或搜索条件后再试" show-retry
-        @retry="store.refresh()" />
-      <view v-if="store.loading && store.list.length" class="footer-text">加载更多...</view>
-      <view v-if="store.finished && store.list.length" class="footer-text">没有更多工单了</view>
+        <view v-if="store.finished && store.list.length" class="footer-text">
+          没有更多工单了
+        </view>
       </view>
     </scroll-view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { onShow } from '@dcloudio/uni-app'
-import { computed, nextTick, ref } from 'vue'
-import { onPullDownRefresh } from '@dcloudio/uni-app'
-import AppEmpty from '@/components/AppEmpty.vue'
-import AppNavbar from '@/components/AppNavbar.vue'
-import { useWorkOrderStore } from '@/stores/workOrder'
-import type { WorkOrder, WorkOrderCardView } from '@/modules/work-order/types'
-import { getDictsByTypes, getDictLabelByValue } from '@/utils/common'
-import type { DictDataVO } from '@/modules/common/types'
+import { onShow } from "@dcloudio/uni-app";
+import { computed, nextTick, ref } from "vue";
+import { onPullDownRefresh } from "@dcloudio/uni-app";
+import AppEmpty from "@/components/AppEmpty.vue";
+import AppNavbar from "@/components/AppNavbar.vue";
+import { useWorkOrderStore } from "@/stores/workOrder";
+import type { WorkOrder, WorkOrderCardView } from "@/modules/work-order/types";
+import { getDictsByTypes, getDictLabelByValue } from "@/utils/common";
+import type { DictDataVO } from "@/modules/common/types";
 
+const store = useWorkOrderStore();
+const searchKeyword = ref("");
+const searchFocused = ref(false);
+const timeSort = ref<1 | 2>(store.queryParams.sort || 2);
 
-const store = useWorkOrderStore()
-const searchKeyword = ref('')
-const searchFocused = ref(false)
-const timeSort = ref<1 | 2>(store.queryParams.sort || 2)
-
-const tabs = ref<DictDataVO[]>([])
+const tabs = ref<DictDataVO[]>([]);
 
 const tabCountStyle = computed(() => ({
-  gridTemplateColumns: `repeat(${tabs.value.length}, minmax(0, 1fr))`
-}))
+  gridTemplateColumns: `repeat(${tabs.value.length}, minmax(0, 1fr))`,
+}));
 
-const activeStatus = computed<string>(() => store.queryParams.status || 'all')
-const timeSortIcon = computed(() => (
-  timeSort.value === 1 ? '/static/images/shijianzhengxu.png' : '/static/images/shijiandaoxu.png'
-))
+const activeStatus = computed<string>(() => store.queryParams.status || "all");
+const timeSortIcon = computed(() =>
+  timeSort.value === 1
+    ? "/static/images/shijianzhengxu.png"
+    : "/static/images/shijiandaoxu.png",
+);
 const orderViews = computed<WorkOrderCardView[]>(() => {
-  return store.list.map(formatOrder)
-})
+  return store.list.map(formatOrder);
+});
 
 // onMounted(() => {
 //   console.log('onMounted');
@@ -117,112 +156,112 @@ const orderViews = computed<WorkOrderCardView[]>(() => {
 //   store.refresh()
 // })
 onShow(() => {
-getDictsByTypes(['work_order_status'], true).then((dicts) => {
-  tabs.value = dicts.work_order_status || []
-})
-  searchKeyword.value = store.queryParams.workOrderName || ''
-  timeSort.value = store.queryParams.sort || 2
-  store.refresh()
-  console.log('onShow');
-  
-})
+  getDictsByTypes(["work_order_status"], true).then((dicts) => {
+    tabs.value = dicts.work_order_status || [];
+  });
+  searchKeyword.value = store.queryParams.workOrderName || "";
+  timeSort.value = store.queryParams.sort || 2;
+  store.refresh();
+  console.log("onShow");
+});
 
 onPullDownRefresh(async () => {
   uni.showToast({
-    title: '下拉刷新请求...',
-    icon: 'none'
-  })
-  await store.refresh()
-  uni.stopPullDownRefresh()
-})
+    title: "下拉刷新请求...",
+    icon: "none",
+  });
+  await store.refresh();
+  uni.stopPullDownRefresh();
+});
 function changeStatus(status: string) {
-  if (activeStatus.value === status) return
-  store.setStatus(status)
-  store.refresh()
+  if (activeStatus.value === status) return;
+  store.setStatus(status);
+  store.refresh();
 }
 
 function handleSearch() {
-  store.setKeyword(searchKeyword.value.trim())
-  store.refresh()
+  store.setKeyword(searchKeyword.value.trim());
+  store.refresh();
 }
 
 function clearSearch() {
-  searchKeyword.value = ''
-  handleSearch()
+  searchKeyword.value = "";
+  handleSearch();
   nextTick(() => {
-    searchFocused.value = true
-  })
+    searchFocused.value = true;
+  });
 }
 
 function toggleTimeSort() {
-  timeSort.value = timeSort.value === 1 ? 2 : 1
-  store.setSort(timeSort.value)
-  store.refresh()
+  timeSort.value = timeSort.value === 1 ? 2 : 1;
+  store.setSort(timeSort.value);
+  store.refresh();
   uni.showToast({
-    title: timeSort.value === 1 ? '按时间升序排序' : '按时间降序排序',
-    icon: 'none'
-  })
+    title: timeSort.value === 1 ? "按时间升序排序" : "按时间降序排序",
+    icon: "none",
+  });
 }
 
 function openOrder(order: WorkOrderCardView) {
   uni.navigateTo({
-    url: `/pages/work-order/person-list?id=${encodeURIComponent(order.id)}&orderNo=${encodeURIComponent(order.orderNo)}&title=${encodeURIComponent(order.planName)}`
-  })
+    url: `/pages/work-order/person-list?workOrderId=${encodeURIComponent(order.id)}&title=${encodeURIComponent(order.planName)}`,
+  });
 }
 
 function formatOrder(item: WorkOrder): WorkOrderCardView {
-  const total = item.userCount || 0
-  const completed = item.completedCount || 0
-  const failed = item.failedCount || 0
-  const canceled = item.canceledCount || 0
-  const pending = Math.max(total - completed - failed - canceled, 0)
+  const total = item.userCount || 0;
+  const completed = item.completedCount || 0;
+  const failed = item.failedCount || 0;
+  const canceled = item.canceledCount || 0;
+  const pending = Math.max(total - completed - failed - canceled, 0);
 
   return {
     id: String(item.id),
-    orderNo: item.workOrderNo || item.orderNo || '--',
-    planName: item.workOrderName || '--',
-    statusText: getDictLabelByValue(tabs.value, item.status || 'all'),
+    orderNo: item.workOrderNo || item.orderNo || "--",
+    planName: item.workOrderName || "--",
+    statusText: getDictLabelByValue(tabs.value, item.status || "all"),
     statusClass: getStatusClass(item.status),
     stats: [
-      { label: '总用户数', value: total, type: 'total' },
-      { label: '已完成', value: completed, type: 'success' },
-      { label: '失败', value: failed, type: 'danger' },
-      { label: '待安检', value: pending, type: 'primary' }
+      { label: "总用户数", value: total, type: "total" },
+      { label: "已完成", value: completed, type: "success" },
+      { label: "失败", value: failed, type: "danger" },
+      { label: "待安检", value: pending, type: "primary" },
     ],
-    dispatchTime: item.assignTime || item.createTime || '--',
+    dispatchTime: item.assignTime || item.createTime || "--",
     finishLabel: getFinishLabel(item.status),
-    finishTime: getFinishTime(item)
-  }
+    finishTime: getFinishTime(item),
+  };
 }
 
-function getStatusClass(status: WorkOrder['status']) {
+function getStatusClass(status: WorkOrder["status"]) {
   const classMap: Record<string, string> = {
-    '1': 'is-pending',
-    '2': 'is-processing',
-    '3': 'is-completed',
-    '4': 'is-canceled',
-    '5': 'is-ended'
-  }
-  return classMap[status] || 'is-pending'
+    "1": "is-pending",
+    "2": "is-processing",
+    "3": "is-completed",
+    "4": "is-ended",
+    "5": "is-canceled",
+  };
+  return classMap[status] || "is-pending";
 }
 
-function getFinishLabel(status: WorkOrder['status']) {
-  if (status === '3') return '完成时间'
-  if (status === '4') return '结束时间'
-  if (status === '5') return '取消时间'
-  return '计划完成日期'
+function getFinishLabel(status: WorkOrder["status"]) {
+  if (status === "3") return "完成时间";
+  if (status === "4") return "结束时间";
+  if (status === "5") return "取消时间";
+  return "计划完成日期";
 }
 
 function getFinishTime(item: WorkOrder) {
-  if (item.status === '3') return item.completeTime || item.planCompleteTime || '--'
-  if (item.status === '4') return item.cancelTime || '--'
-  return item.planCompleteTime || '--'
+  if (item.status === "3")
+    return item.completeTime || item.planCompleteTime || "--";
+  if (item.status === "4") return item.cancelTime || "--";
+  return item.planCompleteTime || "--";
 }
 </script>
 
 <style lang="scss" scoped>
-@import '@/styles/variables.scss';
-@import '@/styles/mixins.scss';
+@import "@/styles/variables.scss";
+@import "@/styles/mixins.scss";
 
 .work-order-page {
   display: flex;
@@ -266,9 +305,9 @@ function getFinishTime(item: WorkOrder) {
 .search-panel {
   flex: 0 0 auto;
   background: #fff;
-  margin-bottom: 24rpx;  
+  margin-bottom: 24rpx;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 140rpx 80rpx;// 搜索框 140rpx 80rpx
+  grid-template-columns: minmax(0, 1fr) 140rpx 80rpx; // 搜索框 140rpx 80rpx
   gap: 12rpx;
   align-items: center;
   padding: 26rpx 24rpx 32rpx; // 上下26rpx 左右24rpx 下32rpx
@@ -295,7 +334,7 @@ function getFinishTime(item: WorkOrder) {
 }
 
 .placeholder {
-  color: #A4B1C5;
+  color: #a4b1c5;
 }
 
 .clear-btn {
@@ -317,7 +356,9 @@ function getFinishTime(item: WorkOrder) {
   font-size: 28rpx;
   background: #fff;
   border: 2rpx solid $border-color;
-  box-shadow: 0 3px 14px rgba(4, 46, 138, 0.06), 0 2px 4px rgba(4, 46, 138, 0.03);
+  box-shadow:
+    0 3px 14px rgba(4, 46, 138, 0.06),
+    0 2px 4px rgba(4, 46, 138, 0.03);
 }
 
 .time-sort-btn {
@@ -328,7 +369,9 @@ function getFinishTime(item: WorkOrder) {
   border-radius: $common-radius;
   background: #fff;
   border: 2rpx solid $border-color;
-  box-shadow: 0 3px 14px rgba(4, 46, 138, 0.06), 0 2px 4px rgba(4, 46, 138, 0.03);
+  box-shadow:
+    0 3px 14px rgba(4, 46, 138, 0.06),
+    0 2px 4px rgba(4, 46, 138, 0.03);
 }
 
 .time-sort-icon {
@@ -439,14 +482,14 @@ function getFinishTime(item: WorkOrder) {
   text-align: center;
 }
 
-.stat-item+.stat-item::before {
+.stat-item + .stat-item::before {
   position: absolute;
   top: 6rpx;
   bottom: 6rpx;
   left: 0;
   width: 1rpx;
   background: #edf1f6;
-  content: '';
+  content: "";
 }
 
 .stat-label,
@@ -503,7 +546,7 @@ function getFinishTime(item: WorkOrder) {
   line-height: 1.35;
 }
 
-.time-row+.time-row {
+.time-row + .time-row {
   margin-top: 18rpx;
 }
 
