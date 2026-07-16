@@ -92,6 +92,14 @@
         "disableScroll": true,
         "app-plus": { "bounce": "none" }
       }
+    },
+    {
+      "path": "pages/work-order/inspection/history-detail",
+      "style": {
+        "navigationStyle": "custom",
+        "disableScroll": true,
+        "app-plus": { "bounce": "none" }
+      }
     }
   ],
   "globalStyle": {
