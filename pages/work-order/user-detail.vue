@@ -58,7 +58,54 @@
           </view>
         </view>
 
-        <view class="section-block history-section">
+        <view class="section-block">
+          <view class="section-title device-title">
+            <text>设备信息</text>
+            <view class="add-device-btn">
+              <u-icon name="plus" color="#fff" size="15" /> 添加设备
+            </view>
+          </view>
+          <view v-if="deviceList.length" class="device-list">
+            <view
+              v-for="device in deviceList"
+              :key="device.deviceNo"
+              class="device-card"
+            >
+              <view class="device-main">
+                <text class="device-type" v-if="device.deviceType">
+                  {{ getDictLabelByValue(deviceTypeDict, device.deviceType) }}
+                </text>
+                <view class="history-row">
+                  <text class="info-label">设备品牌：</text>
+                  <text class="info-value">
+                    {{ displayValue(device.brand) }}
+                  </text>
+                </view>
+                <view class="history-row">
+                  <text class="info-label">设备型号：</text>
+                  <text class="info-value">
+                    {{ displayValue(device.model) }}
+                  </text>
+                </view>
+                <view class="history-row">
+                  <text class="info-label">安装日期：</text>
+                  <text class="info-value">
+                    {{ displayValue(device.installDate) }}
+                  </text>
+                </view>
+                <view class="history-row">
+                  <text class="info-label">使用年限：</text>
+                  <text class="info-value">
+                    {{ displayValue(device.serviceLife) }}
+                  </text>
+                </view>
+              </view>
+              <u-icon name="arrow-right" color="#9AA8C5" size="15" />
+            </view>
+          </view>
+          <view v-else class="device-empty">暂无设备信息</view>
+        </view>
+        <view class="section-block">
           <text class="section-title">安检历史</text>
           <view v-if="historyList.length" class="history-list">
             <view
@@ -106,7 +153,7 @@
 
     <view v-if="userStatus === '1'" class="inspection-actions">
       <button
-        v-for="action in INSPECTION_ACTIONS"
+        v-for="action in Object.values(INSPECTION_ACTIONS)"
         :key="action.mode"
         class="inspection-action"
         :class="action.className"
@@ -148,16 +195,22 @@ import AppNavbar from "@/components/AppNavbar.vue";
 import UnableInspectionPopup from "@/pages/work-order/inspection/components/UnableInspectionPopup.vue";
 import { getWorkOrderUserDetailApi } from "@/modules/work-order/api";
 import { submitInspectionRecordApi } from "@/modules/work-order/inspection/api";
-import { captureInspectionPhotos } from "@/pages/work-order/inspection/composables/useInspectionCamera";
-import { deleteFileApi, uploadFilesApi } from "@/modules/common/api";
-import { FILE_UPLOAD_TYPE } from "@/modules/common/types";
 import type { InspectionPhoto } from "@/modules/work-order/inspection/types";
+import { captureInspectionPhotos } from "@/pages/work-order/inspection/composables/useInspectionCamera";
+import {
+  deleteFileApi,
+  uploadFilesApi,
+  getDictsApi,
+} from "@/modules/common/api";
+import { FILE_UPLOAD_TYPE } from "@/modules/common/types";
+import type { DictDataVO } from "@/modules/common/types";
 import type {
   InspectionHistoryRecord,
   WorkOrderUserDetailResult,
   WorkOrderUserInfoRow,
+  DeviceItem,
 } from "@/modules/work-order/types";
-import { getDictLabelByType } from "@/utils/common";
+import { getDictLabelByType, getDictLabelByValue } from "@/utils/common";
 import { useInspectionStore } from "@/stores/inspection";
 import {
   UNABLE_INSPECTION_DEFAULT_REASON,
@@ -174,6 +227,7 @@ const error = ref("");
 const workOrderStatusText = ref("--");
 const inspectionStore = useInspectionStore();
 const navigatingToInspection = ref(false);
+const navigatingToHistory = ref(false);
 const unablePopupVisible = ref(false);
 const unableReason = ref<string>(UNABLE_INSPECTION_DEFAULT_REASON);
 const unableRemark = ref("");
@@ -188,11 +242,16 @@ const unableOperating = computed(
     unableCameraOpening.value ||
     unableCancelling.value,
 );
+const deviceTypeDict = ref<DictDataVO[]>([]);
+async function loadDeviceTypeDict() {
+  deviceTypeDict.value = await getDictsApi("cyc_device_type");
+}
+loadDeviceTypeDict();
 
 const historyList = computed<InspectionHistoryRecord[]>(
   () => detail.value?.historyList || [],
 );
-
+const deviceList = computed<DeviceItem[]>(() => detail.value?.deviceList || []);
 const userInfoRows = computed<WorkOrderUserInfoRow[]>(() => {
   const user = detail.value?.workOrderUser;
   return [
@@ -315,7 +374,7 @@ function getActionIcon(mode: string) {
 
 // 处理安检操作
 function handleInspectionAction(mode: string, actionName: string) {
-  if (mode === INSPECTION_ACTIONS[0].mode) {
+  if (mode === INSPECTION_ACTIONS.AI.mode) {
     if (navigatingToInspection.value) return;
     if (!detail.value?.template) {
       uni.showToast({ title: "未配置安检模板", icon: "none" });
@@ -338,7 +397,7 @@ function handleInspectionAction(mode: string, actionName: string) {
     });
     return;
   }
-  if (mode === INSPECTION_ACTIONS[2].mode) {
+  if (mode === INSPECTION_ACTIONS.UNABLE.mode) {
     openUnableInspection();
     return;
   }
@@ -346,24 +405,24 @@ function handleInspectionAction(mode: string, actionName: string) {
 }
 
 // 导航到工单详情
-function navigateToDetail(record: any) {
-  console.log(record);
-  if (!record.workOrderId) {
-    uni.showToast({ title: "缺少工单 ID", icon: "none" });
+function navigateToDetail(record: InspectionHistoryRecord) {
+  if (navigatingToHistory.value) return;
+  const currentRecordId = String(record.id || "").trim();
+  if (!workOrderUserId.value || !currentRecordId) {
+    uni.showToast({ title: "缺少安检记录参数", icon: "none" });
     return;
   }
-  // 无法安检工单，不导航到详情页
-  if (record.inspectionMode === INSPECTION_ACTIONS[2].mode) {
-    unablePopupVisible.value = true;
-    unableReason.value = record.unableReason;
-    unableRemark.value = record.remark;
-    return;
-  }
-  // uni.navigateTo({
-  //   url: `/pages/work-order/detail/index?workOrderUserId=${encodeURIComponent(workOrderUserId.value)}&workOrderId=${encodeURIComponent(record.workOrderId)}`,
-  // });
-}
 
+  navigatingToHistory.value = true;
+  uni.navigateTo({
+    url: `/pages/work-order/inspection/history-detail?workOrderUserId=${encodeURIComponent(workOrderUserId.value)}&recordId=${encodeURIComponent(currentRecordId)}`,
+    complete: () => {
+      setTimeout(() => {
+        navigatingToHistory.value = false;
+      }, 500);
+    },
+  });
+}
 function resetUnableInspectionForm() {
   unableReason.value = UNABLE_INSPECTION_DEFAULT_REASON;
   unableRemark.value = "";
@@ -526,7 +585,7 @@ async function submitUnableInspection() {
     await uploadUnablePhotos();
     await submitInspectionRecordApi({
       workOrderUserId: workOrderUserId.value,
-      inspectionMode: INSPECTION_ACTIONS[2].mode,
+      inspectionMode: INSPECTION_ACTIONS.UNABLE.mode,
       unableReason: unableReason.value,
       remark: unableRemark.value.trim(),
       unablePhotoList: unablePhotos.value
@@ -588,9 +647,28 @@ async function handleInspectionSubmitted() {
   font-weight: 800;
   line-height: 42rpx;
 }
-
+.device-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10rpx;
+}
+.add-device-btn {
+  @include flex-center;
+  gap: 5rpx;
+  padding: 10rpx 20rpx;
+  border-radius: 28rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+  line-height: 38rpx;
+  background: linear-gradient(100deg, #347cf0, #5572e9);
+  box-shadow: 0 7rpx 18rpx rgba(54, 116, 225, 0.22);
+  color: #fff;
+}
 .work-order-card,
 .info-card,
+.device-card,
+.device-empty,
 .history-card,
 .history-empty,
 .error-card {
@@ -718,12 +796,14 @@ async function handleInspectionSubmitted() {
   border: 0;
 }
 
+.device-list,
 .history-list {
   display: flex;
   flex-direction: column;
   gap: 22rpx;
 }
 
+.device-card,
 .history-card {
   display: flex;
   align-items: center;
@@ -731,6 +811,7 @@ async function handleInspectionSubmitted() {
   padding: 24rpx 32rpx;
 }
 
+.device-main,
 .history-main {
   flex: 1;
   min-width: 0;
@@ -769,6 +850,7 @@ async function handleInspectionSubmitted() {
   background: $info-bg;
 }
 
+.device-empty,
 .history-empty {
   padding: 44rpx 0;
   color: $info-color;
