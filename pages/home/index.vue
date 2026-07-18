@@ -1,875 +1,518 @@
 <template>
-  <view class="home-page page safe-page">
-    <view class="home-header" :style="{ paddingTop: `${statusBarHeight}px` }">
-      <view>
-        <view class="app-name">安检APP</view>
-        <view class="hello">今日工作稳步推进中</view>
-      </view>
-      <button class="bell-btn" @click="goMessage">
-        <text>铃</text>
-        <text v-if="overview.unreadCount" class="dot" />
-      </button>
-    </view>
+  <view class="home-page">
+    <view class="hero" :style="heroStyle">
+      <view class="hero-glow hero-glow-left" />
+      <view class="hero-glow hero-glow-right" />
+      <view class="hero-content">
+        <view class="greeting-row">
+          <text class="greeting">您好，{{ nickName }}安检员</text>
+          <!-- <text class="greeting">您好，{{ userName }}安检员</text> -->
+          <text class="date-pill">{{ currentDate }}</text>
+        </view>
 
-    <view class="banner">
-      <view class="banner-text">
-        <view class="banner-title">守护燃气安全</view>
-        <view class="banner-subtitle">智能安检每一天</view>
-      </view>
-      <view class="banner-mark">SAFE</view>
-    </view>
-
-    <view class="data-card">
-      <view class="data-item">
-        <text class="data-num">{{ overview.pendingCount }}</text>
-        <text class="data-label">今日待安检</text>
-      </view>
-      <view class="data-item">
-        <text class="data-num success">{{ overview.completedCount }}</text>
-        <text class="data-label">已完成</text>
-      </view>
-      <view class="data-item">
-        <text class="data-num warning">{{ overview.warningCount }}</text>
-        <text class="data-label">异常预警</text>
-      </view>
-    </view>
-
-    <view class="section-head">
-      <text class="section-title">快捷入口</text>
-    </view>
-    <view class="quick-grid">
-      <button
-        v-for="entry in quickEntries"
-        :key="entry.title"
-        class="quick-card"
-        :class="{ highlight: entry.highlight }"
-        @click="handleEntry(entry)"
-      >
-        <view class="quick-top">
-          <view class="quick-icon" :class="`quick-icon-${entry.icon}`">
-            <block v-if="entry.icon === 'assistant'">
-              <text class="assistant-ai">AI</text>
-              <view class="assistant-spark spark-left" />
-              <view class="assistant-spark spark-right" />
-            </block>
-            <block v-else-if="entry.icon === 'work-order'">
-              <view class="order-board">
-                <view class="order-clip" />
-                <view class="order-line long" />
-                <view class="order-line short" />
-              </view>
-              <view class="order-check" />
-            </block>
-            <block v-else-if="entry.icon === 'scan'">
-              <view class="scan-corner top-left" />
-              <view class="scan-corner top-right" />
-              <view class="scan-corner bottom-left" />
-              <view class="scan-corner bottom-right" />
-              <view class="scan-line" />
-            </block>
-            <block v-else-if="entry.icon === 'plugin'">
-              <view class="plugin-chip">
-                <view class="plugin-pin pin-left" />
-                <view class="plugin-pin pin-right" />
-              </view>
-              <view class="plugin-signal" />
-            </block>
-            <block v-else-if="entry.icon === 'audio'">
-              <view class="audio-mic">
-                <view class="audio-mic-head" />
-                <view class="audio-mic-line" />
-                <view class="audio-mic-base" />
-              </view>
-              <view class="audio-wave wave-left" />
-              <view class="audio-wave wave-right" />
-            </block>
-            <block v-else>
-              <view class="message-box">
-                <view class="message-fold left" />
-                <view class="message-fold right" />
-              </view>
-              <view class="message-dot" />
-            </block>
+        <view class="agent-row">
+          <view class="agent-copy">
+            <text class="agent-title">AI Agent 安检</text>
+            <text class="agent-subtitle">智能工具，高效安检</text>
           </view>
-          <text v-if="entry.badge" class="quick-badge">{{ entry.badge }}</text>
+          <button class="agent-button" @click="goAgentCenter">
+            <text>进入Agent中心</text>
+            <text class="agent-arrow">→</text>
+          </button>
         </view>
-        <view class="quick-title">{{ entry.title }}</view>
-        <view class="quick-subtitle">{{ entry.subtitle }}</view>
-      </button>
-    </view>
-
-    <view class="ai-card">
-      <view class="ai-content">
-        <view class="ai-title">AI安检助手</view>
-        <view class="ai-subtitle">智能问答 / 流程指导 / 异常处理</view>
-        <view class="ai-desc">随时解答安检疑问，辅助高效完成工作</view>
       </view>
-      <button class="ai-btn" @click="goAssistant">立即使用</button>
     </view>
 
-    <view class="section-head">
-      <text class="section-title">最近工单</text>
-      <button class="more-btn" @click="goWorkOrder">查看全部</button>
-    </view>
-    <view class="recent-list">
-      <button v-for="item in overview.recentOrders" :key="item.id" class="recent-item" @click="goWorkOrder">
-        <view class="recent-main">
-          <text class="recent-no">{{ item.orderNo }}</text>
-          <text class="recent-address">{{ item.address }}</text>
-          <text class="recent-time">{{ item.appointmentTime }}</text>
+    <view
+      class="statistics-card"
+      :class="{ refreshing: loading && statistics }"
+    >
+      <view class="summary-grid">
+        <view class="summary-item">
+          <text class="summary-label">今日待检</text>
+          <text class="summary-value pending-value">
+            {{ formatCount(statistics?.todayPendingCount) }}
+          </text>
         </view>
-        <StatusTag :status="item.status" :status-name="item.statusName || ''" />
-      </button>
-    </view>
+        <view class="summary-item align-right">
+          <text class="summary-label">高风险用户</text>
+          <text class="summary-value risk-value">
+            {{ formatCount(statistics?.highRiskUserCount) }}
+          </text>
+        </view>
+      </view>
 
-    <view class="recommend-card">
-      <view class="recommend-title">AI 智能推荐</view>
-      <view class="recommend-item">
-        <text class="recommend-dot blue" />
-        <text>重点区域燃气管道检查</text>
+      <view class="card-divider" />
+
+      <view class="overview-head">
+        <text class="overview-title">今日安检概览</text>
+        <text class="today-badge">今日</text>
       </view>
-      <view class="recommend-item">
-        <text class="recommend-dot orange" />
-        <text>燃气泄漏检测注意事项</text>
+
+      <view class="overview-list">
+        <view class="overview-item">
+          <view class="overview-icon-wrap">
+            <image
+              class="overview-icon"
+              src="/static/images/Neighborhood.svg"
+              mode="aspectFit"
+            />
+          </view>
+          <text class="overview-label">安检小区数</text>
+          <text class="overview-count">
+            {{ formatCount(statistics?.inspectionCommunityCount) }}
+          </text>
+        </view>
+
+        <view class="overview-item">
+          <view class="overview-icon-wrap">
+            <image
+              class="overview-icon"
+              src="/static/images/households.svg"
+              mode="aspectFit"
+            />
+          </view>
+          <text class="overview-label">安检户数</text>
+          <text class="overview-count">
+            {{ formatCount(statistics?.inspectionUserCount) }}
+          </text>
+        </view>
       </view>
-      <button class="recommend-link" @click="goAssistant">查看详情</button>
+
+      <view v-if="loading && !statistics" class="loading-mask">
+        <u-loading-icon color="#1677FF" text="数据加载中" />
+      </view>
+
+      <view v-if="loadError && !loading" class="error-bar">
+        <text class="error-text">{{ loadError }}</text>
+        <button class="retry-button" @click="loadStatistics">重新加载</button>
+      </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive } from 'vue'
-import { onPullDownRefresh } from '@dcloudio/uni-app'
-import { getHomeOverviewApi } from '@/modules/home/api'
-import StatusTag from '@/components/StatusTag.vue'
-import type { HomeOverview, QuickEntry } from '@/modules/home/types'
+import { computed, ref } from "vue";
+import { onPullDownRefresh, onShow } from "@dcloudio/uni-app";
+import { getHomeStatisticsApi } from "@/modules/home/api";
+import type { HomeStatistics } from "@/modules/home/types";
+import { useUserStore } from "@/stores/user";
 
-const statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 0
+const userStore = useUserStore();
+const statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 0;
+const statistics = ref<HomeStatistics | null>(null);
+const loading = ref(false);
+const loadError = ref("");
+const currentDate = ref(formatCurrentDate());
 
-const overview = reactive<HomeOverview>({
-  pendingCount: 0,
-  completedCount: 0,
-  warningCount: 0,
-  unreadCount: 0,
-  recentOrders: []
-})
+const userId = computed(() => String(userStore.userInfo?.userId || "").trim());
+const userName = computed(() => {
+  const name = String(userStore.userInfo?.userName || "").trim();
+  return name || "安检员";
+});
+const nickName = computed(() => {
+  const name = String(userStore.userInfo?.nickName || "").trim();
+  return name || "安检员";
+});
+const heroStyle = computed(() => ({
+  paddingTop: `${statusBarHeight}px`,
+}));
 
-const quickEntries: QuickEntry[] = [
-  {
-    title: '安检助手',
-    subtitle: '智能问答 贴心助手',
-    icon: 'assistant',
-    path: '/pages/assistant/index',
-    highlight: true,
-    badge: '推荐'
-  },
-  {
-    title: '安检工单',
-    subtitle: '任务处理',
-    icon: 'work-order',
-    path: '/pages/work-order/index'
-  },
-  {
-    title: '扫一扫',
-    subtitle: '快速识别',
-    icon: 'scan',
-    path: ''
-  },
-  {
-    title: '消息通知',
-    subtitle: '待办提醒',
-    icon: 'message',
-    path: '/pages/message/index'
-  },
-  {
-    title: '插件检测',
-    subtitle: '安卓原生能力校验',
-    icon: 'plugin',
-    path: '/pages/plugin-check/index'
-  },
-  {
-    title: '录音测试',
-    subtitle: '后台持续录音校验',
-    icon: 'audio',
-    path: '/pages/audio-record/index'
-  }
-]
-
-onMounted(() => {
-  fetchOverview()
-})
+onShow(() => {
+  currentDate.value = formatCurrentDate();
+  void loadStatistics();
+});
 
 onPullDownRefresh(async () => {
-  await fetchOverview()
-  uni.stopPullDownRefresh()
-})
+  await loadStatistics();
+  uni.stopPullDownRefresh();
+});
 
-async function fetchOverview() {
-  const data = await getHomeOverviewApi()
-  Object.assign(overview, data)
-}
-
-function handleEntry(entry: QuickEntry) {
-  if (entry.title === '扫一扫') {
-    uni.scanCode({
-      success: (res) => {
-        uni.showToast({
-          title: res.result,
-          icon: 'none'
-        })
-      },
-      fail: () => {
-        uni.showToast({
-          title: '当前环境暂不支持扫码',
-          icon: 'none'
-        })
-      }
-    })
-    return
+async function loadStatistics() {
+  if (loading.value) return;
+  if (!userId.value) {
+    loadError.value = "未获取到当前用户信息";
+    return;
   }
 
-  if (entry.path === '/pages/work-order/index' || entry.path === '/pages/message/index') {
-    uni.switchTab({ url: entry.path })
-    return
+  loading.value = true;
+  loadError.value = "";
+  try {
+    statistics.value = await getHomeStatisticsApi({ userId: userId.value });
+  } catch (error) {
+    loadError.value =
+      error instanceof Error ? error.message : "首页统计数据加载失败";
+  } finally {
+    loading.value = false;
   }
-
-  uni.navigateTo({ url: entry.path })
 }
 
-function goMessage() {
-  uni.switchTab({
-    url: '/pages/message/index'
-  })
+function formatCount(value: unknown) {
+  if (value === undefined || value === null || value === "") return "--";
+  const count = Number(value);
+  return Number.isFinite(count) ? String(count) : "--";
 }
 
-function goWorkOrder() {
-  uni.switchTab({
-    url: '/pages/work-order/index'
-  })
+function formatCurrentDate() {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}/${month}/${day}`;
 }
 
-function goAssistant() {
-  uni.navigateTo({
-    url: '/pages/assistant/index'
-  })
+function goAgentCenter() {
+  uni.navigateTo({ url: "/pages/home/test-index" });
+  // uni.navigateTo({ url: "/pages/assistant/index" });
 }
 </script>
 
 <style lang="scss" scoped>
-@import '@/styles/variables.scss';
-@import '@/styles/mixins.scss';
+@import "@/styles/variables.scss";
 
 .home-page {
-  padding: 0 28rpx 32rpx;
-}
-
-.home-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 24rpx;
-}
-
-.app-name {
-  color: $text-main;
-  font-size: 40rpx;
-  font-weight: 800;
-}
-
-.hello {
-  margin-top: 8rpx;
-  color: $info-color;
-  font-size: 25rpx;
-}
-
-.bell-btn {
-  position: relative;
-  @include flex-center;
-  width: 78rpx;
-  height: 78rpx;
-  border-radius: 39rpx;
-  color: $primary-color;
-  font-size: 26rpx;
-  background: #ffffff;
-  box-shadow: $shadow-card;
-}
-
-.dot {
-  position: absolute;
-  top: 16rpx;
-  right: 16rpx;
-  width: 16rpx;
-  height: 16rpx;
-  border-radius: 8rpx;
-  background: $error-color;
-}
-
-.banner {
-  position: relative;
-  min-height: 220rpx;
-  padding: 38rpx;
+  min-height: 100vh;
+  padding-bottom: calc(42rpx + env(safe-area-inset-bottom));
   overflow: hidden;
-  border-radius: 32rpx;
-  background: linear-gradient(135deg, #1677ff 0%, #2fb8ff 100%);
-  box-shadow: 0 18rpx 40rpx rgba(22, 119, 255, 0.22);
+  background: $bg-page;
 }
 
-.banner-title {
-  color: #ffffff;
-  font-size: 42rpx;
-  font-weight: 800;
+.hero {
+  position: relative;
+  min-height: 442rpx;
+  overflow: hidden;
+  background: linear-gradient(145deg, #0b3d9e 0%, #073492 58%, #113b94 100%);
 }
 
-.banner-subtitle {
-  margin-top: 16rpx;
-  color: rgba(255, 255, 255, 0.86);
-  font-size: 28rpx;
-}
-
-.banner-mark {
+.hero::after {
   position: absolute;
-  right: -8rpx;
-  bottom: 18rpx;
-  color: rgba(255, 255, 255, 0.16);
-  font-size: 86rpx;
-  font-weight: 900;
+  right: -120rpx;
+  bottom: -180rpx;
+  width: 520rpx;
+  height: 360rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.08);
+  border-radius: 50%;
+  content: "";
+  transform: rotate(-16deg);
 }
 
-.data-card {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14rpx;
-  margin-top: 24rpx;
-  padding: 28rpx 16rpx;
-  background: #ffffff;
-  border-radius: $card-radius;
-  box-shadow: $shadow-card;
+.hero-content {
+  position: relative;
+  z-index: 2;
+  padding: 48rpx 42rpx 150rpx;
 }
 
-.data-item {
-  @include flex-center;
-  flex-direction: column;
+.hero-glow {
+  position: absolute;
+  border-radius: 50%;
+  // filter: blur(4rpx);
+  pointer-events: none;
 }
 
-.data-num {
-  color: $primary-color;
-  font-size: 42rpx;
-  font-weight: 800;
+.hero-glow-left {
+  top: 80rpx;
+  left: -150rpx;
+  width: 360rpx;
+  height: 360rpx;
+  background: rgba(25, 100, 220, 0.18);
 }
 
-.data-num.success {
-  color: $success-color;
+.hero-glow-right {
+  top: -180rpx;
+  right: -90rpx;
+  width: 420rpx;
+  height: 420rpx;
+  background: rgba(64, 131, 239, 0.16);
 }
 
-.data-num.warning {
-  color: $error-color;
+.greeting-row {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
 }
 
-.data-label {
-  margin-top: 10rpx;
-  color: $info-color;
-  font-size: 24rpx;
+.greeting {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 27rpx;
+  line-height: 38rpx;
 }
 
-.section-head {
+.date-pill {
+  padding: 5rpx 18rpx;
+  border-radius: 9rpx;
+  color: #fff;
+  font-size: 22rpx;
+  font-weight: 700;
+  letter-spacing: 1rpx;
+  background: rgba(116, 159, 231, 0.36);
+}
+
+.agent-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 34rpx 4rpx 18rpx;
+  gap: 24rpx;
+  margin-top: 70rpx;
 }
 
-.more-btn {
-  min-height: 52rpx;
-  color: $primary-color;
+.agent-copy {
+  min-width: 0;
+}
+
+.agent-title {
+  display: block;
+  color: #fff;
+  font-size: 46rpx;
+  font-weight: 800;
+  line-height: 62rpx;
+  letter-spacing: -1rpx;
+  white-space: nowrap;
+}
+
+.agent-subtitle {
+  display: block;
+  margin-top: 5rpx;
+  color: rgba(220, 233, 255, 0.78);
   font-size: 25rpx;
+  line-height: 36rpx;
 }
 
-.quick-grid {
+.agent-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  gap: 12rpx;
+  width: 246rpx;
+  height: 78rpx;
+  padding: 0 16rpx;
+  border: 2rpx solid rgba(208, 225, 255, 0.4);
+  border-radius: 42rpx;
+  color: #fff;
+  font-size: 23rpx;
+  font-weight: 700;
+  line-height: 1;
+  background: linear-gradient(
+    110deg,
+    rgba(103, 151, 225, 0.52),
+    rgba(47, 91, 175, 0.42)
+  );
+  box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.15);
+}
+
+.agent-button::after {
+  border: 0;
+}
+
+.agent-button:active {
+  opacity: 0.84;
+}
+
+.agent-arrow {
+  margin-top: -2rpx;
+  font-size: 31rpx;
+  font-weight: 400;
+}
+
+.statistics-card {
+  position: relative;
+  z-index: 3;
+  min-height: 830rpx;
+  margin: -122rpx 38rpx 0;
+  padding: 0 40rpx 52rpx;
+  overflow: hidden;
+  border: 1rpx solid rgba(225, 232, 244, 0.521);
+  border-radius: 38rpx;
+  background: linear-gradient(180deg, #ffffff00 0%, #ffffff 100%);
+  // box-shadow: 0 28rpx 60rpx rgba(27, 62, 119, 0.12);
+  box-shadow: $shadow-card;
+  transition: opacity 0.2s ease;
+  backdrop-filter: blur(80rpx);
+}
+
+.statistics-card.refreshing {
+  opacity: 0.86;
+}
+
+.summary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20rpx;
+  padding: 72rpx 10rpx 60rpx;
 }
 
-.quick-card {
-  min-height: 182rpx;
-  padding: 24rpx;
-  text-align: left;
-  background: #ffffff;
-  border-radius: $card-radius;
-  box-shadow: $shadow-card;
-}
-
-.quick-card.highlight {
-  background: linear-gradient(135deg, #ffffff 0%, #eaf5ff 100%);
-  border: 2rpx solid rgba(22, 119, 255, 0.18);
-}
-
-.quick-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.quick-icon {
-  position: relative;
-  @include flex-center;
-  flex-shrink: 0;
-  width: 72rpx;
-  height: 72rpx;
-  overflow: hidden;
-  border-radius: 24rpx;
-  color: #ffffff;
-  font-size: 24rpx;
-  font-weight: 800;
-}
-
-.quick-icon-assistant {
-  background: linear-gradient(135deg, #1677ff 0%, #54c8ff 100%);
-  box-shadow: 0 10rpx 20rpx rgba(22, 119, 255, 0.22);
-}
-
-.quick-icon-work-order {
-  background: linear-gradient(135deg, #19be6b 0%, #65d89b 100%);
-  box-shadow: 0 10rpx 20rpx rgba(25, 190, 107, 0.2);
-}
-
-.quick-icon-scan {
-  background: linear-gradient(135deg, #7c5cff 0%, #4aa6ff 100%);
-  box-shadow: 0 10rpx 20rpx rgba(89, 97, 255, 0.2);
-}
-
-.quick-icon-message {
-  background: linear-gradient(135deg, #ff9900 0%, #ffc44d 100%);
-  box-shadow: 0 10rpx 20rpx rgba(255, 153, 0, 0.2);
-}
-
-.quick-icon-plugin {
-  background: linear-gradient(135deg, #0b1f44 0%, #1677ff 100%);
-  box-shadow: 0 10rpx 20rpx rgba(11, 31, 68, 0.18);
-}
-
-.quick-icon-audio {
-  background: linear-gradient(135deg, #fa3534 0%, #ff9900 100%);
-  box-shadow: 0 10rpx 20rpx rgba(250, 53, 52, 0.18);
-}
-
-.assistant-ai {
-  position: relative;
-  z-index: 1;
-  font-size: 25rpx;
-  letter-spacing: 0;
-}
-
-.assistant-spark {
-  position: absolute;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.72);
-}
-
-.spark-left {
-  top: 16rpx;
-  left: 14rpx;
-  width: 8rpx;
-  height: 8rpx;
-}
-
-.spark-right {
-  right: 13rpx;
-  bottom: 15rpx;
-  width: 12rpx;
-  height: 12rpx;
-}
-
-.order-board {
-  position: relative;
-  width: 34rpx;
-  height: 42rpx;
-  border: 4rpx solid #ffffff;
-  border-radius: 8rpx;
-}
-
-.order-clip {
-  position: absolute;
-  top: -8rpx;
-  left: 8rpx;
-  width: 18rpx;
-  height: 10rpx;
-  border-radius: 6rpx;
-  background: #ffffff;
-}
-
-.order-line {
-  position: absolute;
-  left: 8rpx;
-  height: 4rpx;
-  border-radius: 2rpx;
-  background: rgba(255, 255, 255, 0.9);
-}
-
-.order-line.long {
-  top: 15rpx;
-  width: 18rpx;
-}
-
-.order-line.short {
-  top: 26rpx;
-  width: 12rpx;
-}
-
-.order-check {
-  position: absolute;
-  right: 14rpx;
-  bottom: 16rpx;
-  width: 16rpx;
-  height: 9rpx;
-  border-bottom: 4rpx solid #ffffff;
-  border-left: 4rpx solid #ffffff;
-  transform: rotate(-45deg);
-}
-
-.scan-corner {
-  position: absolute;
-  width: 18rpx;
-  height: 18rpx;
-}
-
-.scan-corner.top-left {
-  top: 16rpx;
-  left: 16rpx;
-  border-top: 4rpx solid #ffffff;
-  border-left: 4rpx solid #ffffff;
-}
-
-.scan-corner.top-right {
-  top: 16rpx;
-  right: 16rpx;
-  border-top: 4rpx solid #ffffff;
-  border-right: 4rpx solid #ffffff;
-}
-
-.scan-corner.bottom-left {
-  bottom: 16rpx;
-  left: 16rpx;
-  border-bottom: 4rpx solid #ffffff;
-  border-left: 4rpx solid #ffffff;
-}
-
-.scan-corner.bottom-right {
-  right: 16rpx;
-  bottom: 16rpx;
-  border-right: 4rpx solid #ffffff;
-  border-bottom: 4rpx solid #ffffff;
-}
-
-.scan-line {
-  width: 30rpx;
-  height: 4rpx;
-  border-radius: 2rpx;
-  background: rgba(255, 255, 255, 0.85);
-}
-
-.message-box {
-  position: relative;
-  width: 40rpx;
-  height: 30rpx;
-  border: 4rpx solid #ffffff;
-  border-radius: 8rpx;
-}
-
-.message-fold {
-  position: absolute;
-  top: 7rpx;
-  width: 22rpx;
-  height: 4rpx;
-  border-radius: 2rpx;
-  background: #ffffff;
-}
-
-.message-fold.left {
-  left: -2rpx;
-  transform: rotate(32deg);
-}
-
-.message-fold.right {
-  right: -2rpx;
-  transform: rotate(-32deg);
-}
-
-.message-dot {
-  position: absolute;
-  top: 13rpx;
-  right: 12rpx;
-  width: 12rpx;
-  height: 12rpx;
-  border: 3rpx solid #ffffff;
-  border-radius: 50%;
-  background: #ff4d43;
-}
-
-.plugin-chip {
-  position: relative;
-  width: 42rpx;
-  height: 34rpx;
-  border: 4rpx solid #ffffff;
-  border-radius: 8rpx;
-}
-
-.plugin-chip::before {
-  position: absolute;
-  top: 9rpx;
-  left: 9rpx;
-  width: 14rpx;
-  height: 8rpx;
-  border-radius: 3rpx;
-  background: rgba(255, 255, 255, 0.9);
-  content: '';
-}
-
-.plugin-pin {
-  position: absolute;
-  bottom: -10rpx;
-  width: 4rpx;
-  height: 8rpx;
-  border-radius: 2rpx;
-  background: #ffffff;
-}
-
-.pin-left {
-  left: 9rpx;
-}
-
-.pin-right {
-  right: 9rpx;
-}
-
-.plugin-signal {
-  position: absolute;
-  top: 13rpx;
-  right: 12rpx;
-  width: 12rpx;
-  height: 12rpx;
-  border: 3rpx solid #ffffff;
-  border-radius: 50%;
-  background: $success-color;
-}
-
-.audio-mic {
-  position: relative;
-  width: 30rpx;
-  height: 45rpx;
-}
-
-.audio-mic-head {
-  position: absolute;
-  top: 0;
-  left: 6rpx;
-  width: 18rpx;
-  height: 28rpx;
-  border: 4rpx solid #ffffff;
-  border-radius: 12rpx;
-}
-
-.audio-mic-line {
-  position: absolute;
-  left: 13rpx;
-  bottom: 7rpx;
-  width: 4rpx;
-  height: 13rpx;
-  border-radius: 2rpx;
-  background: #ffffff;
-}
-
-.audio-mic-base {
-  position: absolute;
-  left: 5rpx;
-  bottom: 2rpx;
-  width: 20rpx;
-  height: 4rpx;
-  border-radius: 2rpx;
-  background: #ffffff;
-}
-
-.audio-wave {
-  position: absolute;
-  top: 24rpx;
-  width: 10rpx;
-  height: 18rpx;
-  border: 4rpx solid rgba(255, 255, 255, 0.86);
-  border-top: 0;
-  border-bottom: 0;
-}
-
-.wave-left {
-  left: 11rpx;
-  border-right: 0;
-  border-radius: 12rpx 0 0 12rpx;
-}
-
-.wave-right {
-  right: 11rpx;
-  border-left: 0;
-  border-radius: 0 12rpx 12rpx 0;
-}
-
-.quick-badge {
-  padding: 6rpx 14rpx;
-  border-radius: 18rpx;
-  color: $warning-color;
-  font-size: 20rpx;
-  background: #fff4df;
-}
-
-.quick-title {
-  margin-top: 20rpx;
-  color: $text-main;
-  font-size: 30rpx;
-  font-weight: 700;
-}
-
-.quick-subtitle {
-  margin-top: 8rpx;
-  color: $info-color;
-  font-size: 23rpx;
-}
-
-.ai-card,
-.recommend-card,
-.recent-item {
-  background: #ffffff;
-  border-radius: $card-radius;
-  box-shadow: $shadow-card;
-}
-
-.ai-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 22rpx;
-  margin-top: 26rpx;
-  padding: 30rpx;
-}
-
-.ai-content {
-  min-width: 0;
-}
-
-.ai-title {
-  color: $text-main;
-  font-size: 34rpx;
-  font-weight: 800;
-}
-
-.ai-subtitle {
-  margin-top: 10rpx;
-  color: $primary-color;
-  font-size: 25rpx;
-  font-weight: 600;
-}
-
-.ai-desc {
-  margin-top: 10rpx;
-  color: $info-color;
-  font-size: 24rpx;
-}
-
-.ai-btn {
-  @include flex-center;
-  flex-shrink: 0;
-  width: 168rpx;
-  height: 76rpx;
-  border-radius: 38rpx;
-  color: #ffffff;
-  font-size: 26rpx;
-  font-weight: 700;
-  background: $confirm-btn-bg;
-}
-
-.recent-list {
+.summary-item {
   display: flex;
   flex-direction: column;
-  gap: 18rpx;
+  align-items: flex-start;
 }
 
-.recent-item {
+.summary-item.align-right {
+  align-items: flex-end;
+}
+
+.summary-label {
+  color: rgba(239, 245, 255, 0.92);
+  font-size: 24rpx;
+  line-height: 34rpx;
+}
+
+.summary-value {
+  margin-top: 10rpx;
+  font-size: 52rpx;
+  font-weight: 800;
+  line-height: 60rpx;
+}
+
+.pending-value {
+  color: #fff;
+}
+
+.risk-value {
+  color: #ff3e51;
+}
+
+.card-divider {
+  height: 2rpx;
+  margin: 0 2rpx;
+  background: rgba(215, 223, 236, 0.7);
+}
+
+.overview-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18rpx;
-  width: 100%;
-  padding: 24rpx;
-  text-align: left;
+  margin: 60rpx 2rpx 0;
 }
 
-.recent-main {
+.overview-title {
+  color: #08295f;
+  font-size: 31rpx;
+  font-weight: 800;
+  line-height: 44rpx;
+}
+
+.today-badge {
+  padding: 8rpx 19rpx;
+  border-radius: 11rpx;
+  color: #3560a8;
+  font-size: 21rpx;
+  font-weight: 700;
+  background: #e5ebf5;
+}
+
+.overview-list {
   display: flex;
   flex-direction: column;
+  gap: 30rpx;
+  margin-top: 54rpx;
+}
+
+.overview-item {
+  display: flex;
+  align-items: center;
+  min-height: 144rpx;
+  padding: 0 34rpx;
+  border-radius: 28rpx;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 12rpx 30rpx rgba(45, 82, 139, 0.035);
+}
+
+.overview-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 70rpx;
+  width: 70rpx;
+  height: 70rpx;
+  border-radius: 20rpx;
+  background: #edf3fb;
+}
+
+.overview-icon {
+  width: 38rpx;
+  height: 38rpx;
+}
+
+.overview-label {
+  flex: 1;
   min-width: 0;
-}
-
-.recent-no,
-.recent-address,
-.recent-time {
-  @include text-ellipsis;
-  max-width: 440rpx;
-}
-
-.recent-no {
-  color: $text-main;
+  margin-left: 28rpx;
+  color: #173766;
   font-size: 28rpx;
   font-weight: 700;
 }
 
-.recent-address {
-  margin-top: 8rpx;
-  color: $info-color;
-  font-size: 24rpx;
+.overview-count {
+  min-width: 62rpx;
+  padding: 7rpx 17rpx;
+  border-radius: 24rpx;
+  color: #fff;
+  font-size: 25rpx;
+  font-weight: 700;
+  line-height: 32rpx;
+  text-align: center;
+  background: linear-gradient(110deg, #82c9fa, #6bb7ef);
 }
 
-.recent-time {
-  margin-top: 8rpx;
-  color: $text-muted;
-  font-size: 22rpx;
-}
-
-.recommend-card {
-  margin-top: 26rpx;
-  padding: 30rpx;
-}
-
-.recommend-title {
-  color: $text-main;
-  font-size: 32rpx;
-  font-weight: 800;
-}
-
-.recommend-item {
+.loading-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
   display: flex;
   align-items: center;
-  margin-top: 20rpx;
-  color: $info-color;
-  font-size: 26rpx;
+  justify-content: center;
+  border-radius: inherit;
+  background: rgba(249, 251, 254, 0.86);
 }
 
-.recommend-dot {
-  width: 14rpx;
-  height: 14rpx;
-  margin-right: 14rpx;
-  border-radius: 7rpx;
+.error-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  margin-top: 30rpx;
+  padding: 18rpx 22rpx;
+  border-radius: 16rpx;
+  background: #fff0f0;
 }
 
-.recommend-dot.blue {
-  background: $primary-color;
+.error-text {
+  flex: 1;
+  min-width: 0;
+  color: #d84747;
+  font-size: 22rpx;
+  line-height: 32rpx;
 }
 
-.recommend-dot.orange {
-  background: $warning-color;
+.retry-button {
+  flex-shrink: 0;
+  color: #1677ff;
+  font-size: 22rpx;
+  font-weight: 700;
 }
 
-.recommend-link {
-  margin-top: 18rpx;
-  min-height: 54rpx;
-  color: $primary-color;
-  font-size: 25rpx;
-  text-align: left;
+.retry-button::after {
+  border: 0;
+}
+
+@media screen and (max-width: 360px) {
+  .hero-content {
+    padding-right: 30rpx;
+    padding-left: 30rpx;
+  }
+
+  .agent-title {
+    font-size: 40rpx;
+  }
+
+  .agent-button {
+    width: 226rpx;
+    font-size: 21rpx;
+  }
+
+  .statistics-card {
+    margin-right: 28rpx;
+    margin-left: 28rpx;
+  }
 }
 </style>
