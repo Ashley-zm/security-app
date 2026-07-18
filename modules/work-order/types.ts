@@ -173,14 +173,15 @@ export interface InspectionHistoryRecord {
   dangerCount?: number | null;
 }
 export interface DeviceItem {
-  deviceType?: string | number;
+  id?: string | number;
+  deviceType?: string;
   deviceNo?: string;
-  deviceBrand?: string;
-  deviceModel?: string;
+  brand?: string;
+  model?: string;
   installDate?: string | null;
   productionDate?: string | null;
   serviceLife?: number | null;
-  isWarranty?: number;
+  isWarranty?: number; //是否保修 0：否 1：是
   purchaseChannel?: string;
   remark?: string;
 }

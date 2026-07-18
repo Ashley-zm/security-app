@@ -181,7 +181,7 @@ export interface InspectionValidationError {
 export interface UploadedInspectionFile {
   fileId: string;
   fileUrl?: string;
-  aiResult?: Record<string, unknown>;
+  aiResult?: string;
 }
 
 export type InspectionAudioStatus =

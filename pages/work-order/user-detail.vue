@@ -2,7 +2,9 @@
   <view class="user-detail-page page">
     <AppNavbar title="用户信息" show-back />
 
-    <view v-if="loading" class="state-view">加载中...</view>
+    <view v-if="loading" class="state-view">
+      <u-loading-icon color="#1677FF" text="用户加载中..." />
+    </view>
 
     <view v-else-if="error" class="error-card">
       <text class="error-title">用户详情加载失败</text>
@@ -61,48 +63,54 @@
         <view class="section-block">
           <view class="section-title device-title">
             <text>设备信息</text>
-            <view class="add-device-btn">
+            <view class="add-device-btn" @click="openAddDevice">
               <u-icon name="plus" color="#fff" size="15" /> 添加设备
             </view>
           </view>
-          <view v-if="deviceList.length" class="device-list">
-            <view
+          <u-swipe-action v-if="deviceList.length" class="device-list">
+            <u-swipe-action-item
               v-for="device in deviceList"
-              :key="device.deviceNo"
-              class="device-card"
+              :key="String(device.id || device.deviceNo)"
+              class="device-swipe"
+              :name="String(device.id || device.deviceNo || '')"
+              :options="DEVICE_SWIPE_OPTIONS"
+              :disabled="deletingDeviceIds.includes(String(device.id || ''))"
+              @click="handleDeviceSwipeClick($event, device)"
             >
-              <view class="device-main">
-                <text class="device-type" v-if="device.deviceType">
-                  {{ getDictLabelByValue(deviceTypeDict, device.deviceType) }}
-                </text>
-                <view class="history-row">
-                  <text class="info-label">设备品牌：</text>
-                  <text class="info-value">
-                    {{ displayValue(device.brand) }}
+              <view class="device-card" @click="openEditDevice(device)">
+                <view class="device-main">
+                  <text v-if="device.deviceType" class="device-type">
+                    {{ getDeviceTypeText(device.deviceType) }}
                   </text>
+                  <view class="info-row">
+                    <text class="info-label">设备品牌：</text>
+                    <text class="info-value">
+                      {{ displayValue(device.brand) }}
+                    </text>
+                  </view>
+                  <view class="info-row">
+                    <text class="info-label">设备型号：</text>
+                    <text class="info-value">
+                      {{ displayValue(device.model) }}
+                    </text>
+                  </view>
+                  <view class="info-row">
+                    <text class="info-label">安装日期：</text>
+                    <text class="info-value">
+                      {{ displayValue(device.installDate) }}
+                    </text>
+                  </view>
+                  <view class="info-row">
+                    <text class="info-label">使用年限：</text>
+                    <text class="info-value">
+                      {{ displayValue(device.serviceLife) }}
+                    </text>
+                  </view>
                 </view>
-                <view class="history-row">
-                  <text class="info-label">设备型号：</text>
-                  <text class="info-value">
-                    {{ displayValue(device.model) }}
-                  </text>
-                </view>
-                <view class="history-row">
-                  <text class="info-label">安装日期：</text>
-                  <text class="info-value">
-                    {{ displayValue(device.installDate) }}
-                  </text>
-                </view>
-                <view class="history-row">
-                  <text class="info-label">使用年限：</text>
-                  <text class="info-value">
-                    {{ displayValue(device.serviceLife) }}
-                  </text>
-                </view>
+                <u-icon name="arrow-right" color="#9AA8C5" size="15" />
               </view>
-              <u-icon name="arrow-right" color="#9AA8C5" size="15" />
-            </view>
-          </view>
+            </u-swipe-action-item>
+          </u-swipe-action>
           <view v-else class="device-empty">暂无设备信息</view>
         </view>
         <view class="section-block">
@@ -115,25 +123,25 @@
               @click="navigateToDetail(record)"
             >
               <view class="history-main">
-                <view class="history-row">
+                <view class="info-row">
                   <text class="info-label">安检时间：</text>
                   <text class="info-value">{{
                     displayValue(record.inspectionFinishTime)
                   }}</text>
                 </view>
-                <view class="history-row">
+                <view class="info-row">
                   <text class="info-label">安检员：</text>
                   <text class="info-value">{{
                     displayValue(record.inspectorName)
                   }}</text>
                 </view>
-                <view class="history-row">
+                <view class="info-row">
                   <text class="info-label">隐患数：</text>
                   <text class="info-value">{{
                     displayValue(record.dangerCount)
                   }}</text>
                 </view>
-                <view class="history-row result-row">
+                <view class="info-row result-row">
                   <text class="info-label">安检结果：</text>
                   <text
                     class="result-tag"
@@ -168,6 +176,15 @@
         <text class="action-desc">{{ action.desc }}</text>
       </button>
     </view>
+    <DeviceFormPopup
+      :visible="devicePopupVisible"
+      :mode="deviceFormMode"
+      :device="editingDevice"
+      :device-type-options="deviceTypeDict"
+      :saving="deviceSaving"
+      @cancel="closeDevicePopup"
+      @submit="saveDevice"
+    />
     <!-- 无法安检弹窗 -->
     <UnableInspectionPopup
       :visible="unablePopupVisible"
@@ -193,15 +210,18 @@ import { computed, ref } from "vue";
 import { onLoad, onPullDownRefresh, onUnload } from "@dcloudio/uni-app";
 import AppNavbar from "@/components/AppNavbar.vue";
 import UnableInspectionPopup from "@/pages/work-order/inspection/components/UnableInspectionPopup.vue";
-import { getWorkOrderUserDetailApi } from "@/modules/work-order/api";
+import DeviceFormPopup from "@/pages/work-order/components/DeviceFormPopup.vue";
+import {
+  addDeviceApi,
+  deleteDeviceApi,
+  getDeviceDetailApi,
+  getWorkOrderUserDetailApi,
+  updateDeviceApi,
+} from "@/modules/work-order/api";
 import { submitInspectionRecordApi } from "@/modules/work-order/inspection/api";
 import type { InspectionPhoto } from "@/modules/work-order/inspection/types";
 import { captureInspectionPhotos } from "@/pages/work-order/inspection/composables/useInspectionCamera";
-import {
-  deleteFileApi,
-  uploadFilesApi,
-  getDictsApi,
-} from "@/modules/common/api";
+import { deleteFileApi, uploadFilesApi } from "@/modules/common/api";
 import { FILE_UPLOAD_TYPE } from "@/modules/common/types";
 import type { DictDataVO } from "@/modules/common/types";
 import type {
@@ -210,7 +230,11 @@ import type {
   WorkOrderUserInfoRow,
   DeviceItem,
 } from "@/modules/work-order/types";
-import { getDictLabelByType, getDictLabelByValue } from "@/utils/common";
+import {
+  getDictLabelByType,
+  getDictLabelByValue,
+  getDictsByTypes,
+} from "@/utils/common";
 import { useInspectionStore } from "@/stores/inspection";
 import {
   UNABLE_INSPECTION_DEFAULT_REASON,
@@ -243,10 +267,30 @@ const unableOperating = computed(
     unableCancelling.value,
 );
 const deviceTypeDict = ref<DictDataVO[]>([]);
+const devicePopupVisible = ref(false);
+const deviceFormMode = ref<"add" | "edit">("add");
+const editingDevice = ref<DeviceItem | null>(null);
+const deviceSaving = ref(false);
+const deviceOpening = ref(false);
+const deletingDeviceIds = ref<string[]>([]);
+const DEVICE_SWIPE_OPTIONS = [
+  {
+    text: "删除",
+    style: {
+      backgroundColor: "#F04455",
+      color: "#FFFFFF",
+      fontSize: "26rpx",
+    },
+  },
+];
 async function loadDeviceTypeDict() {
-  deviceTypeDict.value = await getDictsApi("cyc_device_type");
+  try {
+    const dicts = await getDictsByTypes(["cyc_device_type"]);
+    deviceTypeDict.value = dicts.cyc_device_type || [];
+  } catch {
+    deviceTypeDict.value = [];
+  }
 }
-loadDeviceTypeDict();
 
 const historyList = computed<InspectionHistoryRecord[]>(
   () => detail.value?.historyList || [],
@@ -273,6 +317,7 @@ const workOrderStatusClass = computed(() =>
 onLoad((options) => {
   workOrderUserId.value = decodeURIComponent(options?.workOrderUserId || "");
   userStatus.value = decodeURIComponent(options?.userStatus || "");
+  void loadDeviceTypeDict();
   loadDetail();
   uni.$on("inspection-submitted", handleInspectionSubmitted);
 });
@@ -372,6 +417,123 @@ function getActionIcon(mode: string) {
   return iconMap[mode] || "";
 }
 
+function getDeviceTypeText(deviceType?: string) {
+  return (
+    getDictLabelByValue(deviceTypeDict.value, String(deviceType || "")) ||
+    "其他设备"
+  );
+}
+
+function openAddDevice() {
+  if (deviceOpening.value || deviceSaving.value) return;
+  deviceFormMode.value = "add";
+  editingDevice.value = null;
+  devicePopupVisible.value = true;
+}
+
+async function openEditDevice(device: DeviceItem) {
+  if (deviceOpening.value || deviceSaving.value) return;
+  const deviceId = String(device.id || "").trim();
+  if (!workOrderUserId.value || !deviceId) {
+    uni.showToast({ title: "缺少设备参数", icon: "none" });
+    return;
+  }
+
+  deviceOpening.value = true;
+  uni.showLoading({ title: "设备加载中", mask: true });
+  try {
+    const result = await getDeviceDetailApi(workOrderUserId.value, deviceId);
+    editingDevice.value = { ...result, id: String(result.id || deviceId) };
+    deviceFormMode.value = "edit";
+    devicePopupVisible.value = true;
+  } catch (error) {
+    uni.showToast({
+      title: error instanceof Error ? error.message : "设备详情加载失败",
+      icon: "none",
+    });
+  } finally {
+    deviceOpening.value = false;
+    uni.hideLoading();
+  }
+}
+
+function closeDevicePopup() {
+  if (deviceSaving.value) return;
+  devicePopupVisible.value = false;
+  editingDevice.value = null;
+}
+
+async function saveDevice(device: DeviceItem) {
+  if (deviceSaving.value || !workOrderUserId.value) return;
+  deviceSaving.value = true;
+  try {
+    if (deviceFormMode.value === "edit") {
+      const deviceId = String(
+        device.id || editingDevice.value?.id || "",
+      ).trim();
+      if (!deviceId) throw new Error("缺少设备 ID");
+      await updateDeviceApi(workOrderUserId.value, { ...device, id: deviceId });
+    } else {
+      const { id: _id, ...createData } = device;
+      await addDeviceApi(workOrderUserId.value, createData);
+    }
+    devicePopupVisible.value = false;
+    editingDevice.value = null;
+    await loadDetail();
+    uni.showToast({ title: "保存成功", icon: "success" });
+  } catch (error) {
+    uni.showToast({
+      title: error instanceof Error ? error.message : "设备保存失败",
+      icon: "none",
+    });
+  } finally {
+    deviceSaving.value = false;
+  }
+}
+
+function handleDeviceSwipeClick(event: { index?: number }, device: DeviceItem) {
+  if (Number(event?.index) === 0) void removeDevice(device);
+}
+
+async function removeDevice(device: DeviceItem) {
+  const deviceId = String(device.id || "").trim();
+  if (!workOrderUserId.value || !deviceId) {
+    uni.showToast({ title: "缺少设备参数", icon: "none" });
+    return;
+  }
+  if (deletingDeviceIds.value.includes(deviceId)) return;
+
+  const confirmed = await confirmDeleteDevice(device);
+  if (!confirmed) return;
+  deletingDeviceIds.value = [...deletingDeviceIds.value, deviceId];
+  try {
+    await deleteDeviceApi(workOrderUserId.value, deviceId);
+    await loadDetail();
+    uni.showToast({ title: "删除成功", icon: "success" });
+  } catch (error) {
+    uni.showToast({
+      title: error instanceof Error ? error.message : "设备删除失败",
+      icon: "none",
+    });
+  } finally {
+    deletingDeviceIds.value = deletingDeviceIds.value.filter(
+      (id) => id !== deviceId,
+    );
+  }
+}
+
+function confirmDeleteDevice(device: DeviceItem) {
+  return new Promise<boolean>((resolve) => {
+    uni.showModal({
+      title: "删除设备",
+      content: `确定删除设备“${device.deviceNo || "未编号设备"}”吗？`,
+      confirmText: "删除",
+      confirmColor: "#F04455",
+      success: (result) => resolve(Boolean(result.confirm)),
+      fail: () => resolve(false),
+    });
+  });
+}
 // 处理安检操作
 function handleInspectionAction(mode: string, actionName: string) {
   if (mode === INSPECTION_ACTIONS.AI.mode) {
@@ -644,7 +806,7 @@ async function handleInspectionSubmitted() {
   margin: 0 8rpx 20rpx;
   color: $text-main;
   font-size: 30rpx;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 42rpx;
 }
 .device-title {
@@ -735,7 +897,7 @@ async function handleInspectionSubmitted() {
   margin-top: 26rpx;
   color: $text-main;
   font-size: 30rpx;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 44rpx;
 }
 
@@ -743,12 +905,11 @@ async function handleInspectionSubmitted() {
   padding: 18rpx 32rpx;
 }
 
-.info-row,
-.history-row {
+.info-row {
   display: flex;
   align-items: flex-start;
   min-width: 0;
-  padding: 10rpx 0;
+  padding: 6rpx 0;
   font-size: 26rpx;
 }
 
@@ -772,8 +933,7 @@ async function handleInspectionSubmitted() {
   word-break: break-all;
 }
 
-.info-row:not(.address-row) .info-value,
-.history-row .info-value {
+.info-row:not(.address-row) .info-value {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -803,6 +963,17 @@ async function handleInspectionSubmitted() {
   gap: 22rpx;
 }
 
+.device-swipe {
+  overflow: hidden;
+  border-radius: $card-radius;
+  box-shadow: $shadow-card;
+}
+
+.device-swipe .device-card {
+  border-radius: 0;
+  box-shadow: none;
+}
+
 .device-card,
 .history-card {
   display: flex;
@@ -816,9 +987,11 @@ async function handleInspectionSubmitted() {
   flex: 1;
   min-width: 0;
 }
-
-.history-row {
-  padding: 4rpx 0;
+.device-type {
+  color: $text-main;
+  font-size: 30rpx;
+  font-weight: 600;
+  line-height: 60rpx;
 }
 
 .result-row {
@@ -832,7 +1005,7 @@ async function handleInspectionSubmitted() {
   padding: 0 16rpx;
   border-radius: 24rpx;
   font-size: 23rpx;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .result-tag.is-passed {
@@ -891,7 +1064,7 @@ async function handleInspectionSubmitted() {
   height: 28rpx;
   color: $primary-color;
   font-size: 23rpx;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 28rpx;
 }
 
@@ -903,7 +1076,7 @@ async function handleInspectionSubmitted() {
   margin-top: 5rpx;
   color: $primary-color;
   font-size: 26rpx;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 34rpx;
   white-space: nowrap;
 }
@@ -934,7 +1107,7 @@ async function handleInspectionSubmitted() {
   display: block;
   color: $error-color;
   font-size: 30rpx;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .error-desc {
