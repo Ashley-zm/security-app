@@ -119,9 +119,9 @@
           </view>
         </view>
 
-        <view v-if="loading && !list.length" class="loading-text"
-          >用户加载中...</view
-        >
+        <view v-if="loading && !list.length" class="loading-text">
+          <u-loading-icon color="#1677FF" text="用户加载中..." />
+        </view>
         <AppEmpty
           v-if="!loading && !list.length"
           title="暂无安检用户"

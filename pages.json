@@ -15,6 +15,13 @@
       }
     },
     {
+      "path": "pages/home/test-index",
+      "style": {
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
       "path": "pages/work-order/index",
       "style": {
         "navigationStyle": "custom",
@@ -110,7 +117,7 @@
   },
   "tabBar": {
     "color": "#6B7897",
-    "selectedColor": "#1677FF",
+    "selectedColor": "#042E8A",
     "backgroundColor": "#FFFFFF",
     "borderStyle": "white",
     "height": "58px",

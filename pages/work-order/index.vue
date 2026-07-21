@@ -97,7 +97,7 @@
           </view>
         </view>
         <view v-if="store.loading && !store.list.length" class="loading-text">
-          工单加载中...
+          <u-loading-icon color="#1677FF" text="工单加载中..." />
         </view>
         <AppEmpty
           v-if="!store.loading && !store.list.length"
