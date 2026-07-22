@@ -1,10 +1,25 @@
 <template>
   <view class="mine-page page safe-page">
     <AppNavbar title="我的" />
-    <view class="profile-section"
-      :style="{ paddingTop: statusBarHeight + 28 + 'px', paddingBottom: '80rpx', paddingLeft: '24rpx', paddingRight: '24rpx' }">
+    <view
+      class="profile-section"
+      :style="{
+        paddingTop: statusBarHeight + 28 + 'px',
+        paddingBottom: '80rpx',
+        paddingLeft: '24rpx',
+        paddingRight: '24rpx',
+      }"
+    >
+      <view class="profile-section-glow profile-section-glow-left" />
+      <view class="profile-section-glow profile-section-glow-right" />
       <view class="avatar-wrap">
-        <view class="avatar">
+        <image
+          v-if="avatarSrc"
+          class="avatar avatar-img"
+          :src="avatarSrc"
+          mode="aspectFill"
+        />
+        <view v-else class="avatar">
           <view class="avatar-hair" />
           <view class="avatar-face">
             <view class="avatar-eye left" />
@@ -39,7 +54,11 @@
       </view>
     </view>
 
-    <view v-if="qrPreviewVisible" class="popup-mask qr-preview-mask" @click="closeQrPreview">
+    <view
+      v-if="qrPreviewVisible"
+      class="popup-mask qr-preview-mask"
+      @click="closeQrPreview"
+    >
       <view class="qr-preview-popup" @click.stop>
         <button class="qr-preview-close" @click="closeQrPreview">X</button>
         <image class="qr-preview-img" :src="qrCodeSrc" mode="aspectFit" />
@@ -50,7 +69,7 @@
       <view class="menu-card">
         <button class="menu-item" @click="openChangePassword">
           <view class="menu-left">
-            <image class="menu-icon " src="/static/images/mine/lock.png" />
+            <image class="menu-icon" src="/static/images/mine/lock.png" />
             <text>修改密码</text>
           </view>
           <image class="arrow" src="/static/images/mine/arrow.png" />
@@ -89,31 +108,60 @@
       <text>退出当前登录</text>
     </button>
 
-    <view v-if="passwordPopupVisible" class="popup-mask" @click="closeChangePassword">
+    <view
+      v-if="passwordPopupVisible"
+      class="popup-mask"
+      @click="closeChangePassword"
+    >
       <view class="password-popup" @click.stop>
         <view class="popup-title">修改密码</view>
         <view class="form-card">
           <view class="form-row">
             <text class="form-label">原密码</text>
-            <input v-model="passwordForm.oldPassword" class="form-input" password placeholder="请输入原密码"
-              placeholder-class="placeholder" />
+            <input
+              v-model="passwordForm.oldPassword"
+              class="form-input"
+              password
+              placeholder="请输入原密码"
+              placeholder-class="placeholder"
+            />
           </view>
           <view class="form-row">
             <text class="form-label">新密码</text>
-            <input v-model="passwordForm.newPassword" class="form-input" password placeholder="6-20 位新密码"
-              placeholder-class="placeholder" />
+            <input
+              v-model="passwordForm.newPassword"
+              class="form-input"
+              password
+              placeholder="6-20 位新密码"
+              placeholder-class="placeholder"
+            />
           </view>
           <view class="form-row">
             <text class="form-label">确认密码</text>
-            <input v-model="passwordForm.confirmPassword" class="form-input" password placeholder="请再次输入新密码"
-              placeholder-class="placeholder" />
+            <input
+              v-model="passwordForm.confirmPassword"
+              class="form-input"
+              password
+              placeholder="请再次输入新密码"
+              placeholder-class="placeholder"
+            />
           </view>
         </view>
         <view class="password-tips">密码修改成功后，需要重新登录。</view>
         <view class="popup-actions">
-          <button class="popup-btn cancel" :disabled="passwordUpdating" @click="closeChangePassword">取消</button>
-          <button class="popup-btn confirm" :disabled="passwordUpdating" @click="submitChangePassword">
-            {{ passwordUpdating ? '提交中...' : '确认修改' }}
+          <button
+            class="popup-btn cancel"
+            :disabled="passwordUpdating"
+            @click="closeChangePassword"
+          >
+            取消
+          </button>
+          <button
+            class="popup-btn confirm"
+            :disabled="passwordUpdating"
+            @click="submitChangePassword"
+          >
+            {{ passwordUpdating ? "提交中..." : "确认修改" }}
           </button>
         </view>
       </view>
@@ -180,229 +228,268 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
-import { changePasswordApi } from '@/modules/auth/api'
-import { useUserStore } from '@/stores/user'
-const statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 0
+import { computed, reactive, ref } from "vue";
+import { changePasswordApi } from "@/modules/auth/api";
+import { useUserStore } from "@/stores/user";
+const statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 0;
 
-const userStore = useUserStore()
-const cacheSize = ref('32.6MB')
-const qrCodeSrc = '/static/images/mine/qr.png'
-const qrPreviewVisible = ref(false)
-const passwordPopupVisible = ref(false)
-const aboutPopupVisible = ref(false)
-const passwordUpdating = ref(false)
+const userStore = useUserStore();
+const cacheSize = ref("32.6MB");
+const avatarSrc = computed(() => userStore.userInfo?.avatarUrl || "");
+const qrCodeSrc = computed(
+  () => userStore.userInfo?.qrCodeUrl || "/static/images/mine/qr.png",
+);
+const qrPreviewVisible = ref(false);
+const passwordPopupVisible = ref(false);
+const aboutPopupVisible = ref(false);
+const passwordUpdating = ref(false);
 const passwordForm = reactive({
-  oldPassword: '',
-  newPassword: '',
-  confirmPassword: ''
-})
+  oldPassword: "",
+  newPassword: "",
+  confirmPassword: "",
+});
 const openQrPreview = () => {
-  qrPreviewVisible.value = true
-}
+  qrPreviewVisible.value = true;
+};
 
 const closeQrPreview = () => {
-  qrPreviewVisible.value = false
-}
+  qrPreviewVisible.value = false;
+};
 
 const appInfo = {
-  name: '安检APP',
-  version: '1.0.0',
-  servicePhone: '400-800-2026',
-  description: '面向燃气安检现场作业，提供工单处理、消息提醒、智能问答与身份核验能力，帮助安检人员规范、高效地完成日常任务。'
-}
+  name: "安检APP",
+  version: "1.0.0",
+  servicePhone: "400-800-2026",
+  description:
+    "面向燃气安检现场作业，提供工单处理、消息提醒、智能问答与身份核验能力，帮助安检人员规范、高效地完成日常任务。",
+};
 // 缓存大小
 const formatSize = (bytes: number) => {
-  if (bytes < 1024) return bytes + ' B'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB'
-  return (bytes / 1024 / 1024).toFixed(2) + ' MB'
-}
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + " KB";
+  return (bytes / 1024 / 1024).toFixed(2) + " MB";
+};
 const getAppCacheSize = () => {
   return new Promise((resolve) => {
     // @ts-ignore
     plus?.cache?.calculate((size: number) => {
       resolve({
         bytes: Number(size),
-        text: formatSize(Number(size))
-      })
-    })
-  })
-}
+        text: formatSize(Number(size)),
+      });
+    });
+  });
+};
 //获取缓存大小
 getAppCacheSize().then((res: any) => {
-  cacheSize.value = res.text
-})
-
+  cacheSize.value = res.text;
+});
 
 const handleClearCache = () => {
   uni.showModal({
-    title: '清除缓存',
-    content: '确定清除本地缓存吗？',
+    title: "清除缓存",
+    content: "确定清除本地缓存吗？",
     success: (res) => {
-      if (!res.confirm) return
+      if (!res.confirm) return;
       // 清除缓存
       // #ifdef APP-PLUS
       // @ts-ignore
       plus?.cache?.clear(() => {
-        cacheSize.value = '0B'
+        cacheSize.value = "0B";
         uni.showToast({
-          title: '已清除',
-          icon: 'success'
-        })
-      })
+          title: "已清除",
+          icon: "success",
+        });
+      });
       // #endif
-    }
-  })
-}
+    },
+  });
+};
 
 // 用户信息
-console.log('userStore.userInfo', userStore.userInfo);
+console.log("userStore.userInfo", userStore.userInfo);
 const profile = computed(() => ({
-  name: userStore.userInfo?.nickName || '安检员',
-  mobile: userStore.userInfo?.userName || '--'
-}))
+  name: userStore.userInfo?.nickName || "安检员",
+  mobile: userStore.userInfo?.userName || "--",
+}));
 // 消息通知设置
 const showComingSoon = (name: string) => {
   uni.showToast({
     title: `${name}暂未开放`,
-    icon: 'none'
-  })
-}
+    icon: "none",
+  });
+};
 // 关于我们
 const getAppBaseInfo = () => {
-  const appBaseInfo = uni.getAppBaseInfo()
-  appInfo.version = appBaseInfo.appVersion || '1.0.0'
-  appInfo.name = appBaseInfo.appName || '安检APP'
-}
-getAppBaseInfo()
+  const appBaseInfo = uni.getAppBaseInfo();
+  appInfo.version = appBaseInfo.appVersion || "1.0.0";
+  appInfo.name = appBaseInfo.appName || "安检APP";
+};
+getAppBaseInfo();
 
 const openAbout = () => {
-  aboutPopupVisible.value = true
-}
+  aboutPopupVisible.value = true;
+};
 
 const closeAbout = () => {
-  aboutPopupVisible.value = false
-}
+  aboutPopupVisible.value = false;
+};
 // 客服热线
 const handleServiceCall = () => {
   uni.makePhoneCall({
     phoneNumber: appInfo.servicePhone,
     fail: () => {
       uni.showToast({
-        title: '当前环境不支持拨号',
-        icon: 'none'
-      })
-    }
-  })
-}
+        title: "当前环境不支持拨号",
+        icon: "none",
+      });
+    },
+  });
+};
 // 用户协议
 const showAgreement = (name: string) => {
   uni.showModal({
     title: name,
     content: `${name}内容正在完善中，请以公司发布的正式文件为准。`,
     showCancel: false,
-    confirmText: '知道了'
-  })
-}
+    confirmText: "知道了",
+  });
+};
 // 修改密码
 const resetPasswordForm = () => {
-  passwordForm.oldPassword = ''
-  passwordForm.newPassword = ''
-  passwordForm.confirmPassword = ''
-}
+  passwordForm.oldPassword = "";
+  passwordForm.newPassword = "";
+  passwordForm.confirmPassword = "";
+};
 // 打开修改密码弹窗
 const openChangePassword = () => {
-  resetPasswordForm()
-  passwordPopupVisible.value = true
-}
+  resetPasswordForm();
+  passwordPopupVisible.value = true;
+};
 // 关闭修改密码弹窗
 const closeChangePassword = () => {
-  if (passwordUpdating.value) return
-  passwordPopupVisible.value = false
-}
+  if (passwordUpdating.value) return;
+  passwordPopupVisible.value = false;
+};
 // 验证修改密码表单
 const validatePasswordForm = () => {
   if (!passwordForm.oldPassword.trim()) {
-    return '请输入原密码'
+    return "请输入原密码";
   }
   if (!passwordForm.newPassword.trim()) {
-    return '请输入新密码'
+    return "请输入新密码";
   }
-  if (passwordForm.newPassword.length < 6 || passwordForm.newPassword.length > 20) {
-    return '新密码长度需为 6-20 位'
+  if (
+    passwordForm.newPassword.length < 6 ||
+    passwordForm.newPassword.length > 20
+  ) {
+    return "新密码长度需为 6-20 位";
   }
   if (passwordForm.oldPassword === passwordForm.newPassword) {
-    return '新密码不能与原密码相同'
+    return "新密码不能与原密码相同";
   }
   if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-    return '两次输入的新密码不一致'
+    return "两次输入的新密码不一致";
   }
-  return ''
-}
+  return "";
+};
 // 提交修改密码
 const submitChangePassword = async () => {
-  const message = validatePasswordForm()
+  const message = validatePasswordForm();
   if (message) {
     uni.showToast({
       title: message,
-      icon: 'none'
-    })
-    return
+      icon: "none",
+    });
+    return;
   }
 
-  passwordUpdating.value = true
+  passwordUpdating.value = true;
   try {
     await changePasswordApi({
       oldPassword: passwordForm.oldPassword,
-      newPassword: passwordForm.newPassword
-    })
-    passwordPopupVisible.value = false
+      newPassword: passwordForm.newPassword,
+    });
+    passwordPopupVisible.value = false;
     uni.showToast({
-      title: '密码修改成功',
-      icon: 'success'
-    })
+      title: "密码修改成功",
+      icon: "success",
+    });
     setTimeout(() => {
-      userStore.logout()
-    }, 800)
+      userStore.logout();
+    }, 800);
   } catch (error) {
     uni.showToast({
-      title: error instanceof Error ? error.message : '密码修改失败',
-      icon: 'none'
-    })
+      title: error instanceof Error ? error.message : "密码修改失败",
+      icon: "none",
+    });
   } finally {
-    passwordUpdating.value = false
+    passwordUpdating.value = false;
   }
-}
+};
 // 退出登录
 const handleLogout = () => {
   uni.showModal({
-    title: '退出登录',
-    content: '确定要退出当前账号吗？',
+    title: "退出登录",
+    content: "确定要退出当前账号吗？",
     success: (res) => {
       if (res.confirm) {
-        userStore.logout()
+        userStore.logout();
       }
-    }
-  })
-}
+    },
+  });
+};
 </script>
 
 <style lang="scss" scoped>
-@import '@/styles/variables.scss';
-@import '@/styles/mixins.scss';
+@import "@/styles/variables.scss";
+@import "@/styles/mixins.scss";
 
 .mine-page {
   min-height: 100vh;
   background: $bg-page;
+  overflow: hidden;
 }
 
 .profile-section {
   display: flex;
   align-items: center;
+  position: relative;
   gap: 28rpx;
-  // 渐变色
+  min-height: 380rpx;
+  // background: linear-gradient(145deg, #0b3d9e 0%, #073492 58%, #113b94 100%);
   background: linear-gradient(135deg, #146fee 0%, #3190dfb8 100%);
-  // background: linear-gradient(135deg, #146fee 0%, #3190df 100%);
+}
+.profile-section::after {
+  position: absolute;
+  right: -120rpx;
+  bottom: -180rpx;
+  width: 520rpx;
+  height: 360rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  content: "";
+  transform: rotate(-16deg);
+}
+.profile-section-glow {
+  position: absolute;
+  border-radius: 50%;
+  // filter: blur(4rpx);
+  pointer-events: none;
+}
+.profile-section-glow-left {
+  top: -30rpx;
+  left: -180rpx;
+  width: 360rpx;
+  height: 360rpx;
+  background: rgba(25, 100, 220, 0.28);
+}
+.profile-section-glow-right {
+  top: -180rpx;
+  right: -90rpx;
+  width: 420rpx;
+  height: 420rpx;
+  background: #5daafb40;
 }
 
 .avatar-wrap {
@@ -420,7 +507,17 @@ const handleLogout = () => {
   width: 118rpx;
   height: 118rpx;
   border-radius: 59rpx;
-  background: linear-gradient(180deg, #fff8f2 0%, #eff7ff 45%, #0e74c9 46%, #0860ad 100%);
+  background: linear-gradient(
+    180deg,
+    #fff8f2 0%,
+    #eff7ff 45%,
+    #0e74c9 46%,
+    #0860ad 100%
+  );
+}
+
+.avatar-img {
+  display: block;
 }
 
 .avatar-hair {
@@ -565,7 +662,6 @@ const handleLogout = () => {
   margin: -50rpx 24rpx 50rpx;
   backdrop-filter: blur(20px);
   background: rgba(255, 255, 255, 0.4);
-  box-shadow: 0 8px 24px rgba(4, 46, 138, 0.04), 0 2px 8px rgba(0, 0, 0, 0.015);
 }
 
 .qr-info {
@@ -576,7 +672,7 @@ const handleLogout = () => {
 }
 
 .qr-title {
-  color: #2955a5;
+  color: $text-main-light;
   font-size: 30rpx;
   font-weight: 800;
 }
@@ -645,11 +741,9 @@ const handleLogout = () => {
   border: 0;
 }
 
-
-
 .section {
   margin-top: 34rpx;
-  margin: 34rpx 24rpx 32rpx;// 上34rpx 左右24rpx 下32rpx
+  margin: 34rpx 24rpx 32rpx; // 上34rpx 左右24rpx 下32rpx
 }
 
 .section-title {

@@ -11,7 +11,9 @@
     <view class="login-card">
       <view class="card-title">账号登录</view>
       <view v-if="tenantEnabled" class="field">
-        <view class="field-icon"><u-icon name="home" color="#1677ff" size="36rpx" /></view>
+        <view class="field-icon">
+          <u-icon name="home" color="#1677ff" size="36rpx" />
+        </view>
         <picker
           class="tenant-picker"
           mode="selector"
@@ -22,24 +24,32 @@
           @change="handleTenantChange"
         >
           <view class="tenant-name" :class="{ empty: !selectedTenantName }">
-            {{ tenantLoading ? '租户加载中...' : selectedTenantName || '请选择租户' }}
+            {{
+              tenantLoading
+                ? "租户加载中..."
+                : selectedTenantName || "请选择租户"
+            }}
           </view>
         </picker>
         <text class="field-arrow">&gt;</text>
       </view>
       <view class="field">
-        <view class="field-icon"><u-icon name="phone" color="#1677ff" size="36rpx" /></view>
+        <view class="field-icon">
+          <u-icon name="account" color="#1677ff" size="36rpx" />
+        </view>
         <input
-          v-model="form.mobile"
+          v-model="form.username"
           class="field-input"
           maxlength="11"
-          type="number"
-          placeholder="请输入手机号"
+          type="text"
+          placeholder="请输入用户账户"
           placeholder-class="placeholder"
         />
       </view>
       <view class="field">
-        <view class="field-icon"><u-icon name="lock" color="#1677ff" size="36rpx" /></view>
+        <view class="field-icon">
+          <u-icon name="lock" color="#1677ff" size="36rpx" />
+        </view>
         <input
           v-model="form.password"
           class="field-input"
@@ -48,7 +58,11 @@
           placeholder-class="placeholder"
         />
         <button class="eye-btn" @click="showPassword = !showPassword">
-          <u-icon :name="showPassword ? 'eye-off' : 'eye'" color="#1677ff" size="36rpx" />
+          <u-icon
+            :name="showPassword ? 'eye-off' : 'eye'"
+            color="#1677ff"
+            size="36rpx"
+          />
         </button>
       </view>
 
@@ -60,184 +74,196 @@
         <button class="link-btn" @click="showForgot">忘记密码</button>
       </view>
 
-      <button class="login-btn" :class="{ disabled: submitting }" :disabled="submitting" @click="handleLogin">
-        {{ submitting ? '登录中...' : '登录' }}
+      <button
+        class="login-btn"
+        :class="{ disabled: submitting }"
+        :disabled="submitting"
+        @click="handleLogin"
+      >
+        {{ submitting ? "登录中..." : "登录" }}
       </button>
 
-      <button class="agreement" @click="form.agree = !form.agree">
+      <!-- <button class="agreement" @click="form.agree = !form.agree">
         <text class="check-box small" :class="{ checked: form.agree }">✓</text>
         <text class="agreement-text">我已阅读并同意用户协议与隐私政策</text>
-      </button>
+      </button> -->
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useUserStore } from '@/stores/user'
-import { getTenantListApi } from '@/modules/auth/api'
-import type { LoginForm, TenantInfo } from '@/modules/auth/types'
-import { clearRememberLogin, getRememberLogin, setRememberLogin } from '@/utils/storage'
-import { isMobile, required } from '@/utils/validate'
+import { computed, onMounted, reactive, ref } from "vue";
+import { useUserStore } from "@/stores/user";
+import { getTenantListApi } from "@/modules/auth/api";
+import type { LoginForm, TenantInfo } from "@/modules/auth/types";
+import {
+  clearRememberLogin,
+  getRememberLogin,
+  setRememberLogin,
+} from "@/utils/storage";
+import { isMobile, required } from "@/utils/validate";
 
-const userStore = useUserStore()
-const submitting = ref(false)
-const showPassword = ref(false)
-const tenantEnabled = ref(true)
-const tenantLoading = ref(false)
-const tenantList = ref<TenantInfo[]>([])
-const selectedTenantIndex = ref(-1)
+const userStore = useUserStore();
+const submitting = ref(false);
+const showPassword = ref(false);
+const tenantEnabled = ref(true);
+const tenantLoading = ref(false);
+const tenantList = ref<TenantInfo[]>([]);
+const selectedTenantIndex = ref(-1);
 
 const form = reactive<LoginForm>({
-  mobile: '15621825359',
-  password: '123456',
-  tenantId: '',
+  username: "15621825359",
+  password: "123456",
+  tenantId: "",
   remember: false,
-  agree: false
-})
+  // agree: false,
+});
 
-onMounted(() => {
-  console.log('用户token',userStore.getToken);
-  
+onMounted(async () => {
   if (userStore.getToken) {
     uni.switchTab({
-      url: '/pages/home/index'
-    })
-    return
+      url: "/pages/home/index",
+    });
+    return;
   }
+  await loadTenantList();
 
-  const remembered = getRememberLogin()
-  if (remembered.mobile || remembered.password) {
-    form.mobile = remembered.mobile
-    form.password = remembered.password
-    form.remember = true
+  const remembered = getRememberLogin();
+  if (remembered.username && remembered.password && remembered.tenantId) {
+    form.username = remembered.username;
+    form.password = remembered.password;
+    form.tenantId = remembered.tenantId;
+    console.log("1默认租户", form.tenantId);
+    form.remember = true;
   }
-
-  loadTenantList()
-})
-
+});
 
 const selectedTenantName = computed(() => {
-  if (selectedTenantIndex.value < 0) return ''
-  return tenantList.value[selectedTenantIndex.value]?.companyName || ''
-})
+  if (selectedTenantIndex.value < 0) return "";
+  return tenantList.value[selectedTenantIndex.value]?.companyName || "";
+});
 
 async function loadTenantList() {
-  tenantLoading.value = true
+  tenantLoading.value = true;
   try {
-    const result = await getTenantListApi()
-    tenantEnabled.value = result.tenantEnabled
-    tenantList.value = result.voList || []
+    const result = await getTenantListApi();
+    tenantEnabled.value = result.tenantEnabled;
+    tenantList.value = result.voList || [];
 
     if (!result.tenantEnabled) {
-      form.tenantId = ''
-      selectedTenantIndex.value = -1
-      return
+      form.tenantId = "";
+      selectedTenantIndex.value = -1;
+      return;
     }
 
     if (tenantList.value.length) {
       const index = Math.max(
         tenantList.value.findIndex((item) => item.tenantId === form.tenantId),
-        0
-      )
-      selectedTenantIndex.value = index
-      form.tenantId = tenantList.value[index].tenantId
+        0,
+      );
+      selectedTenantIndex.value = index;
+      form.tenantId = tenantList.value[index].tenantId;
+      console.log("2默认租户", form.tenantId);
     } else {
-      form.tenantId = ''
-      selectedTenantIndex.value = -1
+      form.tenantId = "";
+      selectedTenantIndex.value = -1;
     }
   } catch (error) {
-    toast(error instanceof Error ? error.message : '租户列表获取失败')
+    toast(error instanceof Error ? error.message : "租户列表获取失败");
   } finally {
-    tenantLoading.value = false
+    tenantLoading.value = false;
   }
 }
 
 function handleTenantChange(event: { detail: { value: number | string } }) {
-  const index = Number(event.detail.value)
-  const tenant = tenantList.value[index]
-  if (!tenant) return
-  selectedTenantIndex.value = index
-  form.tenantId = tenant.tenantId
+  const index = Number(event.detail.value);
+  const tenant = tenantList.value[index];
+  if (!tenant) return;
+  selectedTenantIndex.value = index;
+  form.tenantId = tenant.tenantId;
 }
 function toast(title: string) {
   uni.showToast({
     title,
-    icon: 'none'
-  })
+    icon: "none",
+  });
 }
 
 function validateForm() {
   if (tenantEnabled.value && !required(form.tenantId)) {
-    toast('请选择租户')
-    return false
+    toast("请选择租户");
+    return false;
   }
-  if (!required(form.mobile)) {
-    toast('手机号不能为空')
-    return false
+  if (!required(form.username)) {
+    toast("用户名不能为空");
+    return false;
   }
-  if (!isMobile(form.mobile)) {
-    toast('请输入正确的手机号')
-    return false
-  }
+  // if (!isMobile(form.username)) {
+  //   toast("请输入正确的手机号");
+  //   return false;
+  // }
   if (!required(form.password)) {
-    toast('密码不能为空')
-    return false
+    toast("密码不能为空");
+    return false;
   }
-  if (!form.agree) {
-    toast('请先同意用户协议与隐私政策')
-    return false
-  }
-  return true
+  // if (!form.agree) {
+  //   toast("请先同意用户协议与隐私政策");
+  //   return false;
+  // }
+  return true;
 }
 
 async function handleLogin() {
-  if (submitting.value || !validateForm()) return
+  if (submitting.value || !validateForm()) return;
 
-  submitting.value = true
+  submitting.value = true;
   try {
     await userStore.login({
-      username: form.mobile,
+      username: form.username,
       password: form.password,
-      tenantId: form.tenantId
-    })
+      tenantId: form.tenantId,
+    });
 
     if (form.remember) {
-      setRememberLogin(form.mobile, form.password)
+      setRememberLogin(form.username, form.password, form.tenantId);
     } else {
-      clearRememberLogin()
+      clearRememberLogin();
     }
 
     uni.showToast({
-      title: '登录成功',
-      icon: 'success'
-    })
+      title: "登录成功",
+      icon: "success",
+    });
     setTimeout(() => {
       uni.switchTab({
-        url: '/pages/home/index'
-      })
-    }, 450)
+        url: "/pages/home/index",
+      });
+    }, 450);
   } catch (error) {
-    toast(error instanceof Error ? error.message : '登录失败，请稍后重试')
+    toast(error instanceof Error ? error.message : "登录失败，请稍后重试");
   } finally {
-    submitting.value = false
+    submitting.value = false;
   }
 }
 
 function showForgot() {
-  toast('请联系管理员重置密码')
+  toast("请联系管理员重置密码");
 }
 </script>
 
 <style lang="scss" scoped>
-@import '@/styles/variables.scss';
-@import '@/styles/mixins.scss';
+@import "@/styles/variables.scss";
+@import "@/styles/mixins.scss";
 
 .login-page {
   min-height: 100vh;
   padding: 112rpx 42rpx 42rpx;
   background:
-    radial-gradient(circle at 20% 8%, rgba(56, 164, 255, 0.22), transparent 34%),
+    radial-gradient(
+      circle at 20% 8%,
+      rgba(56, 164, 255, 0.22),
+      transparent 34%
+    ),
     linear-gradient(180deg, #eff7ff 0%, #f5f8ff 44%, #ffffff 100%);
 }
 

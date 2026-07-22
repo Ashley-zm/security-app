@@ -8,10 +8,9 @@ export function getHomeOverviewApi() {
   });
 }
 // 首页统计
-export function getHomeStatisticsApi(data: { userId: string }) {
+export function getHomeStatisticsApi() {
   return request<HomeStatistics>({
     url: "/inspection/app/workOrder/v0.2/statistics",
-    method: "POST",
-    data,
+    method: "GET",
   });
 }

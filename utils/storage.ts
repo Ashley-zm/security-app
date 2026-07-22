@@ -1,58 +1,66 @@
-const TOKEN_KEY = 'CYC_SECURITY_TOKEN'
-const USER_INFO_KEY = 'CYC_SECURITY_USER_INFO'
-const REMEMBER_MOBILE_KEY = 'CYC_SECURITY_REMEMBER_MOBILE'
-const REMEMBER_PASSWORD_KEY = 'CYC_SECURITY_REMEMBER_PASSWORD'
+const TOKEN_KEY = "CYC_SECURITY_TOKEN";
+const USER_INFO_KEY = "CYC_SECURITY_USER_INFO";
+const REMEMBER_MOBILE_KEY = "CYC_SECURITY_REMEMBER_MOBILE";
+const REMEMBER_PASSWORD_KEY = "CYC_SECURITY_REMEMBER_PASSWORD";
+const REMEMBER_TENANT_ID_KEY = "CYC_SECURITY_REMEMBER_TENANT_ID";
 
 export function setStorage<T>(key: string, value: T) {
-  uni.setStorageSync(key, value)
+  uni.setStorageSync(key, value);
 }
 
 export function getStorage<T>(key: string): T | null {
-  const value = uni.getStorageSync(key)
-  return value || null
+  const value = uni.getStorageSync(key);
+  return value || null;
 }
 
 export function removeStorage(key: string) {
-  uni.removeStorageSync(key)
+  uni.removeStorageSync(key);
 }
 
 export function setToken(token: string) {
-  setStorage(TOKEN_KEY, token)
+  setStorage(TOKEN_KEY, token);
 }
 
 export function getToken() {
-  return getStorage<string>(TOKEN_KEY) || ''
+  return getStorage<string>(TOKEN_KEY) || "";
 }
 
 export function clearToken() {
-  removeStorage(TOKEN_KEY)
+  removeStorage(TOKEN_KEY);
 }
 
 export function setUserInfoStorage<T>(userInfo: T) {
-  setStorage(USER_INFO_KEY, userInfo)
+  setStorage(USER_INFO_KEY, userInfo);
 }
 
 export function getUserInfoStorage<T>() {
-  return getStorage<T>(USER_INFO_KEY)
+  return getStorage<T>(USER_INFO_KEY);
 }
 
 export function clearUserInfoStorage() {
-  removeStorage(USER_INFO_KEY)
+  removeStorage(USER_INFO_KEY);
 }
 
-export function setRememberLogin(mobile: string, password: string) {
-  setStorage(REMEMBER_MOBILE_KEY, mobile)
-  setStorage(REMEMBER_PASSWORD_KEY, password)
+export function setRememberLogin(
+  username: string,
+  password: string,
+  tenantId: string,
+) {
+  setStorage(REMEMBER_MOBILE_KEY, username);
+  setStorage(REMEMBER_PASSWORD_KEY, password);
+  setStorage(REMEMBER_TENANT_ID_KEY, tenantId);
 }
 
 export function getRememberLogin() {
   return {
-    mobile: getStorage<string>(REMEMBER_MOBILE_KEY) || '',
-    password: getStorage<string>(REMEMBER_PASSWORD_KEY) || ''
-  }
+    username: getStorage<string>(REMEMBER_MOBILE_KEY) || "",
+    password: getStorage<string>(REMEMBER_PASSWORD_KEY) || "",
+    tenantId: getStorage<string>(REMEMBER_TENANT_ID_KEY) || "",
+  };
 }
 
 export function clearRememberLogin() {
-  removeStorage(REMEMBER_MOBILE_KEY)
-  removeStorage(REMEMBER_PASSWORD_KEY)
+  removeStorage(REMEMBER_MOBILE_KEY);
+  removeStorage(REMEMBER_PASSWORD_KEY);
+  removeStorage(REMEMBER_TENANT_ID_KEY);
 }

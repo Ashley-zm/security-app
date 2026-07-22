@@ -31,14 +31,26 @@
       </view>
 
       <view class="button-row">
-        <button class="action-btn primary" :disabled="status === 'recording' || operating" @click="startRecord">
-          {{ operating && pendingAction === 'start' ? '启动中...' : '开始录音' }}
+        <button
+          class="action-btn primary"
+          :disabled="status === 'recording' || operating"
+          @click="startRecord"
+        >
+          {{
+            operating && pendingAction === "start" ? "启动中..." : "开始录音"
+          }}
         </button>
-        <button class="action-btn danger" :disabled="status !== 'recording' || operating" @click="stopRecord">
-          {{ operating && pendingAction === 'stop' ? '结束中...' : '结束录音' }}
+        <button
+          class="action-btn danger"
+          :disabled="status !== 'recording' || operating"
+          @click="stopRecord"
+        >
+          {{ operating && pendingAction === "stop" ? "结束中..." : "结束录音" }}
         </button>
       </view>
-      <button class="sync-btn" :disabled="operating" @click="syncState">同步原生状态</button>
+      <button class="sync-btn" :disabled="operating" @click="syncState">
+        同步原生状态
+      </button>
 
       <view v-if="errorMessage" class="error-box">{{ errorMessage }}</view>
     </view>
@@ -80,7 +92,9 @@
       <view class="card-head">
         <view>
           <text class="card-title">最近回调</text>
-          <text class="card-subtitle">展示插件 start / stop / state 返回值</text>
+          <text class="card-subtitle"
+            >展示插件 start / stop / state 返回值</text
+          >
         </view>
       </view>
       <view v-if="lastResult" class="result-box">
@@ -92,305 +106,323 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
-import AppNavbar from '@/components/AppNavbar.vue'
+import { computed, onBeforeUnmount, ref } from "vue";
+import { onShow } from "@dcloudio/uni-app";
+import AppNavbar from "@/components/AppNavbar.vue";
 
-type RecordStatus = 'idle' | 'recording' | 'stopped'
-type PendingAction = 'start' | 'stop' | ''
+type RecordStatus = "idle" | "recording" | "stopped";
+type PendingAction = "start" | "stop" | "";
 
 interface RecordResult {
-  success?: boolean
-  status?: RecordStatus
-  filePath?: string
-  duration?: number
-  message?: string
-  [key: string]: unknown
+  success?: boolean;
+  status?: RecordStatus;
+  filePath?: string;
+  duration?: number;
+  message?: string;
+  [key: string]: unknown;
 }
 
 interface AudioRecordPlugin {
   startRecord?: (
     options: {
-      fileName?: string
-      sampleRate?: number
-      bitRate?: number
+      fileName?: string;
+      sampleRate?: number;
+      bitRate?: number;
     },
-    callback: (res?: RecordResult) => void
-  ) => void
-  stopRecord?: (options: Record<string, never>, callback: (res?: RecordResult) => void) => void
-  getRecordState?: (options: Record<string, never>, callback: (res?: RecordResult) => void) => void
+    callback: (res?: RecordResult) => void,
+  ) => void;
+  stopRecord?: (
+    options: Record<string, never>,
+    callback: (res?: RecordResult) => void,
+  ) => void;
+  getRecordState?: (
+    options: Record<string, never>,
+    callback: (res?: RecordResult) => void,
+  ) => void;
 }
 
 interface PlusRuntime {
   os?: {
-    version?: string
-  }
+    version?: string;
+  };
   android?: {
     requestPermissions?: (
       permissions: string[],
       success: (event: { granted?: string[] }) => void,
-      fail: () => void
-    ) => void
-  }
+      fail: () => void,
+    ) => void;
+  };
 }
 
-let audioRecord: AudioRecordPlugin | null = null
-let isAppPlusRuntime = false
+let audioRecord: AudioRecordPlugin | null = null;
+let isAppPlusRuntime = false;
 
 // #ifdef APP-PLUS
-isAppPlusRuntime = true
+isAppPlusRuntime = true;
 try {
-  audioRecord = uni.requireNativePlugin('AudioRecordPlugin') as AudioRecordPlugin
+  audioRecord = uni.requireNativePlugin(
+    "AudioRecordPlugin",
+  ) as AudioRecordPlugin;
 } catch (error) {
-  console.error('获取 AudioRecordPlugin 失败', error)
+  console.error("获取 AudioRecordPlugin 失败", error);
 }
 // #endif
 
-const status = ref<RecordStatus>('idle')
-const filePath = ref('')
-const duration = ref(0)
-const operating = ref(false)
-const pendingAction = ref<PendingAction>('')
-const errorMessage = ref('')
-const lastResult = ref<RecordResult | null>(null)
-let durationTimer: ReturnType<typeof setInterval> | null = null
+const status = ref<RecordStatus>("idle");
+const filePath = ref("");
+const duration = ref(0);
+const operating = ref(false);
+const pendingAction = ref<PendingAction>("");
+const errorMessage = ref("");
+const lastResult = ref<RecordResult | null>(null);
+let durationTimer: ReturnType<typeof setInterval> | null = null;
 
 const pluginStatus = computed(() => {
   if (!isAppPlusRuntime) {
-    return '当前环境不支持原生录音插件，请使用 App 自定义基座'
+    return "当前环境不支持原生录音插件，请使用 App 自定义基座";
   }
-  return audioRecord ? 'AudioRecordPlugin 已加载' : 'AudioRecordPlugin 未加载'
-})
+  return audioRecord ? "AudioRecordPlugin 已加载" : "AudioRecordPlugin 未加载";
+});
 
 const statusText = computed(() => {
-  if (status.value === 'recording') return '录音中'
-  if (status.value === 'stopped') return '录音已结束'
-  return '未开始录音'
-})
+  if (status.value === "recording") return "录音中";
+  if (status.value === "stopped") return "录音已结束";
+  return "未开始录音";
+});
 
 const statusDesc = computed(() => {
-  if (!isAppPlusRuntime) return 'H5 可查看页面，真机录音需 Android 自定义基座'
-  if (!audioRecord) return '请确认 nativeplugins 已勾选并重新制作自定义基座'
-  if (status.value === 'recording') return '切到后台后前台服务会继续录音'
-  if (status.value === 'stopped') return '已生成录音文件，可复制路径用于排查或上传'
-  return '点击开始后会申请麦克风和通知权限'
-})
+  if (!isAppPlusRuntime) return "H5 可查看页面，真机录音需 Android 自定义基座";
+  if (!audioRecord) return "请确认 nativeplugins 已勾选并重新制作自定义基座";
+  if (status.value === "recording") return "切到后台后前台服务会继续录音";
+  if (status.value === "stopped")
+    return "已生成录音文件，可复制路径用于排查或上传";
+  return "点击开始后会申请麦克风和通知权限";
+});
 
 const statusClass = computed(() => ({
-  'is-recording': status.value === 'recording',
-  'is-stopped': status.value === 'stopped',
-  'is-error': Boolean(errorMessage.value)
-}))
+  "is-recording": status.value === "recording",
+  "is-stopped": status.value === "stopped",
+  "is-error": Boolean(errorMessage.value),
+}));
 
 const lastResultText = computed(() => {
-  return lastResult.value ? JSON.stringify(lastResult.value, null, 2) : ''
-})
+  return lastResult.value ? JSON.stringify(lastResult.value, null, 2) : "";
+});
 
 onShow(() => {
-  syncState()
-})
+  syncState();
+});
 
 onBeforeUnmount(() => {
-  stopDurationTimer()
-})
+  stopDurationTimer();
+});
 
 function checkPlugin() {
   if (!isAppPlusRuntime) {
-    errorMessage.value = '当前环境不支持原生录音插件，请使用 App 自定义基座'
+    errorMessage.value = "当前环境不支持原生录音插件，请使用 App 自定义基座";
     uni.showToast({
-      title: '请使用 App 自定义基座',
-      icon: 'none'
-    })
-    return false
+      title: "请使用 App 自定义基座",
+      icon: "none",
+    });
+    return false;
   }
 
-  if (!audioRecord?.startRecord || !audioRecord.stopRecord || !audioRecord.getRecordState) {
-    errorMessage.value = 'AudioRecordPlugin 未加载'
+  if (
+    !audioRecord?.startRecord ||
+    !audioRecord.stopRecord ||
+    !audioRecord.getRecordState
+  ) {
+    errorMessage.value = "AudioRecordPlugin 未加载";
     uni.showToast({
-      title: 'AudioRecordPlugin 未加载',
-      icon: 'none'
-    })
-    return false
+      title: "AudioRecordPlugin 未加载",
+      icon: "none",
+    });
+    return false;
   }
 
-  return true
+  return true;
 }
 
 function syncState() {
   if (!audioRecord?.getRecordState) {
-    updateDurationTimer()
-    return
+    updateDurationTimer();
+    return;
   }
 
   audioRecord.getRecordState({}, (res) => {
-    if (!res?.success) return
-    applyResult(res)
-  })
+    if (!res?.success) return;
+    applyResult(res);
+  });
 }
 
 async function startRecord() {
-  if (operating.value || !checkPlugin()) return
+  console.log("startRecord");
 
-  const granted = await requestAndroidPermissions()
+  if (operating.value || !checkPlugin()) return;
+  console.log("获取录音状态");
+
+  const granted = await requestAndroidPermissions();
   if (!granted) {
-    errorMessage.value = '请在系统设置中开启麦克风权限后重试'
+    errorMessage.value = "请在系统设置中开启麦克风权限后重试";
     uni.showModal({
-      title: '权限提示',
-      content: '请开启麦克风权限；Android 13 及以上还需要允许通知权限。',
-      showCancel: false
-    })
-    return
+      title: "权限提示",
+      content: "请开启麦克风权限；Android 13 及以上还需要允许通知权限。",
+      showCancel: false,
+    });
+    return;
   }
 
-  operating.value = true
-  pendingAction.value = 'start'
-  errorMessage.value = ''
+  operating.value = true;
+  pendingAction.value = "start";
+  errorMessage.value = "";
 
   audioRecord?.startRecord?.(
     {
       fileName: `record_${Date.now()}.m4a`,
       sampleRate: 16000,
-      bitRate: 64000
+      bitRate: 64000,
     },
     (res) => {
-      operating.value = false
-      pendingAction.value = ''
-      lastResult.value = res || null
+      operating.value = false;
+      pendingAction.value = "";
+      lastResult.value = res || null;
 
       if (res?.success) {
-        status.value = res.status || 'recording'
-        filePath.value = ''
-        duration.value = 0
-        errorMessage.value = ''
-        updateDurationTimer()
-        showToast(res.message || '开始录音')
-        return
+        status.value = res.status || "recording";
+        filePath.value = "";
+        duration.value = 0;
+        errorMessage.value = "";
+        updateDurationTimer();
+        showToast(res.message || "开始录音");
+        return;
       }
 
-      errorMessage.value = res?.message || '开始录音失败'
-      showToast(errorMessage.value)
-      syncState()
-    }
-  )
+      errorMessage.value = res?.message || "开始录音失败";
+      showToast(errorMessage.value);
+      syncState();
+    },
+  );
 }
 
 function stopRecord() {
-  if (operating.value || !checkPlugin()) return
+  if (operating.value || !checkPlugin()) return;
 
-  operating.value = true
-  pendingAction.value = 'stop'
-  errorMessage.value = ''
+  operating.value = true;
+  pendingAction.value = "stop";
+  errorMessage.value = "";
 
   audioRecord?.stopRecord?.({}, (res) => {
-    operating.value = false
-    pendingAction.value = ''
-    lastResult.value = res || null
+    operating.value = false;
+    pendingAction.value = "";
+    lastResult.value = res || null;
 
     if (res?.success) {
-      applyResult(res)
-      errorMessage.value = ''
-      showToast(res.message || '录音结束', 'success')
-      return
+      applyResult(res);
+      errorMessage.value = "";
+      showToast(res.message || "录音结束", "success");
+      return;
     }
 
-    errorMessage.value = res?.message || '结束录音失败'
-    showToast(errorMessage.value)
-    syncState()
-  })
+    errorMessage.value = res?.message || "结束录音失败";
+    showToast(errorMessage.value);
+    syncState();
+  });
 }
 
 function applyResult(res: RecordResult) {
-  status.value = res.status || status.value
-  filePath.value = res.filePath || ''
-  duration.value = Number(res.duration || 0)
-  lastResult.value = res
-  updateDurationTimer()
+  status.value = res.status || status.value;
+  filePath.value = res.filePath || "";
+  duration.value = Number(res.duration || 0);
+  lastResult.value = res;
+  updateDurationTimer();
 }
 
 function requestAndroidPermissions() {
   return new Promise<boolean>((resolve) => {
     // #ifdef APP-PLUS
-    if (uni.getSystemInfoSync().platform !== 'android') {
-      resolve(true)
-      return
+    if (uni.getSystemInfoSync().platform !== "android") {
+      resolve(true);
+      return;
     }
 
-    const plusRuntime = (globalThis as { plus?: PlusRuntime }).plus
-    const permissions = ['android.permission.RECORD_AUDIO']
-    const osVersion = Number.parseInt(plusRuntime?.os?.version || '0', 10)
+    const plusRuntime = (globalThis as { plus?: PlusRuntime }).plus;
+    const permissions = ["android.permission.RECORD_AUDIO"];
+    const osVersion = Number.parseInt(plusRuntime?.os?.version || "0", 10);
     if (osVersion >= 13) {
-      permissions.push('android.permission.POST_NOTIFICATIONS')
+      permissions.push("android.permission.POST_NOTIFICATIONS");
     }
 
     if (!plusRuntime?.android?.requestPermissions) {
-      resolve(false)
-      return
+      resolve(false);
+      return;
     }
 
     plusRuntime.android.requestPermissions(
       permissions,
       (event) => {
-        resolve(Boolean(event.granted?.includes('android.permission.RECORD_AUDIO')))
+        resolve(
+          Boolean(event.granted?.includes("android.permission.RECORD_AUDIO")),
+        );
       },
-      () => resolve(false)
-    )
+      () => resolve(false),
+    );
     // #endif
 
     // #ifndef APP-PLUS
-    resolve(false)
+    resolve(false);
     // #endif
-  })
+  });
 }
 
 function updateDurationTimer() {
-  if (status.value === 'recording') {
-    startDurationTimer()
-    return
+  if (status.value === "recording") {
+    startDurationTimer();
+    return;
   }
-  stopDurationTimer()
+  stopDurationTimer();
 }
 
 function startDurationTimer() {
-  if (durationTimer) return
+  if (durationTimer) return;
   durationTimer = setInterval(() => {
-    duration.value += 1000
-  }, 1000)
+    duration.value += 1000;
+  }, 1000);
 }
 
 function stopDurationTimer() {
-  if (!durationTimer) return
-  clearInterval(durationTimer)
-  durationTimer = null
+  if (!durationTimer) return;
+  clearInterval(durationTimer);
+  durationTimer = null;
 }
 
 function copyPath() {
-  if (!filePath.value) return
+  if (!filePath.value) return;
   uni.setClipboardData({
     data: filePath.value,
     success: () => {
-      showToast('已复制', 'success')
-    }
-  })
+      showToast("已复制", "success");
+    },
+  });
 }
 
-function showToast(title: string, icon: 'none' | 'success' = 'none') {
+function showToast(title: string, icon: "none" | "success" = "none") {
   uni.showToast({
     title,
-    icon
-  })
+    icon,
+  });
 }
 
 function formatDuration(ms: number) {
-  const totalSec = Math.floor(ms / 1000)
-  const minutes = String(Math.floor(totalSec / 60)).padStart(2, '0')
-  const seconds = String(totalSec % 60).padStart(2, '0')
-  return `${minutes}:${seconds}`
+  const totalSec = Math.floor(ms / 1000);
+  const minutes = String(Math.floor(totalSec / 60)).padStart(2, "0");
+  const seconds = String(totalSec % 60).padStart(2, "0");
+  return `${minutes}:${seconds}`;
 }
 </script>
 
 <style lang="scss" scoped>
-@import '@/styles/variables.scss';
-@import '@/styles/mixins.scss';
+@import "@/styles/variables.scss";
+@import "@/styles/mixins.scss";
 
 .audio-record-page {
   min-height: 100vh;

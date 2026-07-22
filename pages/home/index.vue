@@ -23,10 +23,7 @@
       </view>
     </view>
 
-    <view
-      class="statistics-card"
-      :class="{ refreshing: loading && statistics }"
-    >
+    <view class="statistics-card">
       <view class="summary-grid">
         <view class="summary-item">
           <text class="summary-label">今日待检</text>
@@ -105,7 +102,6 @@ const loading = ref(false);
 const loadError = ref("");
 const currentDate = ref(formatCurrentDate());
 
-const userId = computed(() => String(userStore.userInfo?.userId || "").trim());
 const userName = computed(() => {
   const name = String(userStore.userInfo?.userName || "").trim();
   return name || "安检员";
@@ -130,15 +126,11 @@ onPullDownRefresh(async () => {
 
 async function loadStatistics() {
   if (loading.value) return;
-  if (!userId.value) {
-    loadError.value = "未获取到当前用户信息";
-    return;
-  }
 
   loading.value = true;
   loadError.value = "";
   try {
-    statistics.value = await getHomeStatisticsApi({ userId: userId.value });
+    statistics.value = await getHomeStatisticsApi();
   } catch (error) {
     loadError.value =
       error instanceof Error ? error.message : "首页统计数据加载失败";
@@ -181,7 +173,7 @@ function goAgentCenter() {
   position: relative;
   min-height: 442rpx;
   overflow: hidden;
-  background: linear-gradient(145deg, #0b3d9e 0%, #073492 58%, #113b94 100%);
+  background: linear-gradient(135deg, #146fee 0%, #3190dfb8 100%);
 }
 
 .hero::after {
@@ -190,7 +182,7 @@ function goAgentCenter() {
   bottom: -180rpx;
   width: 520rpx;
   height: 360rpx;
-  border: 2rpx solid rgba(255, 255, 255, 0.08);
+  border: 2rpx solid rgba(255, 255, 255, 0.3);
   border-radius: 50%;
   content: "";
   transform: rotate(-16deg);
@@ -214,7 +206,7 @@ function goAgentCenter() {
   left: -150rpx;
   width: 360rpx;
   height: 360rpx;
-  background: rgba(25, 100, 220, 0.18);
+  background: rgba(25, 100, 220, 0.28);
 }
 
 .hero-glow-right {
@@ -222,7 +214,7 @@ function goAgentCenter() {
   right: -90rpx;
   width: 420rpx;
   height: 420rpx;
-  background: rgba(64, 131, 239, 0.16);
+  background: #5daafb40;
 }
 
 .greeting-row {
@@ -294,8 +286,8 @@ function goAgentCenter() {
   line-height: 1;
   background: linear-gradient(
     110deg,
-    rgba(103, 151, 225, 0.52),
-    rgba(47, 91, 175, 0.42)
+    rgba(60, 132, 240, 0.52),
+    rgba(53, 107, 206, 0.42)
   );
   box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.15);
 }
@@ -323,15 +315,10 @@ function goAgentCenter() {
   overflow: hidden;
   border: 1rpx solid rgba(225, 232, 244, 0.521);
   border-radius: 38rpx;
+  backdrop-filter: blur(80rpx);
   background: linear-gradient(180deg, #ffffff00 0%, #ffffff 100%);
-  // box-shadow: 0 28rpx 60rpx rgba(27, 62, 119, 0.12);
   box-shadow: $shadow-card;
   transition: opacity 0.2s ease;
-  backdrop-filter: blur(80rpx);
-}
-
-.statistics-card.refreshing {
-  opacity: 0.86;
 }
 
 .summary-grid {
@@ -385,7 +372,7 @@ function goAgentCenter() {
 }
 
 .overview-title {
-  color: #08295f;
+  color: $text-main;
   font-size: 31rpx;
   font-weight: 800;
   line-height: 44rpx;
@@ -394,10 +381,10 @@ function goAgentCenter() {
 .today-badge {
   padding: 8rpx 19rpx;
   border-radius: 11rpx;
-  color: #3560a8;
+  color: $primary-color;
   font-size: 21rpx;
   font-weight: 700;
-  background: #e5ebf5;
+  background: $primary-bg;
 }
 
 .overview-list {
@@ -437,7 +424,7 @@ function goAgentCenter() {
   flex: 1;
   min-width: 0;
   margin-left: 28rpx;
-  color: #173766;
+  color: $text-main;
   font-size: 28rpx;
   font-weight: 700;
 }
@@ -451,7 +438,7 @@ function goAgentCenter() {
   font-weight: 700;
   line-height: 32rpx;
   text-align: center;
-  background: linear-gradient(110deg, #82c9fa, #6bb7ef);
+  background: $confirm-btn-bg;
 }
 
 .loading-mask {
