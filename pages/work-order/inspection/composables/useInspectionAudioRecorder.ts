@@ -95,10 +95,7 @@ export function useInspectionAudioRecorder() {
       }
       const plusRuntime = (globalThis as { plus?: PlusRuntime }).plus;
       const permissions = ["android.permission.RECORD_AUDIO"];
-      const osVersion = Number.parseInt(
-        plusRuntime?.os?.version || "0",
-        10,
-      );
+      const osVersion = Number.parseInt(plusRuntime?.os?.version || "0", 10);
       if (osVersion >= 13) {
         permissions.push("android.permission.POST_NOTIFICATIONS");
       }
@@ -110,9 +107,7 @@ export function useInspectionAudioRecorder() {
         permissions,
         (event) =>
           resolve(
-            Boolean(
-              event.granted?.includes("android.permission.RECORD_AUDIO"),
-            ),
+            Boolean(event.granted?.includes("android.permission.RECORD_AUDIO")),
           ),
         () => resolve(false),
       );
@@ -305,4 +300,3 @@ export function useInspectionAudioRecorder() {
     dispose,
   };
 }
-
