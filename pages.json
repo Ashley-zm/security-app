@@ -4,21 +4,30 @@
       "path": "pages/login/index",
       "style": {
         "navigationStyle": "custom",
-        "disableScroll": true
+        "disableScroll": true,
+        "pageOrientation": "portrait",
+        "app-plus": {
+          "bounce": "none"
+        }
       }
     },
     {
       "path": "pages/home/index",
       "style": {
         "navigationStyle": "custom",
-        "enablePullDownRefresh": true
+        "enablePullDownRefresh": true,
+        "pageOrientation": "portrait",
+        "app-plus": {
+          "bounce": "none"
+        }
       }
     },
     {
       "path": "pages/home/test-index",
       "style": {
         "navigationStyle": "custom",
-        "enablePullDownRefresh": true
+        "enablePullDownRefresh": true,
+        "pageOrientation": "portrait"
       }
     },
     {
@@ -27,31 +36,37 @@
         "navigationStyle": "custom",
         "enablePullDownRefresh": true,
         "onReachBottomDistance": 80,
-				"app-plus": {
-					"bounce": "none"
-				}
+        "app-plus": {
+          "bounce": "none"
+        }
       }
     },
     {
       "path": "pages/statistics/index",
       "style": {
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "app-plus": {
+          "bounce": "none"
+        }
       }
     },
     {
       "path": "pages/message/index",
       "style": {
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "app-plus": {
+          "bounce": "none"
+        }
       }
     },
     {
       "path": "pages/mine/index",
       "style": {
         "navigationStyle": "custom",
-				"disableScroll": true,
-				"app-plus": {
-					"bounce": "none"
-				}
+        "disableScroll": true,
+        "app-plus": {
+          "bounce": "none"
+        }
       }
     },
     {
@@ -71,15 +86,16 @@
       "style": {
         "navigationStyle": "custom"
       }
-    },{
+    },
+    {
       "path": "pages/work-order/person-list",
       "style": {
         "navigationStyle": "custom",
         "enablePullDownRefresh": true,
         "onReachBottomDistance": 80,
-				"app-plus": {
-					"bounce": "none"
-				}
+        "app-plus": {
+          "bounce": "none"
+        }
       }
     },
     {

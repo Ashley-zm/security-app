@@ -6,6 +6,7 @@ import type {
   WorkOrderUserAppointmentPayload,
   WorkOrderUserQuery,
   DeviceItem,
+  ParameterConfigListResult,
 } from "@/modules/work-order/types";
 import { request } from "@/utils/request";
 
@@ -66,7 +67,7 @@ export function getDeviceDetailApi(workOrderUserId: string, deviceId: string) {
 }
 // 新增APP端用户设备信息
 export function addDeviceApi(workOrderUserId: string, data: DeviceItem) {
-  return request<void, DeviceItem>({
+  return request<DeviceItem>({
     url: `/inspection/app/workOrder/v0.2/users/${workOrderUserId}/devices`,
     method: "POST",
     data,
@@ -74,7 +75,7 @@ export function addDeviceApi(workOrderUserId: string, data: DeviceItem) {
 }
 // 更新APP端用户设备信息
 export function updateDeviceApi(workOrderUserId: string, data: DeviceItem) {
-  return request<void, DeviceItem>({
+  return request<DeviceItem>({
     url: `/inspection/app/workOrder/v0.2/users/${workOrderUserId}/devices/${data.id}/edit`,
     method: "POST",
     data,
@@ -82,8 +83,15 @@ export function updateDeviceApi(workOrderUserId: string, data: DeviceItem) {
 }
 // 删除APP端用户设备信息
 export function deleteDeviceApi(workOrderUserId: string, deviceId: string) {
-  return request<void, DeviceItem>({
+  return request<DeviceItem>({
     url: `/inspection/app/workOrder/v0.2/users/${workOrderUserId}/devices/${deviceId}/delete`,
     method: "POST",
+  });
+}
+// 查询参数配置
+export function getParameterConfigListApi() {
+  return request<ParameterConfigListResult[]>({
+    url: `/inspection/parameterConfig/v0.2/list`,
+    method: "GET",
   });
 }

@@ -42,6 +42,17 @@
       </view>
     </view>
 
+    <view class="total-count">
+      <view class="total-count-label">
+        <view class="total-count-mark" />
+        <text>当前筛选总计</text>
+      </view>
+      <view class="total-count-value">
+        <text class="total-count-number">{{ total }}</text>
+        <text class="total-count-unit">位用户</text>
+      </view>
+    </view>
+
     <view v-if="error" class="error-card">
       <view class="error-title">用户列表加载失败</view>
       <view class="error-desc">{{ error }}</view>
@@ -67,7 +78,7 @@
             <view class="name-line">
               <text class="household-name">{{ item.householdName }}</text>
               <button class="phone-icon-btn" @click.stop="handleCall(item)">
-                <u-icon name="phone-fill" color="#1677ff" size="18"></u-icon>
+                <u-icon name="phone-fill" color="#1677ff" size="20"></u-icon>
               </button>
             </view>
             <text class="status-pill" :class="item.statusClass">
@@ -188,7 +199,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref } from "vue";
-import { onLoad, onPullDownRefresh } from "@dcloudio/uni-app";
+import { onLoad, onPullDownRefresh, onShow } from "@dcloudio/uni-app";
 import AppEmpty from "@/components/AppEmpty.vue";
 import AppNavbar from "@/components/AppNavbar.vue";
 import {
@@ -207,7 +218,7 @@ const workOrderId = ref("");
 const title = ref("安检用户");
 const searchKeyword = ref("");
 const searchFocused = ref(false);
-const activeStatus = ref("all");
+const activeStatus = ref("1");
 const timeSort = ref<1 | 2>(2);
 const list = ref<WorkOrderUser[]>([]);
 const total = ref(0);
@@ -245,10 +256,17 @@ getDictsByTypes(["order_user_status"], true).then((dicts) => {
 onLoad((options) => {
   workOrderId.value = decodeURIComponent(options?.workOrderId || "");
   title.value = decodeURIComponent(options?.title || "安检用户");
+});
+onShow(() => {
   refreshList();
 });
 
 onPullDownRefresh(async () => {
+  uni.showToast({
+    title: "用户数据获取中...",
+    icon: "none",
+    duration: 1000,
+  });
   await refreshList();
   uni.stopPullDownRefresh();
 });
@@ -596,6 +614,57 @@ async function confirmChangeTime() {
   height: 40rpx;
 }
 
+.total-count {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 76rpx;
+  margin: 0 24rpx 20rpx;
+  padding: 0 22rpx;
+  border: 1rpx solid rgba(22, 119, 255, 0.12);
+  border-radius: 18rpx;
+  background: linear-gradient(90deg, #f8fbff 0%, #eef6ff 100%);
+  box-shadow: 0 6rpx 18rpx rgba(22, 119, 255, 0.05);
+}
+
+.total-count-label,
+.total-count-value {
+  display: flex;
+  align-items: center;
+}
+
+.total-count-label {
+  gap: 12rpx;
+  color: $info-color;
+  font-size: 25rpx;
+  font-weight: 600;
+}
+
+.total-count-mark {
+  width: 7rpx;
+  height: 28rpx;
+  border-radius: 4rpx;
+  background: $primary-color;
+  box-shadow: 0 4rpx 10rpx rgba(22, 119, 255, 0.28);
+}
+
+.total-count-value {
+  gap: 6rpx;
+  color: $primary-color;
+}
+
+.total-count-number {
+  font-size: 34rpx;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.total-count-unit {
+  font-size: 23rpx;
+  font-weight: 600;
+}
+
 .user-list {
   box-sizing: border-box;
 
@@ -642,9 +711,9 @@ async function confirmChangeTime() {
 
 .phone-icon-btn {
   @include flex-center;
-  flex: 0 0 36rpx;
-  width: 40rpx;
-  height: 40rpx;
+  flex: 0 0 54rpx;
+  width: 54rpx;
+  height: 54rpx;
   padding: 0;
   border-radius: 50%;
   background: $primary-bg;

@@ -3,15 +3,26 @@
     <view class="topbar" :style="{ paddingTop: `${statusBarHeight}px` }">
       <view class="topbar-inner">
         <button class="back" @click="requestBack">‹</button>
-        <view class="titles">
+        <view
+          class="titles"
+          v-if="inspectionMode === INSPECTION_ACTIONS.AI.mode"
+        >
           <text class="title">AI Agent 安检</text>
           <text class="subtitle">智能识别回填，请确认结果</text>
         </view>
-        <button class="manual-btn" @click="switchManual">
+        <view class="titles" v-else>
+          <text class="title">人工填写</text>
+          <text class="subtitle">请手动填写安检信息，请确认结果</text>
+        </view>
+        <button
+          class="manual-btn"
+          @click="switchInspectionMode"
+          v-if="modelStatus"
+        >
           {{
-            inspectionMode === INSPECTION_ACTIONS.MANUAL.mode
+            inspectionMode === INSPECTION_ACTIONS.AI.mode
               ? "人工填写"
-              : "切换人工"
+              : "AI 安检"
           }}
         </button>
       </view>
@@ -99,7 +110,7 @@
         </view>
       </view>
     </scroll-view>
-    <!-- 无法安检弹窗 -->
+    <!-- 安检拍照&&照片弹窗 -->
     <InspectionPhotoPopup
       :visible="photoPopupVisible"
       :item-name="photoPopupItem?.itemName || ''"
@@ -139,8 +150,14 @@
       >
         {{ submitButtonText }}
       </button>
-      <text class="progress-text">
+      <text
+        class="progress-text"
+        v-if="inspectionMode === INSPECTION_ACTIONS.AI.mode"
+      >
         智能记录 {{ totalProgress.completed }}/{{ totalProgress.total }} 项
+      </text>
+      <text class="progress-text" v-else>
+        手动填写 {{ totalProgress.completed }}/{{ totalProgress.total }} 项
       </text>
     </view>
   </view>
@@ -182,6 +199,7 @@ const { dictionaries, loadInspectionDictionaries } =
 const statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 0;
 const workOrderId = ref("");
 const workOrderUserId = ref("");
+const modelStatus = ref<boolean>(false);
 const userName = ref("");
 const address = ref("");
 const template = ref<InspectionTemplate | null>(null);
@@ -270,8 +288,9 @@ const isEmpty = computed(
 
 onLoad((options) => {
   workOrderUserId.value = decodeURIComponent(options?.workOrderUserId || "");
+  modelStatus.value = decodeURIComponent(options?.modelStatus) === "true";
   inspectionMode.value = options?.inspectionMode;
-  void startRecording(workOrderUserId.value);
+  startRecording(workOrderUserId.value);
   loadTemplate();
 });
 onBackPress(() => {
@@ -366,7 +385,7 @@ function handlePhotoAction(item: InspectionTemplateItem) {
   const state = formData[String(item.id)];
   preparePhotoPopup(item);
   if (!state.photos.length) {
-    void capturePhoto(item);
+    capturePhoto(item);
     return;
   }
   photoPopupVisible.value = true;
@@ -406,7 +425,6 @@ function confirmPhotoPopup() {
   closePhotoPopup();
   // 本次拍摄内容只有确认后才上传保存。
   if (pendingPhotos.length) enqueuePhotoUploads(item, pendingPhotos);
-  console.log("确认照片弹窗", item, state);
 }
 
 // 拍照照片
@@ -417,7 +435,7 @@ function captureFromPopup() {
 // 删除照片
 function removePopupPhoto(photoId: string) {
   const item = photoPopupItem.value;
-  if (item) void removePhoto(item, photoId);
+  if (item) removePhoto(item, photoId);
 }
 // 重试照片
 function retryPopupPhoto(photoId: string) {
@@ -500,7 +518,6 @@ function enqueuePhotoUploads(
 ) {
   // 每张图片独立请求，Promise.all 并行上传以缩短整体等待时间。
   Promise.all(photos.map((photo) => uploadPhoto(item, photo))).then(() => {
-    console.log("所有照片上传完成", item);
     const state = formData[String(item.id)];
     // 模拟ai建议数据
     state.aiSuggestion = "模拟ai建议数据，重大风险，需上报燃气公司维修整改！";
@@ -643,19 +660,31 @@ async function confirmSignature(localPath: string) {
     signatureUploading.value = false;
   }
 }
-// 切换人工填写
-function switchManual() {
-  if (inspectionMode.value === INSPECTION_ACTIONS.MANUAL.mode) return;
-  uni.showModal({
-    title: "切换人工填写",
-    content: "切换人工填写后，AI 自动回填结果将保留，您可以手动修改。",
-    success: (result) => {
-      if (result.confirm) {
-        inspectionMode.value = INSPECTION_ACTIONS.MANUAL.mode;
-        dirty.value = true;
-      }
-    },
-  });
+// 切换人工填写或AI安检
+function switchInspectionMode() {
+  if (inspectionMode.value === INSPECTION_ACTIONS.MANUAL.mode) {
+    uni.showModal({
+      title: "切换AI安检",
+      content: "切换AI安检后，AI 自动回填结果将保留，您可以手动修改。",
+      success: (result) => {
+        if (result.confirm) {
+          inspectionMode.value = INSPECTION_ACTIONS.AI.mode;
+          dirty.value = true;
+        }
+      },
+    });
+  } else {
+    uni.showModal({
+      title: "切换人工填写",
+      content: "切换人工填写后，AI 自动回填结果将保留，您可以手动修改。",
+      success: (result) => {
+        if (result.confirm) {
+          inspectionMode.value = INSPECTION_ACTIONS.MANUAL.mode;
+          dirty.value = true;
+        }
+      },
+    });
+  }
 }
 // 提交安检结果
 async function submit() {
@@ -694,7 +723,6 @@ async function submit() {
       signatureFileId: signature.fileId,
       signatureUrl: signature.fileUrl,
     });
-
     // 首次提交并发上传录音和提交安检结果；部分成功后仅重试失败的一方。
     const audioTask = uploadedAudioFile.value?.fileId
       ? Promise.resolve(uploadedAudioFile.value)
@@ -704,10 +732,16 @@ async function submit() {
       : submitInspectionRecordApi(payload).then(() => {
           inspectionSubmittedToServer.value = true;
         });
+    console.log("录音上传任务:", audioTask);
+    console.log("安检结果提交任务:", inspectionTask);
+
     const [audioResult, inspectionResult] = await Promise.allSettled([
       audioTask,
       inspectionTask,
     ]);
+    // 打印结果
+    console.log("录音上传结果:", audioResult);
+    console.log("安检结果提交结果:", inspectionResult);
     const audioSucceeded = audioResult.status === "fulfilled";
     const inspectionSucceeded = inspectionResult.status === "fulfilled";
 
@@ -721,7 +755,6 @@ async function submit() {
       uni.showToast({ title: message, icon: "none" });
       return;
     }
-
     submitted.value = true;
     dirty.value = false;
     store.clear();
@@ -730,7 +763,7 @@ async function submit() {
     });
     uni.showToast({ title: "提交成功", icon: "success" });
     setTimeout(() => {
-      void navigateBackAfterStopping();
+      navigateBackAfterStopping();
     }, 500);
   } catch (error) {
     uni.showToast({
@@ -771,7 +804,7 @@ function requestBack() {
     return;
   }
   if (!dirty.value || submitted.value) {
-    void navigateBackAfterStopping();
+    navigateBackAfterStopping();
     return;
   }
   const content = inspectionSubmittedToServer.value
@@ -782,7 +815,7 @@ function requestBack() {
     content,
     success: (result) => {
       if (result.confirm) {
-        void navigateBackAfterStopping(true);
+        navigateBackAfterStopping(true);
       }
     },
   });

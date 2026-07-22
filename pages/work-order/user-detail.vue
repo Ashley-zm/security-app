@@ -41,11 +41,11 @@
           <view class="info-card">
             <view class="info-row with-action">
               <text class="info-label">户名：</text>
-              <text class="info-value">{{
-                displayValue(detail.workOrderUser.householdName)
-              }}</text>
+              <text class="info-value">
+                {{ displayValue(detail.workOrderUser.householdName) }}
+              </text>
               <button class="phone-btn" @click="makePhoneCall">
-                <u-icon name="phone-fill" color="#1677FF" size="17" />
+                <u-icon name="phone-fill" color="#1677FF" size="20" />
               </button>
             </view>
             <view
@@ -123,6 +123,12 @@
               @click="navigateToDetail(record)"
             >
               <view class="history-main">
+                <view
+                  class="status-tag is-processing history-tag"
+                  v-if="record.currentWorkOrderLatest"
+                >
+                  本次安检记录
+                </view>
                 <view class="info-row">
                   <text class="info-label">安检时间：</text>
                   <text class="info-value">{{
@@ -147,7 +153,11 @@
                     class="result-tag"
                     :class="getResultClass(record.inspectionResult)"
                   >
-                    {{ getResultText(record.inspectionResult) }}
+                    {{
+                      record.inspectionResult === "3"
+                        ? getResultText(record.unableReason, true)
+                        : getResultText(record.inspectionResult)
+                    }}
                   </text>
                 </view>
               </view>
@@ -159,22 +169,33 @@
       </view>
     </scroll-view>
 
-    <view v-if="userStatus === '1'" class="inspection-actions">
-      <button
+    <view
+      v-if="detail?.workOrderUser.status === '1'"
+      class="inspection-actions"
+    >
+      <template
         v-for="action in Object.values(INSPECTION_ACTIONS)"
         :key="action.mode"
-        class="inspection-action"
-        :class="action.className"
-        @click="handleInspectionAction(action.mode, action.label)"
       >
-        <image
-          class="action-icon"
-          :src="getActionIcon(action.mode)"
-          mode="aspectFit"
-        />
-        <text class="action-title">{{ action.label }}</text>
-        <text class="action-desc">{{ action.desc }}</text>
-      </button>
+        <button
+          v-if="
+            (action.mode === '1' && isAgentAgentEnabled) ||
+            (action.mode === '2' && isHumanAgentEnabled) ||
+            action.mode === '3'
+          "
+          class="inspection-action"
+          :class="action.className"
+          @click="handleInspectionAction(action.mode, action.label)"
+        >
+          <image
+            class="action-icon"
+            :src="getActionIcon(action.mode)"
+            mode="aspectFit"
+          />
+          <text class="action-title">{{ action.label }}</text>
+          <text class="action-desc">{{ action.desc }}</text>
+        </button>
+      </template>
     </view>
     <DeviceFormPopup
       :visible="devicePopupVisible"
@@ -211,19 +232,6 @@ import { onLoad, onPullDownRefresh, onUnload } from "@dcloudio/uni-app";
 import AppNavbar from "@/components/AppNavbar.vue";
 import UnableInspectionPopup from "@/pages/work-order/inspection/components/UnableInspectionPopup.vue";
 import DeviceFormPopup from "@/pages/work-order/components/DeviceFormPopup.vue";
-import {
-  addDeviceApi,
-  deleteDeviceApi,
-  getDeviceDetailApi,
-  getWorkOrderUserDetailApi,
-  updateDeviceApi,
-} from "@/modules/work-order/api";
-import { submitInspectionRecordApi } from "@/modules/work-order/inspection/api";
-import type { InspectionPhoto } from "@/modules/work-order/inspection/types";
-import { captureInspectionPhotos } from "@/pages/work-order/inspection/composables/useInspectionCamera";
-import { deleteFileApi, uploadFilesApi } from "@/modules/common/api";
-import { FILE_UPLOAD_TYPE } from "@/modules/common/types";
-import type { DictDataVO } from "@/modules/common/types";
 import type {
   InspectionHistoryRecord,
   WorkOrderUserDetailResult,
@@ -231,10 +239,28 @@ import type {
   DeviceItem,
 } from "@/modules/work-order/types";
 import {
+  addDeviceApi,
+  deleteDeviceApi,
+  getDeviceDetailApi,
+  getWorkOrderUserDetailApi,
+  updateDeviceApi,
+  getParameterConfigListApi,
+} from "@/modules/work-order/api";
+import { submitInspectionRecordApi } from "@/modules/work-order/inspection/api";
+import type { InspectionPhoto } from "@/modules/work-order/inspection/types";
+import { captureInspectionPhotos } from "@/pages/work-order/inspection/composables/useInspectionCamera";
+import { deleteFileApi, uploadFilesApi } from "@/modules/common/api";
+import { FILE_UPLOAD_TYPE } from "@/modules/common/types";
+import type { DictDataVO } from "@/modules/common/types";
+import {
   getDictLabelByType,
   getDictLabelByValue,
   getDictsByTypes,
 } from "@/utils/common";
+import {
+  ANDROID_PERMISSIONS,
+  ensureRecordingPermissions,
+} from "@/utils/appPermission";
 import { useInspectionStore } from "@/stores/inspection";
 import {
   UNABLE_INSPECTION_DEFAULT_REASON,
@@ -244,13 +270,13 @@ import {
 } from "@/pages/work-order/inspection/constants/inspection";
 
 const workOrderUserId = ref("");
-const userStatus = ref("");
 const detail = ref<WorkOrderUserDetailResult | null>(null);
 const loading = ref(false);
 const error = ref("");
 const workOrderStatusText = ref("--");
 const inspectionStore = useInspectionStore();
 const navigatingToInspection = ref(false);
+const checkingInspectionPermissions = ref(false);
 const navigatingToHistory = ref(false);
 const unablePopupVisible = ref(false);
 const unableReason = ref<string>(UNABLE_INSPECTION_DEFAULT_REASON);
@@ -316,8 +342,8 @@ const workOrderStatusClass = computed(() =>
 
 onLoad((options) => {
   workOrderUserId.value = decodeURIComponent(options?.workOrderUserId || "");
-  userStatus.value = decodeURIComponent(options?.userStatus || "");
-  void loadDeviceTypeDict();
+  loadParameterConfigList();
+  loadDeviceTypeDict();
   loadDetail();
   uni.$on("inspection-submitted", handleInspectionSubmitted);
 });
@@ -328,9 +354,40 @@ onUnload(() => {
 });
 
 onPullDownRefresh(async () => {
+  uni.showToast({
+    title: "用户数据获取中...",
+    icon: "none",
+    duration: 1000,
+  });
   await loadDetail();
   uni.stopPullDownRefresh();
 });
+
+// 是否开启Agent安检
+const isAgentAgentEnabled = ref(false);
+// 是否开启人工安检
+const isHumanAgentEnabled = ref(false);
+// 是否开启自动录音
+const isAutoRecordingEnabled = ref(false);
+
+async function loadParameterConfigList() {
+  try {
+    const result = await getParameterConfigListApi();
+    isAgentAgentEnabled.value = result
+      .filter((item) => item.configType === 1)
+      .some((item) => item.configValue === "1");
+    isHumanAgentEnabled.value = result
+      .filter((item) => item.configType === 2)
+      .some((item) => item.configValue === "1");
+    isAutoRecordingEnabled.value = result
+      .filter((item) => item.configType === 3)
+      .some((item) => item.configValue === "1");
+  } catch (error) {
+    isHumanAgentEnabled.value = false;
+    isAgentAgentEnabled.value = false;
+    isAutoRecordingEnabled.value = false;
+  }
+}
 
 async function loadDetail() {
   if (!workOrderUserId.value) {
@@ -343,6 +400,8 @@ async function loadDetail() {
   try {
     const result = await getWorkOrderUserDetailApi(workOrderUserId.value);
     detail.value = result;
+    console.log("user-detail loadDetail", detail.value?.workOrderUser.status);
+
     await resolveWorkOrderStatus(result.workOrder.status);
   } catch (err) {
     error.value = err instanceof Error ? err.message : "用户详情加载失败";
@@ -379,7 +438,7 @@ function getUserStatusClass(status?: string | number | null) {
   return classMap[String(status ?? "")] || "is-pending";
 }
 
-function getResultText(result?: string | number | null) {
+function getResultText(result?: string | number | null, isUnable?: boolean) {
   if (result === undefined || result === null || result === "") return "--";
   const value = String(result);
   const fallback: Record<string, string> = {
@@ -387,6 +446,13 @@ function getResultText(result?: string | number | null) {
     "2": "不合格",
     "3": "无法安检",
   };
+  const unableFallbackMap: Record<string, string> = {
+    "1": "到访不遇",
+    "2": "拒绝安检",
+  };
+  if (isUnable) {
+    return unableFallbackMap[value] || value;
+  }
   return fallback[value] || value;
 }
 
@@ -492,7 +558,7 @@ async function saveDevice(device: DeviceItem) {
 }
 
 function handleDeviceSwipeClick(event: { index?: number }, device: DeviceItem) {
-  if (Number(event?.index) === 0) void removeDevice(device);
+  if (Number(event?.index) === 0) removeDevice(device);
 }
 
 async function removeDevice(device: DeviceItem) {
@@ -535,9 +601,14 @@ function confirmDeleteDevice(device: DeviceItem) {
   });
 }
 // 处理安检操作
-function handleInspectionAction(mode: string, actionName: string) {
-  if (mode === INSPECTION_ACTIONS.AI.mode) {
-    if (navigatingToInspection.value) return;
+async function handleInspectionAction(mode: string, actionName: string) {
+  if (
+    mode === INSPECTION_ACTIONS.AI.mode ||
+    mode === INSPECTION_ACTIONS.MANUAL.mode
+  ) {
+    if (navigatingToInspection.value || checkingInspectionPermissions.value) {
+      return;
+    }
     if (!detail.value?.template) {
       uni.showToast({ title: "未配置安检模板", icon: "none" });
       return;
@@ -548,9 +619,28 @@ function handleInspectionAction(mode: string, actionName: string) {
       return;
     }
     navigatingToInspection.value = true;
+    checkingInspectionPermissions.value = true;
+    try {
+      if (
+        !(await ensureRecordingPermissions([
+          ANDROID_PERMISSIONS.RECORD_AUDIO,
+          ANDROID_PERMISSIONS.POST_NOTIFICATIONS,
+        ]))
+      ) {
+        navigatingToInspection.value = false;
+        return;
+      }
+    } finally {
+      checkingInspectionPermissions.value = false;
+    }
+
     inspectionStore.setDetail(detail.value);
+    const ModelStatus =
+      mode === INSPECTION_ACTIONS.AI.mode
+        ? isHumanAgentEnabled.value
+        : isAgentAgentEnabled.value;
     uni.navigateTo({
-      url: `/pages/work-order/inspection/index?workOrderUserId=${encodeURIComponent(currentWorkOrderUserId)}&inspectionMode=${mode}`,
+      url: `/pages/work-order/inspection/index?workOrderUserId=${encodeURIComponent(currentWorkOrderUserId)}&inspectionMode=${mode}&modelStatus=${ModelStatus}`,
       complete: () => {
         setTimeout(() => {
           navigatingToInspection.value = false;
@@ -563,7 +653,6 @@ function handleInspectionAction(mode: string, actionName: string) {
     openUnableInspection();
     return;
   }
-  uni.showToast({ title: actionName + "功能待接入", icon: "none" });
 }
 
 // 导航到工单详情
@@ -613,7 +702,9 @@ async function captureUnablePhoto() {
   try {
     const remaining =
       UNABLE_INSPECTION_MAX_PHOTO_COUNT - unablePhotos.value.length;
-    const results = await captureInspectionPhotos("manual");
+    const results = await captureInspectionPhotos(
+      INSPECTION_ACTIONS.UNABLE.mode,
+    );
     const existingPaths = new Set(
       unablePhotos.value.map((photo) => photo.localPath).filter(Boolean),
     );
@@ -678,7 +769,7 @@ async function deleteUnableUploadedFiles() {
 
 function cleanupUnableUploadedFiles() {
   if (unableSubmitting.value) return;
-  void deleteUnableUploadedFiles();
+  deleteUnableUploadedFiles();
 }
 
 async function cancelUnableInspection() {
@@ -709,6 +800,9 @@ async function uploadUnablePhotos() {
       paths,
       FILE_UPLOAD_TYPE.INSPECTION_IMAGE,
     );
+    console.log("uploadedFiles", uploadedFiles.length, uploadedFiles);
+    console.log("targets", targets.length, targets);
+
     if (uploadedFiles.length < targets.length) {
       throw new Error("无法安检照片上传结果不完整");
     }
@@ -987,6 +1081,14 @@ async function handleInspectionSubmitted() {
   flex: 1;
   min-width: 0;
 }
+.history-main {
+  position: relative;
+}
+.history-tag {
+  position: absolute;
+  top: -10rpx;
+  right: -40rpx;
+}
 .device-type {
   color: $text-main;
   font-size: 30rpx;
@@ -1032,8 +1134,8 @@ async function handleInspectionSubmitted() {
 }
 
 .inspection-actions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  // grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14rpx;
   padding: 18rpx 24rpx calc(18rpx + env(safe-area-inset-bottom));
   background: #fff;
@@ -1042,6 +1144,7 @@ async function handleInspectionSubmitted() {
 }
 
 .inspection-action {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;

@@ -42,12 +42,21 @@
       </view>
     </view>
 
+    <view class="total-count">
+      <view class="total-count-label">
+        <view class="total-count-mark" />
+        <text>当前筛选总计</text>
+      </view>
+      <view class="total-count-value">
+        <text class="total-count-number">{{ store.total }}</text>
+        <text class="total-count-unit">条工单</text>
+      </view>
+    </view>
     <view v-if="store.error" class="error-card">
       <view class="error-title">工单加载失败</view>
       <view class="error-desc">{{ store.error }}</view>
       <button class="retry-btn" @click="store.refresh()">重试</button>
     </view>
-
     <scroll-view
       v-else
       class="order-list"
@@ -162,13 +171,13 @@ onShow(() => {
   searchKeyword.value = store.queryParams.workOrderName || "";
   timeSort.value = store.queryParams.sort || 2;
   store.refresh();
-  console.log("onShow");
 });
 
 onPullDownRefresh(async () => {
   uni.showToast({
-    title: "下拉刷新请求...",
+    title: "工单数据获取中...",
     icon: "none",
+    duration: 1000,
   });
   await store.refresh();
   uni.stopPullDownRefresh();
@@ -246,15 +255,16 @@ function getStatusClass(status: WorkOrder["status"]) {
 
 function getFinishLabel(status: WorkOrder["status"]) {
   if (status === "3") return "完成时间";
-  if (status === "4") return "结束时间";
-  if (status === "5") return "取消时间";
+  if (status === "4") return "取消时间";
+  if (status === "5") return "结束时间";
   return "计划完成日期";
 }
 
 function getFinishTime(item: WorkOrder) {
   if (item.status === "3")
     return item.completeTime || item.planCompleteTime || "--";
-  if (item.status === "4") return item.cancelTime || "--";
+  if (item.status === "4" || item.status === "5")
+    return item.cancelTime || "--";
   return item.planCompleteTime || "--";
 }
 </script>
@@ -377,6 +387,57 @@ function getFinishTime(item: WorkOrder) {
 .time-sort-icon {
   width: 40rpx;
   height: 40rpx;
+}
+
+.total-count {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 76rpx;
+  margin: 0 24rpx 20rpx;
+  padding: 0 22rpx;
+  border: 1rpx solid rgba(22, 119, 255, 0.12);
+  border-radius: 18rpx;
+  background: linear-gradient(90deg, #f8fbff 0%, #eef6ff 100%);
+  box-shadow: 0 6rpx 18rpx rgba(22, 119, 255, 0.05);
+}
+
+.total-count-label,
+.total-count-value {
+  display: flex;
+  align-items: center;
+}
+
+.total-count-label {
+  gap: 12rpx;
+  color: $info-color;
+  font-size: 25rpx;
+  font-weight: 600;
+}
+
+.total-count-mark {
+  width: 7rpx;
+  height: 28rpx;
+  border-radius: 4rpx;
+  background: $primary-color;
+  box-shadow: 0 4rpx 10rpx rgba(22, 119, 255, 0.28);
+}
+
+.total-count-value {
+  gap: 6rpx;
+  color: $primary-color;
+}
+
+.total-count-number {
+  font-size: 34rpx;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.total-count-unit {
+  font-size: 23rpx;
+  font-weight: 600;
 }
 
 .order-list {

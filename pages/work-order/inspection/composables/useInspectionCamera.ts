@@ -1,4 +1,5 @@
 type NativePluginResult = Record<string, unknown>;
+import { INSPECTION_ACTIONS } from "@/pages/work-order/inspection/constants/inspection";
 interface AiDetectPlugin {
   startDetect?: (
     options: Record<string, unknown>,
@@ -141,7 +142,7 @@ export function captureInspectionPhotos(
       }
     };
 
-    if (mode === "1" && detectLabels) {
+    if (mode === INSPECTION_ACTIONS.AI.mode && detectLabels) {
       params = {
         detectMode: "full_pipeline",
         labels: detectLabels,
@@ -159,11 +160,14 @@ export function captureInspectionPhotos(
           useGpu: false,
         },
       };
-    } else if (mode === "manual") {
+    } else if (
+      mode === INSPECTION_ACTIONS.MANUAL.mode ||
+      mode === INSPECTION_ACTIONS.UNABLE.mode
+    ) {
       params = {
         detectMode: "photo_only",
       };
-    } else if (mode === "1" && !detectLabels) {
+    } else if (mode === INSPECTION_ACTIONS.AI.mode && !detectLabels) {
       params = {
         detectMode: "quality_only",
       };

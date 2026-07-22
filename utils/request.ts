@@ -286,7 +286,12 @@ export function request<T, D = unknown>(
 
         const responseCode = Number(response.code);
 
-        if (responseCode === HttpStatus.SUCCESS) {
+        if (
+          responseCode === HttpStatus.SUCCESS ||
+          responseCode === HttpStatus.CREATED ||
+          responseCode === HttpStatus.ACCEPTED ||
+          responseCode === HttpStatus.CONFLICT
+        ) {
           resolve(normalizeResponseData(response));
           return;
         }

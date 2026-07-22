@@ -171,6 +171,8 @@ export interface InspectionHistoryRecord {
   inspectorName?: string;
   inspectionResult?: string | number | null;
   dangerCount?: number | null;
+  currentWorkOrderLatest?: boolean;
+  unableReason?: string | number | null;
 }
 export interface DeviceItem {
   id?: string | number;
@@ -203,4 +205,9 @@ export interface WorkOrderUserInfoRow {
   label: string;
   value: string;
   isAddress?: boolean;
+}
+
+export interface ParameterConfigListResult {
+  configType: number; //    配置类别 1是否开启Agent安检 2是否开启人工安检 3安检时是否自动开启录音
+  configValue: string; //     配置值，1开启 0关闭
 }
