@@ -41,51 +41,61 @@ export function uploadFilesApi(
   if (!paths.length) return Promise.reject(new Error("请选择需要上传的文件"));
 
   const transport = getRequestTransportConfig("/inspection/file/v0.2/upload");
-  return new Promise((resolve, reject) => {
-    let params: Record<string, string> = {
-      uploadType: String(uploadType),
-    };
-    if (businessId) {
-      params["businessId"] = businessId;
-    }
-    console.log("params", params);
-    uni.uploadFile({
-      url: transport.url,
-      files: paths.map((uri) => ({ name: "files", uri })),
-      header: transport.header,
-      formData: params,
-      timeout: transport.timeout,
-      success: (result) => {
-        console.log("44444上传成功", result);
-        try {
-          if (result.statusCode < 200 || result.statusCode >= 300) {
-            throw new RequestError("文件上传失败", {
-              statusCode: result.statusCode,
-              response: result.data,
-            });
-          }
-          const response = parseUploadResponse(result.data);
-          if (Number(response.code) !== 200 || !Array.isArray(response.data)) {
-            throw new RequestError(
-              response.msg || response.message || "文件上传失败",
-              { code: Number(response.code) || undefined, response },
+  const uploadFile = (filePath: string) =>
+    new Promise<UploadedFileVO[]>((resolve, reject) => {
+      const params: Record<string, string> = {
+        uploadType: String(uploadType),
+      };
+      if (businessId) {
+        params["businessId"] = businessId;
+      }
+      const files = paths.map((uri) => ({ name: "files", uri }));
+      uni.uploadFile({
+        url: transport.url,
+        filePath,
+        name: "files",
+        header: transport.header,
+        formData: params,
+        timeout: transport.timeout,
+        success: (result) => {
+          try {
+            if (result.statusCode < 200 || result.statusCode >= 300) {
+              throw new RequestError("文件上传失败", {
+                statusCode: result.statusCode,
+                response: result.data,
+              });
+            }
+            const response = parseUploadResponse(result.data);
+            if (
+              Number(response.code) !== 200 ||
+              !Array.isArray(response.data)
+            ) {
+              throw new RequestError(
+                response.msg || response.message || "文件上传失败",
+                { code: Number(response.code) || undefined, response },
+              );
+            }
+            resolve(
+              response.data.map((file) => ({
+                ...file,
+                fileId: String(file.fileId),
+                url: String(file.url || ""),
+                uploadType: Number(file.uploadType || uploadType),
+              })),
             );
+          } catch (error) {
+            reject(error);
           }
-          resolve(
-            response.data.map((file) => ({
-              ...file,
-              fileId: String(file.fileId),
-              url: String(file.url || ""),
-              uploadType: Number(file.uploadType || uploadType),
-            })),
-          );
-        } catch (error) {
-          reject(error);
-        }
-      },
-      fail: (error) => reject(new Error(error.errMsg || "文件上传失败")),
+        },
+        fail: (error) => reject(new Error(error.errMsg || "文件上传失败")),
+      });
     });
-  });
+  return Promise.all(paths.map(uploadFile)).then((results) =>
+    results.reduce<UploadedFileVO[]>((files, result) => {
+      files.push(...result);
+      return files;
+    }, []),
+  );
 }
 /** 删除已上传文件。fileId 按字符串处理，避免后端 Long 类型精度丢失。 */
 export function deleteFileApi(fileId: string): Promise<void> {
