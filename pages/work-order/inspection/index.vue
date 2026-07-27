@@ -161,6 +161,17 @@
       </text>
     </view>
   </view>
+  <!-- 安检模式切换确认框弹窗 -->
+  <uni-popup ref="confirmDialogRef" type="dialog">
+    <uni-popup-dialog
+      type="warn"
+      cancelText="取消"
+      confirmText="确定"
+      :title="confirmTitle"
+      :content="confirmContent"
+      @confirm="confirmFun"
+    ></uni-popup-dialog>
+  </uni-popup>
 </template>
 
 <script setup lang="ts">
@@ -248,6 +259,14 @@ const {
   stopForPageClose,
   dispose: disposeAudioRecorder,
 } = useInspectionAudioRecorder();
+
+const confirmDialogRef = ref<any>();
+const confirmDialogType = ref<"switchMode" | "exit">("switchMode");
+const confirmTitle = ref("切换安检模式");
+const confirmContent = ref(
+  "切换AI安检后，AI 自动回填结果将保留，您可以手动修改。",
+);
+
 const popupPhotos = computed(() => {
   const item = photoPopupItem.value;
   return item ? formData[String(item.id)]?.photos || [] : [];
@@ -662,29 +681,26 @@ async function confirmSignature(localPath: string) {
 }
 // 切换人工填写或AI安检
 function switchInspectionMode() {
+  confirmDialogType.value = "switchMode";
   if (inspectionMode.value === INSPECTION_ACTIONS.MANUAL.mode) {
-    uni.showModal({
-      title: "切换AI安检",
-      content: "切换AI安检后，AI 自动回填结果将保留，您可以手动修改。",
-      success: (result) => {
-        if (result.confirm) {
-          inspectionMode.value = INSPECTION_ACTIONS.AI.mode;
-          dirty.value = true;
-        }
-      },
-    });
+    confirmTitle.value = "切换【AI安检】模式";
+    confirmContent.value =
+      "切换AI安检后，AI 自动回填结果将保留，您可以手动修改。";
   } else {
-    uni.showModal({
-      title: "切换人工填写",
-      content: "切换人工填写后，AI 自动回填结果将保留，您可以手动修改。",
-      success: (result) => {
-        if (result.confirm) {
-          inspectionMode.value = INSPECTION_ACTIONS.MANUAL.mode;
-          dirty.value = true;
-        }
-      },
-    });
+    confirmTitle.value = "切换【人工填写】模式";
+    confirmContent.value =
+      "切换人工填写后，AI 自动回填结果将保留，您可以手动修改。";
   }
+  confirmDialogRef?.value?.open();
+}
+function confirmInspectionMode() {
+  if (inspectionMode.value === INSPECTION_ACTIONS.MANUAL.mode) {
+    inspectionMode.value = INSPECTION_ACTIONS.AI.mode;
+  } else {
+    inspectionMode.value = INSPECTION_ACTIONS.MANUAL.mode;
+  }
+  dirty.value = true;
+  confirmDialogRef?.value?.close();
 }
 // 提交安检结果
 async function submit() {
@@ -807,18 +823,19 @@ function requestBack() {
     navigateBackAfterStopping();
     return;
   }
-  const content = inspectionSubmittedToServer.value
+  confirmDialogType.value = "exit";
+  confirmTitle.value = "确认退出";
+  confirmContent.value = inspectionSubmittedToServer.value
     ? "安检结果已提交，但录音尚未上传，确定退出吗？"
     : "当前安检结果尚未提交，确定退出吗？";
-  uni.showModal({
-    title: "确认退出",
-    content,
-    success: (result) => {
-      if (result.confirm) {
-        navigateBackAfterStopping(true);
-      }
-    },
-  });
+  confirmDialogRef?.value?.open();
+}
+function confirmFun() {
+  if (confirmDialogType.value === "switchMode") {
+    confirmInspectionMode();
+  } else if (confirmDialogType.value === "exit") {
+    navigateBackAfterStopping(true);
+  }
 }
 </script>
 

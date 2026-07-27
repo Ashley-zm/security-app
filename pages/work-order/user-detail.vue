@@ -67,15 +67,13 @@
               <u-icon name="plus" color="#fff" size="15" /> 添加设备
             </view>
           </view>
-          <u-swipe-action v-if="deviceList.length" class="device-list">
-            <u-swipe-action-item
+          <uni-swipe-action v-if="deviceList.length" class="device-list">
+            <uni-swipe-action-item
               v-for="device in deviceList"
               :key="String(device.id || device.deviceNo)"
               class="device-swipe"
-              :name="String(device.id || device.deviceNo || '')"
-              :options="DEVICE_SWIPE_OPTIONS"
-              :disabled="deletingDeviceIds.includes(String(device.id || ''))"
-              @click="handleDeviceSwipeClick($event, device)"
+              :right-options="DEVICE_SWIPE_OPTIONS"
+              @click="confirmDeleteDevice(device)"
             >
               <view class="device-card" @click="openEditDevice(device)">
                 <view class="device-main">
@@ -109,8 +107,8 @@
                 </view>
                 <u-icon name="arrow-right" color="#9AA8C5" size="15" />
               </view>
-            </u-swipe-action-item>
-          </u-swipe-action>
+            </uni-swipe-action-item>
+          </uni-swipe-action>
           <view v-else class="device-empty">暂无设备信息</view>
         </view>
         <view class="section-block">
@@ -185,7 +183,7 @@
           "
           class="inspection-action"
           :class="action.className"
-          @click="handleInspectionAction(action.mode, action.label)"
+          @click="handleInspectionAction(action.mode)"
         >
           <image
             class="action-icon"
@@ -224,11 +222,24 @@
       @confirm="submitUnableInspection"
     />
   </view>
+  <!-- 删除设备确认框弹窗 -->
+  <uni-popup ref="deleteDialogRef" type="dialog">
+    <uni-popup-dialog
+      type="error"
+      cancelText="取消"
+      confirmText="确定"
+      title="删除设备"
+      :content="confirmContent"
+      @confirm="removeDevice"
+    ></uni-popup-dialog>
+  </uni-popup>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { onLoad, onPullDownRefresh, onUnload } from "@dcloudio/uni-app";
+import UniSwipeAction from "@dcloudio/uni-ui/lib/uni-swipe-action/uni-swipe-action.vue";
+import UniSwipeActionItem from "@dcloudio/uni-ui/lib/uni-swipe-action-item/uni-swipe-action-item.vue";
 import AppNavbar from "@/components/AppNavbar.vue";
 import UnableInspectionPopup from "@/pages/work-order/inspection/components/UnableInspectionPopup.vue";
 import DeviceFormPopup from "@/pages/work-order/components/DeviceFormPopup.vue";
@@ -298,7 +309,9 @@ const deviceFormMode = ref<"add" | "edit">("add");
 const editingDevice = ref<DeviceItem | null>(null);
 const deviceSaving = ref(false);
 const deviceOpening = ref(false);
-const deletingDeviceIds = ref<string[]>([]);
+const deletingDeviceId = ref<string>("");
+const deleteDialogRef = ref<any>();
+const confirmContent = ref("");
 const DEVICE_SWIPE_OPTIONS = [
   {
     text: "删除",
@@ -557,23 +570,14 @@ async function saveDevice(device: DeviceItem) {
   }
 }
 
-function handleDeviceSwipeClick(event: { index?: number }, device: DeviceItem) {
-  if (Number(event?.index) === 0) removeDevice(device);
-}
-
-async function removeDevice(device: DeviceItem) {
-  const deviceId = String(device.id || "").trim();
-  if (!workOrderUserId.value || !deviceId) {
+async function removeDevice() {
+  if (!workOrderUserId.value || !deletingDeviceId.value) {
     uni.showToast({ title: "缺少设备参数", icon: "none" });
     return;
   }
-  if (deletingDeviceIds.value.includes(deviceId)) return;
 
-  const confirmed = await confirmDeleteDevice(device);
-  if (!confirmed) return;
-  deletingDeviceIds.value = [...deletingDeviceIds.value, deviceId];
   try {
-    await deleteDeviceApi(workOrderUserId.value, deviceId);
+    await deleteDeviceApi(workOrderUserId.value, deletingDeviceId.value);
     await loadDetail();
     uni.showToast({ title: "删除成功", icon: "success" });
   } catch (error) {
@@ -582,26 +586,17 @@ async function removeDevice(device: DeviceItem) {
       icon: "none",
     });
   } finally {
-    deletingDeviceIds.value = deletingDeviceIds.value.filter(
-      (id) => id !== deviceId,
-    );
+    deletingDeviceId.value = "";
+    deleteDialogRef?.value?.close();
   }
 }
-
 function confirmDeleteDevice(device: DeviceItem) {
-  return new Promise<boolean>((resolve) => {
-    uni.showModal({
-      title: "删除设备",
-      content: `确定删除设备“${device.deviceNo || "未编号设备"}”吗？`,
-      confirmText: "删除",
-      confirmColor: "#F04455",
-      success: (result) => resolve(Boolean(result.confirm)),
-      fail: () => resolve(false),
-    });
-  });
+  deletingDeviceId.value = String(device.id || "").trim();
+  confirmContent.value = `确定删除设备“${getDeviceTypeText(device.deviceType) + " " + (device.brand || "") || "未编号设备"}”吗？`;
+  deleteDialogRef?.value?.open();
 }
 // 处理安检操作
-async function handleInspectionAction(mode: string, actionName: string) {
+async function handleInspectionAction(mode: string) {
   if (
     mode === INSPECTION_ACTIONS.AI.mode ||
     mode === INSPECTION_ACTIONS.MANUAL.mode
@@ -1140,7 +1135,7 @@ async function handleInspectionSubmitted() {
   padding: 18rpx 24rpx calc(18rpx + env(safe-area-inset-bottom));
   background: #fff;
   box-shadow: 0 8rpx 24rpx rgba(28, 83, 171, 0.2);
-  z-index: 100;
+  z-index: 10;
 }
 
 .inspection-action {

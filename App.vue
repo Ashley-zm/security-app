@@ -1,16 +1,24 @@
 <script setup lang="ts">
-import { onLaunch, onShow } from '@dcloudio/uni-app'
-import { guardCurrentPage } from '@/utils/permission'
+import { onLaunch, onShow } from "@dcloudio/uni-app";
+import { guardCurrentPage } from "@/utils/permission";
+
+function lockPortraitOrientation() {
+  // #ifdef APP-PLUS
+  plus.screen.lockOrientation("portrait-primary");
+  // #endif
+}
 
 onLaunch(() => {
-  guardCurrentPage()
-})
+  lockPortraitOrientation();
+  guardCurrentPage();
+});
 
 onShow(() => {
-  guardCurrentPage()
-})
+  guardCurrentPage();
+  lockPortraitOrientation();
+});
 </script>
 
 <style lang="scss">
-@import '@/styles/common.scss';
+@import "@/styles/common.scss";
 </style>

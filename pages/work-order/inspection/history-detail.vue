@@ -176,7 +176,7 @@
           <view class="signature-card">
             <image
               class="signature-image"
-              :src="detail.signatureUrl"
+              :src="FILE_URL + detail.signatureUrl"
               mode="aspectFit"
               @click="previewSignature"
             />
@@ -306,12 +306,6 @@ async function loadDetail() {
 }
 
 function getSubItemListByGroupId(groupId: string, itemId: string) {
-  console.log(
-    detail.value?.template?.groupList
-      ?.find((item) => item.id === groupId)
-      ?.itemList?.find((item) => item.id === itemId)?.subItemList || [],
-  );
-
   return (
     detail.value?.template?.groupList
       ?.find((item) => item.id === groupId)
@@ -357,6 +351,8 @@ function normalizePhotos(
 }
 
 function getItemPhotos(item: InspectionHistoryItemDetail) {
+  console.log("item.photoList", item.photoList);
+
   return normalizePhotos(item.photoList);
 }
 
@@ -372,8 +368,8 @@ function previewPhotos(
 function previewSignature() {
   if (!detail.value?.signatureUrl) return;
   uni.previewImage({
-    current: detail.value.signatureUrl,
-    urls: [detail.value.signatureUrl],
+    current: FILE_URL + detail.value.signatureUrl,
+    urls: [FILE_URL + detail.value.signatureUrl],
   });
 }
 </script>

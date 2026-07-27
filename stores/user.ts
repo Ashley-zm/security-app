@@ -1,54 +1,53 @@
-import { defineStore } from 'pinia'
-import { loginApi } from '@/modules/auth/api'
-import type { LoginParams, UserInfo } from '@/modules/auth/types'
+import { defineStore } from "pinia";
+import { loginApi, getUserInfoApi } from "@/modules/auth/api";
+import type { LoginParams, UserInfo } from "@/modules/auth/types";
 import {
   clearToken,
   clearUserInfoStorage,
   getToken,
   getUserInfoStorage,
   setToken as setTokenStorage,
-  setUserInfoStorage
-} from '@/utils/storage'
-import { getUserInfoApi } from '@/modules/auth/api'
+  setUserInfoStorage,
+} from "@/utils/storage";
 
 interface UserState {
-  token: string
-  userInfo: UserInfo | null
+  token: string;
+  userInfo: UserInfo | null;
 }
 
-export const useUserStore = defineStore('user', {
+export const useUserStore = defineStore("user", {
   state: (): UserState => ({
     token: getToken(),
-    userInfo: getUserInfoStorage<UserInfo>()
+    userInfo: getUserInfoStorage<UserInfo>(),
   }),
   actions: {
     async setToken(token: string) {
-      this.token = token
-      setTokenStorage(token)
-      const userInfoResult = await getUserInfoApi()
-      this.setUserInfo(userInfoResult.user)
+      this.token = token;
+      setTokenStorage(token);
+      const userInfoResult = await getUserInfoApi();
+      this.setUserInfo(userInfoResult.user);
     },
     setUserInfo(userInfo: UserInfo) {
-      this.userInfo = userInfo
-      setUserInfoStorage(userInfo)
+      this.userInfo = userInfo;
+      setUserInfoStorage(userInfo);
     },
     async login(params: LoginParams) {
-      const result = await loginApi(params)
-      this.setToken(result.access_token)
-      return result
+      const result = await loginApi(params);
+      this.setToken(result.access_token);
+      return result;
     },
     logout() {
-      this.token = ''
-      this.userInfo = null
-      clearToken()
-      clearUserInfoStorage()
+      this.token = "";
+      this.userInfo = null;
+      clearToken();
+      clearUserInfoStorage();
       uni.reLaunch({
-        url: '/pages/login/index'
-      })
-    }
+        url: "/pages/login/index",
+      });
+    },
   },
   getters: {
     getToken: (state) => state.token,
-    getUserInfo: (state) => state.userInfo
-  }
-})
+    getUserInfo: (state) => state.userInfo,
+  },
+});

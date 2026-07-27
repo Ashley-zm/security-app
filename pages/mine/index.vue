@@ -16,7 +16,7 @@
         <image
           v-if="avatarSrc"
           class="avatar avatar-img"
-          :src="avatarSrc"
+          :src="FILE_URL + avatarSrc"
           mode="aspectFill"
         />
         <view v-else class="avatar">
@@ -50,7 +50,11 @@
         <text class="qr-desc">扫一扫，向他人展示我的身份信息</text>
       </view>
       <view class="qr-code" aria-label="身份二维码">
-        <image class="qr-code-img" :src="qrCodeSrc" mode="aspectFit" />
+        <image
+          class="qr-code-img"
+          src="/static/images/mine/qr.png"
+          mode="aspectFit"
+        />
       </view>
     </view>
 
@@ -60,8 +64,8 @@
       @click="closeQrPreview"
     >
       <view class="qr-preview-popup" @click.stop>
-        <button class="qr-preview-close" @click="closeQrPreview">X</button>
         <image class="qr-preview-img" :src="qrCodeSrc" mode="aspectFit" />
+        <button class="qr-preview-close" @click="closeQrPreview">X</button>
       </view>
     </view>
 
@@ -231,13 +235,15 @@
 import { computed, reactive, ref } from "vue";
 import { changePasswordApi } from "@/modules/auth/api";
 import { useUserStore } from "@/stores/user";
+import { FILE_URL } from "@/utils/request";
 const statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 0;
 
 const userStore = useUserStore();
 const cacheSize = ref("32.6MB");
 const avatarSrc = computed(() => userStore.userInfo?.avatarUrl || "");
 const qrCodeSrc = computed(
-  () => userStore.userInfo?.qrCodeUrl || "/static/images/mine/qr.png",
+  () =>
+    FILE_URL + userStore.userInfo?.qrCodeUrl || "/static/images/mine/qr.png",
 );
 const qrPreviewVisible = ref(false);
 const passwordPopupVisible = ref(false);
@@ -684,8 +690,8 @@ const handleLogout = () => {
 
 .qr-code {
   position: relative;
-  width: 92rpx;
-  height: 92rpx;
+  width: 90rpx;
+  height: 90rpx;
   padding: 7rpx;
 }
 
