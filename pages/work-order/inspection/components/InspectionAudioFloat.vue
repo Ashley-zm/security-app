@@ -1,5 +1,13 @@
 ﻿<template>
-  <view class="audio-float" :class="statusClass">
+  <view
+    class="audio-float"
+    :class="[statusClass, { dragging: isDragging }]"
+    :style="positionStyle"
+    @touchstart.stop="handleTouchStart"
+    @touchmove.stop.prevent="handleTouchMove"
+    @touchend.stop="handleTouchEnd"
+    @touchcancel.stop="handleTouchEnd"
+  >
     <view class="audio-state-icon">
       <view v-if="status === 'recording'" class="recording-dot" />
       <view v-else-if="isOperating" class="audio-spinner" />
@@ -13,7 +21,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, getCurrentInstance, nextTick, onMounted, ref } from "vue";
 import type { InspectionAudioStatus } from "@/modules/work-order/inspection/types";
 
 const props = defineProps<{
@@ -21,6 +29,24 @@ const props = defineProps<{
   duration: number;
   errorMessage?: string;
 }>();
+
+const instance = getCurrentInstance();
+const SAFE_DISTANCE = 2;
+const VERTICAL_SAFE_DISTANCE = 100;
+const position = ref<{ left: number; top: number }>();
+const floatSize = ref({ width: 0, height: 0 });
+const isDragging = ref(false);
+const dragOffset = ref({ x: 0, y: 0 });
+
+const positionStyle = computed(() => {
+  if (!position.value) return {};
+  return {
+    left: `${position.value.left}px`,
+    top: `${position.value.top}px`,
+    right: "auto",
+    transform: "none",
+  };
+});
 
 const isOperating = computed(() =>
   ["starting", "stopping", "uploading"].includes(props.status),
@@ -68,13 +94,89 @@ function formatDuration(milliseconds: number) {
   const seconds = String(totalSeconds % 60).padStart(2, "0");
   return `${minutes}:${seconds}`;
 }
+function getWindowSize() {
+  const systemInfo = uni.getSystemInfoSync();
+  return { width: systemInfo.windowWidth, height: systemInfo.windowHeight };
+}
+
+function clampPosition(left: number, top: number) {
+  const windowSize = getWindowSize();
+  return {
+    left: Math.min(
+      Math.max(SAFE_DISTANCE, left),
+      Math.max(
+        SAFE_DISTANCE,
+        windowSize.width - floatSize.value.width - SAFE_DISTANCE,
+      ),
+    ),
+    top: Math.min(
+      Math.max(VERTICAL_SAFE_DISTANCE, top),
+      Math.max(
+        VERTICAL_SAFE_DISTANCE,
+        windowSize.height - floatSize.value.height - VERTICAL_SAFE_DISTANCE,
+      ),
+    ),
+  };
+}
+
+function handleTouchStart(event: TouchEvent) {
+  const touch = event.touches[0];
+  if (!touch || !position.value) return;
+  isDragging.value = true;
+  dragOffset.value = {
+    x: touch.clientX - position.value.left,
+    y: touch.clientY - position.value.top,
+  };
+}
+
+function handleTouchMove(event: TouchEvent) {
+  const touch = event.touches[0];
+  if (!touch || !isDragging.value) return;
+  position.value = clampPosition(
+    touch.clientX - dragOffset.value.x,
+    touch.clientY - dragOffset.value.y,
+  );
+}
+
+function handleTouchEnd() {
+  if (!isDragging.value || !position.value) return;
+  isDragging.value = false;
+  const windowSize = getWindowSize();
+  position.value = clampPosition(
+    windowSize.width - floatSize.value.width - SAFE_DISTANCE,
+    position.value.top,
+  );
+}
+
+onMounted(() => {
+  nextTick(() => {
+    uni
+      .createSelectorQuery()
+      .in(instance?.proxy)
+      .select(".audio-float")
+      .boundingClientRect((rect) => {
+        if (
+          !rect ||
+          Array.isArray(rect) ||
+          rect.width === undefined ||
+          rect.height === undefined ||
+          rect.left === undefined ||
+          rect.top === undefined
+        )
+          return;
+        floatSize.value = { width: rect.width, height: rect.height };
+        position.value = clampPosition(rect.left, VERTICAL_SAFE_DISTANCE);
+      })
+      .exec();
+  });
+});
 </script>
 
 <style scoped lang="scss">
 .audio-float {
   position: fixed;
-  top: 44%;
-  right: 22rpx;
+  top: 100px;
+  right: 2px;
   z-index: 40;
   display: flex;
   align-items: center;
@@ -88,9 +190,22 @@ function formatDuration(milliseconds: number) {
   color: #fff;
   background: rgba(37, 58, 96, 0.9);
   box-shadow: 0 10rpx 28rpx rgba(24, 44, 79, 0.22);
-  transform: translateY(-50%);
-  pointer-events: none;
+  transform: none;
+  cursor: move;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
   backdrop-filter: blur(12rpx);
+}
+
+.audio-float.dragging {
+  opacity: 0.92;
+}
+
+.audio-float:not(.dragging) {
+  transition:
+    left 0.2s ease,
+    top 0.2s ease;
 }
 
 .audio-state-icon {
@@ -179,4 +294,3 @@ function formatDuration(milliseconds: number) {
   }
 }
 </style>
-
