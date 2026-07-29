@@ -90,7 +90,7 @@ export interface WorkOrderUser {
   appointmentTime?: string | null;
   inspectionStartTime?: string | null;
   inspectionFinishTime?: string | null;
-  unableReason?: string | number | null;
+  unableReason?: string | null;
   inspectionResult?: string | number | null;
   inspectionRecordId?: number | string | null;
   finishTime?: string | null;

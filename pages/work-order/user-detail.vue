@@ -372,7 +372,9 @@ onPullDownRefresh(async () => {
     icon: "none",
     duration: 1000,
   });
+  await loadDeviceTypeDict();
   await loadDetail();
+  await loadParameterConfigList();
   uni.stopPullDownRefresh();
 });
 
@@ -592,7 +594,7 @@ async function removeDevice() {
 }
 function confirmDeleteDevice(device: DeviceItem) {
   deletingDeviceId.value = String(device.id || "").trim();
-  confirmContent.value = `确定删除设备“${getDeviceTypeText(device.deviceType) + " " + (device.brand || "") || "未编号设备"}”吗？`;
+  confirmContent.value = `确定删除设备“${getDeviceTypeText(device.deviceType) || "未编号设备"}”吗？`;
   deleteDialogRef?.value?.open();
 }
 // 处理安检操作
@@ -635,7 +637,7 @@ async function handleInspectionAction(mode: string) {
         ? isHumanAgentEnabled.value
         : isAgentAgentEnabled.value;
     uni.navigateTo({
-      url: `/pages/work-order/inspection/index?workOrderUserId=${encodeURIComponent(currentWorkOrderUserId)}&inspectionMode=${mode}&modelStatus=${ModelStatus}`,
+      url: `/pages/work-order/inspection/index?workOrderUserId=${encodeURIComponent(currentWorkOrderUserId)}&inspectionMode=${mode}&modelStatus=${ModelStatus}&isAutoRecordingEnabled=${isAutoRecordingEnabled.value}`,
       complete: () => {
         setTimeout(() => {
           navigatingToInspection.value = false;

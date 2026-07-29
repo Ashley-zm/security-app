@@ -136,7 +136,7 @@
     />
     <!-- 安检录音弹窗 -->
     <InspectionAudioFloat
-      v-if="workOrderUserId"
+      v-if="workOrderUserId && isAutoRecordingEnabled"
       :status="audioStatus"
       :duration="audioDuration"
       :error-message="audioErrorMessage"
@@ -211,6 +211,7 @@ const statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 0;
 const workOrderId = ref("");
 const workOrderUserId = ref("");
 const modelStatus = ref<boolean>(false);
+const isAutoRecordingEnabled = ref<boolean>(false);
 const userName = ref("");
 const address = ref("");
 const template = ref<InspectionTemplate | null>(null);
@@ -309,7 +310,11 @@ onLoad((options) => {
   workOrderUserId.value = decodeURIComponent(options?.workOrderUserId || "");
   modelStatus.value = decodeURIComponent(options?.modelStatus) === "true";
   inspectionMode.value = options?.inspectionMode;
-  startRecording(workOrderUserId.value);
+  isAutoRecordingEnabled.value =
+    decodeURIComponent(options?.isAutoRecordingEnabled) === "true";
+  if (isAutoRecordingEnabled.value) {
+    startRecording(workOrderUserId.value);
+  }
   loadTemplate();
 });
 onBackPress(() => {
@@ -444,6 +449,16 @@ function confirmPhotoPopup() {
   closePhotoPopup();
   // 本次拍摄内容只有确认后才上传保存。
   if (pendingPhotos.length) enqueuePhotoUploads(item, pendingPhotos);
+  // 确认照片弹窗后，更新选项（根据item.itemName判断是连接管道还是燃气灶）
+  if (!item.subItemList?.[1].id) return;
+  if (item.itemName === "燃气灶连接管道") {
+    onOptionChange(item, [String(item.subItemList?.[1].id)]);
+  } else if (item.itemName === "燃气灶") {
+    onOptionChange(item, [
+      String(item.subItemList?.[1].id),
+      String(item.subItemList?.[2].id),
+    ]);
+  }
 }
 
 // 拍照照片
@@ -539,7 +554,7 @@ function enqueuePhotoUploads(
   Promise.all(photos.map((photo) => uploadPhoto(item, photo))).then(() => {
     const state = formData[String(item.id)];
     // 模拟ai建议数据
-    state.aiSuggestion = "模拟ai建议数据，重大风险，需上报燃气公司维修整改！";
+    state.aiSuggestion = "重大风险，需上报燃气公司维修整改！";
     updateCompleted(item);
   });
 }
@@ -731,7 +746,7 @@ async function submit() {
   submitting.value = true;
   try {
     // 所有业务校验通过后才结束录音，校验失败不会中断录音。
-    await stopRecording();
+    isAutoRecordingEnabled.value && (await stopRecording());
     const payload = buildSubmitRequest({
       workOrderUserId: workOrderUserId.value,
       templateId: String(template.value.id),
@@ -739,37 +754,42 @@ async function submit() {
       signatureFileId: signature.fileId,
       signatureUrl: signature.fileUrl,
     });
-    // 首次提交并发上传录音和提交安检结果；部分成功后仅重试失败的一方。
-    const audioTask = uploadedAudioFile.value?.fileId
-      ? Promise.resolve(uploadedAudioFile.value)
-      : uploadRecording(workOrderUserId.value);
     const inspectionTask = inspectionSubmittedToServer.value
       ? Promise.resolve()
       : submitInspectionRecordApi(payload).then(() => {
           inspectionSubmittedToServer.value = true;
         });
-    console.log("录音上传任务:", audioTask);
-    console.log("安检结果提交任务:", inspectionTask);
+    if (isAutoRecordingEnabled.value) {
+      // 首次提交并发上传录音和提交安检结果；部分成功后仅重试失败的一方。
+      const audioTask = uploadedAudioFile.value?.fileId
+        ? Promise.resolve(uploadedAudioFile.value)
+        : uploadRecording(workOrderUserId.value);
 
-    const [audioResult, inspectionResult] = await Promise.allSettled([
-      audioTask,
-      inspectionTask,
-    ]);
-    // 打印结果
-    console.log("录音上传结果:", audioResult);
-    console.log("安检结果提交结果:", inspectionResult);
-    const audioSucceeded = audioResult.status === "fulfilled";
-    const inspectionSucceeded = inspectionResult.status === "fulfilled";
+      const [audioResult, inspectionResult] = await Promise.allSettled([
+        audioTask,
+        inspectionTask,
+      ]);
+      const audioSucceeded = audioResult.status === "fulfilled";
+      const inspectionSucceeded = inspectionResult.status === "fulfilled";
 
-    if (!audioSucceeded || !inspectionSucceeded) {
-      let message = "录音上传及安检结果提交失败，请重试";
-      if (inspectionSucceeded && !audioSucceeded) {
-        message = "安检结果已提交，录音上传失败，请重新提交";
-      } else if (audioSucceeded && !inspectionSucceeded) {
-        message = "录音已上传，安检结果提交失败，请重试";
+      if (!audioSucceeded || !inspectionSucceeded) {
+        let message = "录音上传及安检结果提交失败，请重试";
+        if (inspectionSucceeded && !audioSucceeded) {
+          message = "安检结果已提交，录音上传失败，请重新提交";
+        } else if (audioSucceeded && !inspectionSucceeded) {
+          message = "录音已上传，安检结果提交失败，请重试";
+        }
+        uni.showToast({ title: message, icon: "none" });
+        return;
       }
-      uni.showToast({ title: message, icon: "none" });
-      return;
+    } else {
+      // 无录音，直接提交安检结果
+      const [inspectionResult] = await Promise.allSettled([inspectionTask]);
+      const inspectionSucceeded = inspectionResult.status === "fulfilled";
+      if (!inspectionSucceeded) {
+        uni.showToast({ title: "安检结果提交失败，请重试", icon: "none" });
+        return;
+      }
     }
     submitted.value = true;
     dirty.value = false;

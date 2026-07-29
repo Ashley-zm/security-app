@@ -370,12 +370,18 @@ function formatUser(item: WorkOrderUser): WorkOrderUserView {
     communityName: formatValue(item.communityName),
     appointmentTime: formatValue(item.appointmentTime),
     finishTime: formatValue(item.finishTime || item.inspectionFinishTime),
-    statusText: getStatusText(status),
+    statusText: getStatusText(status, item.unableReason),
     statusClass: getStatusClass(status),
   };
 }
 
-function getStatusText(status: string) {
+function getStatusText(status: string, unableReason?: string | null) {
+  if (status === "3") {
+    if (unableReason === "1") {
+      return "到访不遇";
+    }
+    return "拒绝安检";
+  }
   return getDictLabelByValue(tabs.value, status) || status || "--";
 }
 
