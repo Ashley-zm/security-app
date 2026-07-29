@@ -34,7 +34,7 @@
         </button>
       </view>
       <button class="search-btn" @click="handleSearch">
-        <u-icon name="search" color="$primary-color" size="20"></u-icon>
+        <uni-icons type="search" color="$primary-color" size="20"></uni-icons>
         <text>查询</text>
       </button>
       <view class="time-sort-btn" @click="toggleTimeSort">
@@ -78,7 +78,11 @@
             <view class="name-line">
               <text class="household-name">{{ item.householdName }}</text>
               <button class="phone-icon-btn" @click.stop="handleCall(item)">
-                <u-icon name="phone-fill" color="#1677ff" size="20"></u-icon>
+                <uni-icons
+                  type="phone-filled"
+                  color="#1677ff"
+                  size="20"
+                ></uni-icons>
               </button>
             </view>
             <text class="status-pill" :class="item.statusClass">
@@ -101,14 +105,14 @@
 
           <view class="info-row">
             <view class="info-icon">
-              <u-icon name="clock" color="#8aa4cf" size="16"></u-icon>
+              <uni-icons type="calendar" color="#8aa4cf" size="18"></uni-icons>
             </view>
             <text class="info-label">预约时间</text>
             <text class="info-value">{{ item.appointmentTime }}</text>
           </view>
           <view class="info-row address-info">
             <view class="info-icon">
-              <u-icon name="map" color="#8aa4cf" size="16"></u-icon>
+              <uni-icons type="location" color="#8aa4cf" size="18"></uni-icons>
             </view>
             <text class="info-label">地址</text>
             <text class="info-value address-value">{{ item.userAddress }}</text>
@@ -125,13 +129,21 @@
               class="action-btn navigate-btn"
               @click="handleNavigate(item)"
             >
-              <u-icon name="map-fill" color="#1677ff" size="25"></u-icon>
+              <uni-icons
+                type="location-filled"
+                color="#1677ff"
+                size="25"
+              ></uni-icons>
             </button>
           </view>
         </view>
 
         <view v-if="loading && !list.length" class="loading-text">
-          <u-loading-icon color="#1677FF" text="用户加载中..." />
+          <uni-load-more
+            status="loading"
+            color="#1677FF"
+            content-text="用户加载中..."
+          />
         </view>
         <AppEmpty
           v-if="!loading && !list.length"

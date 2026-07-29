@@ -96,6 +96,8 @@ export interface InspectionGroupResult {
 export interface SubmitInspectionRequest {
   workOrderUserId: string;
   inspectionMode: string; // 1: AI 安检，2: 人工安检，3: 无法安检
+  inspectionStartTime?: string; // 安检开始时间
+  inspectionFinishTime?: string; // 安检结束时间
   templateId?: string;
   groupResults?: InspectionGroupResult[];
   signatureFileId?: string; // 签名文件id

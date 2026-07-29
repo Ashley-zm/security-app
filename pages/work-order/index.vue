@@ -34,7 +34,7 @@
         </button>
       </view>
       <button class="search-btn" @click="handleSearch">
-        <u-icon name="search" color="$primary-color" size="20"></u-icon>
+        <uni-icons type="search" color="$primary-color" size="20"></uni-icons>
         <text>查询</text>
       </button>
       <view class="time-sort-btn" @click="toggleTimeSort">
@@ -74,9 +74,9 @@
         >
           <view class="order-top">
             <text class="plan-name">{{ order.planName }}</text>
-            <text class="status-pill" :class="order.statusClass">{{
-              order.statusText
-            }}</text>
+            <text class="status-pill" :class="order.statusClass">
+              {{ order.statusText }}
+            </text>
           </view>
 
           <view class="order-no">{{ order.orderNo }}</view>
@@ -106,7 +106,11 @@
           </view>
         </view>
         <view v-if="store.loading && !store.list.length" class="loading-text">
-          <u-loading-icon color="#1677FF" text="工单加载中..." />
+          <uni-load-more
+            status="loading"
+            color="#1677FF"
+            content-text="工单加载中..."
+          />
         </view>
         <AppEmpty
           v-if="!store.loading && !store.list.length"
@@ -164,10 +168,9 @@ const orderViews = computed<WorkOrderCardView[]>(() => {
 //   timeSort.value = store.queryParams.sort || 2
 //   store.refresh()
 // })
-onShow(() => {
-  getDictsByTypes(["work_order_status"], true).then((dicts) => {
-    tabs.value = dicts.work_order_status || [];
-  });
+
+onShow(async () => {
+  await getDict();
   searchKeyword.value = store.queryParams.workOrderName || "";
   timeSort.value = store.queryParams.sort || 2;
   store.refresh();
@@ -179,9 +182,17 @@ onPullDownRefresh(async () => {
     icon: "none",
     duration: 1000,
   });
+  await getDict();
   await store.refresh();
   uni.stopPullDownRefresh();
 });
+
+async function getDict() {
+  await getDictsByTypes(["work_order_status"], true).then((dicts) => {
+    tabs.value = dicts.work_order_status || [];
+  });
+}
+
 function changeStatus(status: string) {
   if (activeStatus.value === status) return;
   store.setStatus(status);

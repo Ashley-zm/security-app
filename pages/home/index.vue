@@ -43,7 +43,7 @@
 
       <view class="overview-head">
         <text class="overview-title">今日安检概览</text>
-        <text class="today-badge">今日</text>
+        <!-- <text class="today-badge">今日</text> -->
       </view>
 
       <view class="overview-list">
@@ -76,8 +76,12 @@
         </view>
       </view>
 
-      <view v-if="loading && !statistics" class="loading-mask">
-        <u-loading-icon color="#1677FF" text="数据加载中" />
+      <view class="loading-mask" v-if="loading && !statistics">
+        <uni-load-more
+          status="loading"
+          color="#1677FF"
+          content-text="数据加载中..."
+        />
       </view>
 
       <view v-if="loadError && !loading" class="error-bar">

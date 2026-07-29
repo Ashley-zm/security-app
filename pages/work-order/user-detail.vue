@@ -3,7 +3,11 @@
     <AppNavbar title="用户信息" show-back />
 
     <view v-if="loading" class="state-view">
-      <u-loading-icon color="#1677FF" text="用户加载中..." />
+      <uni-load-more
+        status="loading"
+        color="#1677FF"
+        content-text="用户加载中..."
+      />
     </view>
 
     <view v-else-if="error" class="error-card">
@@ -45,7 +49,7 @@
                 {{ displayValue(detail.workOrderUser.householdName) }}
               </text>
               <button class="phone-btn" @click="makePhoneCall">
-                <u-icon name="phone-fill" color="#1677FF" size="20" />
+                <uni-icons type="phone-filled" color="#1677FF" size="20" />
               </button>
             </view>
             <view
@@ -64,7 +68,8 @@
           <view class="section-title device-title">
             <text>设备信息</text>
             <view class="add-device-btn" @click="openAddDevice">
-              <u-icon name="plus" color="#fff" size="15" /> 添加设备
+              <uni-icons type="plusempty" color="#fff" size="15" />
+              添加设备
             </view>
           </view>
           <uni-swipe-action v-if="deviceList.length" class="device-list">
@@ -105,7 +110,7 @@
                     </text>
                   </view>
                 </view>
-                <u-icon name="arrow-right" color="#9AA8C5" size="15" />
+                <uni-icons type="right" color="#9AA8C5" size="15" />
               </view>
             </uni-swipe-action-item>
           </uni-swipe-action>
@@ -159,7 +164,7 @@
                   </text>
                 </view>
               </view>
-              <u-icon name="arrow-right" color="#9AA8C5" size="15" />
+              <uni-icons type="right" color="#9AA8C5" size="15" />
             </view>
           </view>
           <view v-else class="history-empty">暂无安检历史</view>
@@ -238,8 +243,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { onLoad, onPullDownRefresh, onUnload } from "@dcloudio/uni-app";
-import UniSwipeAction from "@dcloudio/uni-ui/lib/uni-swipe-action/uni-swipe-action.vue";
-import UniSwipeActionItem from "@dcloudio/uni-ui/lib/uni-swipe-action-item/uni-swipe-action-item.vue";
+import { formatDateTime } from "@/utils/date";
 import AppNavbar from "@/components/AppNavbar.vue";
 import UnableInspectionPopup from "@/pages/work-order/inspection/components/UnableInspectionPopup.vue";
 import DeviceFormPopup from "@/pages/work-order/components/DeviceFormPopup.vue";
@@ -290,6 +294,7 @@ const navigatingToInspection = ref(false);
 const checkingInspectionPermissions = ref(false);
 const navigatingToHistory = ref(false);
 const unablePopupVisible = ref(false);
+const unableInspectionStartTime = ref("");
 const unableReason = ref<string>(UNABLE_INSPECTION_DEFAULT_REASON);
 const unableRemark = ref("");
 const unablePhotos = ref<InspectionPhoto[]>([]);
@@ -672,6 +677,7 @@ function navigateToDetail(record: InspectionHistoryRecord) {
   });
 }
 function resetUnableInspectionForm() {
+  unableInspectionStartTime.value = "";
   unableReason.value = UNABLE_INSPECTION_DEFAULT_REASON;
   unableRemark.value = "";
   unablePhotos.value = [];
@@ -685,6 +691,7 @@ function openUnableInspection() {
     return;
   }
   resetUnableInspectionForm();
+  unableInspectionStartTime.value = formatDateTime();
   unablePopupVisible.value = true;
 }
 
@@ -839,6 +846,8 @@ async function submitUnableInspection() {
     await submitInspectionRecordApi({
       workOrderUserId: workOrderUserId.value,
       inspectionMode: INSPECTION_ACTIONS.UNABLE.mode,
+      inspectionStartTime: unableInspectionStartTime.value || formatDateTime(),
+      inspectionFinishTime: formatDateTime(),
       unableReason: unableReason.value,
       remark: unableRemark.value.trim(),
       unablePhotoList: unablePhotos.value

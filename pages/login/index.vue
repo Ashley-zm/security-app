@@ -20,11 +20,10 @@
       <view class="brand-title">智能安检</view>
       <view class="brand-subtitle">智能安检 · 安全无忧</view>
     </view>
-
     <view class="login-card">
       <view v-if="tenantEnabled" class="field">
         <view class="field-icon">
-          <u-icon name="home" color="#1677ff" size="36rpx" />
+          <uni-icons type="home" color="#1677ff" size="36rpx"></uni-icons>
         </view>
         <picker
           class="tenant-picker"
@@ -35,19 +34,21 @@
           :disabled="tenantLoading || !tenantList.length"
           @change="handleTenantChange"
         >
-          <view class="tenant-name" :class="{ empty: !selectedTenantName }">
-            {{
-              tenantLoading
-                ? "租户加载中..."
-                : selectedTenantName || "请选择租户"
-            }}
+          <view class="tenant-picker-content">
+            <view class="tenant-name" :class="{ empty: !selectedTenantName }">
+              {{
+                tenantLoading
+                  ? "租户加载中..."
+                  : selectedTenantName || "请选择租户"
+              }}
+            </view>
+            <uni-icons type="down" color="#91a4c1" size="36rpx"></uni-icons>
           </view>
         </picker>
-        <text class="field-arrow">&gt;</text>
       </view>
       <view class="field">
         <view class="field-icon">
-          <u-icon name="account" color="#1677ff" size="36rpx" />
+          <uni-icons type="person" color="#1677ff" size="36rpx"></uni-icons>
         </view>
         <input
           v-model="form.username"
@@ -60,7 +61,7 @@
       </view>
       <view class="field">
         <view class="field-icon">
-          <u-icon name="lock" color="#1677ff" size="36rpx" />
+          <uni-icons type="locked" color="#1677ff" size="36rpx"></uni-icons>
         </view>
         <input
           v-model="form.password"
@@ -70,11 +71,11 @@
           placeholder-class="placeholder"
         />
         <button class="eye-btn" @click="showPassword = !showPassword">
-          <u-icon
-            :name="showPassword ? 'eye-off' : 'eye'"
+          <uni-icons
+            :type="showPassword ? 'eye-slash' : 'eye'"
             color="#1677ff"
             size="36rpx"
-          />
+          ></uni-icons>
         </button>
       </view>
 
@@ -493,7 +494,12 @@ function showForgot() {
   min-width: 0;
   height: 90rpx;
 }
-
+.tenant-picker-content {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
 .tenant-name {
   display: flex;
   align-items: center;
@@ -507,12 +513,6 @@ function showForgot() {
 
 .tenant-name.empty {
   color: #9eacc3;
-}
-
-.field-arrow {
-  margin-left: 16rpx;
-  color: #91a4c1;
-  font-size: 30rpx;
 }
 
 .eye-btn {

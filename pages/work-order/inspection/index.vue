@@ -29,7 +29,11 @@
     </view>
 
     <view v-if="loading" class="state">
-      <u-loading-icon text="模板加载中" />
+      <uni-load-more
+        status="loading"
+        color="#1677FF"
+        content-text="模板加载中..."
+      />
     </view>
     <view v-else-if="loadError" class="state">
       <text class="state-title">加载失败</text>
@@ -197,6 +201,7 @@ import {
   uploadInspectionPhoto,
 } from "@/modules/work-order/inspection/api";
 import { useInspectionStore } from "@/stores/inspection";
+import { formatDateTime } from "@/utils/date";
 import type {
   InspectionPhoto,
   InspectionSignature,
@@ -219,6 +224,7 @@ const loading = ref(true);
 const loadError = ref("");
 const submitting = ref(false);
 const inspectionSubmittedToServer = ref(false);
+const inspectionStartTime = ref("");
 const inspectionMode = ref<string>(INSPECTION_ACTIONS.AI.mode);
 const expandedGroups = reactive<Record<string, boolean>>({});
 const scrollTarget = ref("");
@@ -307,6 +313,7 @@ const isEmpty = computed(
 );
 
 onLoad((options) => {
+  inspectionStartTime.value = formatDateTime();
   workOrderUserId.value = decodeURIComponent(options?.workOrderUserId || "");
   modelStatus.value = decodeURIComponent(options?.modelStatus) === "true";
   inspectionMode.value = options?.inspectionMode;
@@ -751,6 +758,8 @@ async function submit() {
       workOrderUserId: workOrderUserId.value,
       templateId: String(template.value.id),
       inspectionMode: inspectionMode.value,
+      inspectionStartTime: inspectionStartTime.value,
+      inspectionFinishTime: formatDateTime(),
       signatureFileId: signature.fileId,
       signatureUrl: signature.fileUrl,
     });

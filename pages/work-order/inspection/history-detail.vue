@@ -3,7 +3,11 @@
     <AppNavbar title="安检记录详情" show-back />
 
     <view v-if="loading" class="state-view">
-      <u-loading-icon text="详情加载中" />
+      <uni-load-more
+        status="loading"
+        color="#1677FF"
+        content-text="详情加载中..."
+      />
     </view>
     <view v-else-if="error" class="state-card">
       <text class="state-title">安检详情加载失败</text>
@@ -33,7 +37,7 @@
           <text class="section-title">无法安检信息</text>
           <view class="content-card">
             <view class="info-row">
-              <text class="info-label">无法原因</text>
+              <text class="info-label">安检结果</text>
               <text class="info-value">{{ unableReasonText }}</text>
             </view>
             <view class="info-row top-aligned">

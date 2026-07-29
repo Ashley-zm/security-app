@@ -1,8 +1,8 @@
 {
-    "name" : "cyc-security-app",
+    "name" : "智能安检",
     "appid" : "__UNI__A548DD9",
     "description" : "app",
-    "versionName" : "1.0.3",
+    "versionName" : "1.0.4",
     "versionCode" : 1,
     "transformPx" : false,
     "vueVersion" : "3",

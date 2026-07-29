@@ -174,9 +174,7 @@
     <view v-if="aboutPopupVisible" class="popup-mask" @click="closeAbout">
       <view class="about-popup" @click.stop>
         <view class="about-hero">
-          <view class="app-logo">
-            <text>安</text>
-          </view>
+          <image class="app-logo" src="/static/icon.png" />
           <view class="about-name">{{ appInfo.name }}</view>
           <view class="about-version">版本 {{ appInfo.version }}</view>
         </view>
@@ -190,17 +188,17 @@
             <text class="about-stat-num">24h</text>
             <text class="about-stat-label">值守支持</text>
           </view>
-          <view class="about-stat">
+          <!-- <view class="about-stat">
             <text class="about-stat-num">100%</text>
             <text class="about-stat-label">流程留痕</text>
-          </view>
+          </view> -->
           <view class="about-stat">
             <text class="about-stat-num">AI</text>
             <text class="about-stat-label">智能辅助</text>
           </view>
         </view>
 
-        <view class="about-list">
+        <!-- <view class="about-list">
           <button class="about-row" @click="handleServiceCall">
             <view>
               <view class="about-row-title">客服热线</view>
@@ -222,7 +220,7 @@
             </view>
             <text class="arrow">›</text>
           </button>
-        </view>
+        </view> -->
 
         <view class="copyright">© 2026 Agent智能安检平台</view>
         <button class="about-close" @click="closeAbout">我知道了</button>
@@ -263,8 +261,8 @@ const closeQrPreview = () => {
 };
 
 const appInfo = {
-  name: "安检APP",
-  version: "1.0.0",
+  name: "智能安检",
+  version: "1.0.4",
   servicePhone: "400-800-2026",
   description:
     "面向燃气安检现场作业，提供工单处理、消息提醒、智能问答与身份核验能力，帮助安检人员规范、高效地完成日常任务。",
@@ -328,7 +326,7 @@ const showComingSoon = (name: string) => {
 // 关于我们
 const getAppBaseInfo = () => {
   const appBaseInfo = uni.getAppBaseInfo();
-  appInfo.version = appBaseInfo.appVersion || "1.0.0";
+  appInfo.version = appBaseInfo.appWgtVersion || "1.0.0";
   appInfo.name = appBaseInfo.appName || "安检APP";
 };
 getAppBaseInfo();
@@ -921,7 +919,7 @@ const handleLogout = () => {
 
 .about-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 16rpx;
   margin-top: 22rpx;
 }

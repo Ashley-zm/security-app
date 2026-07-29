@@ -19,9 +19,12 @@
           >
             <view class="form-row">
               <text class="form-label required">设备类型</text>
-              <view class="form-value picker-value" :class="{ placeholder: !form.deviceType }">
+              <view
+                class="form-value picker-value"
+                :class="{ placeholder: !form.deviceType }"
+              >
                 <text>{{ deviceTypeText || "请选择" }}</text>
-                <u-icon name="arrow-right" color="#A8B2C6" size="14" />
+                <uni-icons type="right" color="#A8B2C6" size="14"></uni-icons>
               </view>
             </view>
           </picker>
@@ -36,8 +39,12 @@
               placeholder="请输入（若无法获取编号，可任意输入）"
               @input="updateTextField('deviceNo', $event)"
             />
-            <button class="scan-btn" :disabled="saving || scanning" @click="scanDeviceNo">
-              <u-icon name="scan" color="#277BFF" size="23" />
+            <button
+              class="scan-btn"
+              :disabled="saving || scanning"
+              @click="scanDeviceNo"
+            >
+              <uni-icons type="scan" color="#277BFF" size="23"></uni-icons>
             </button>
           </view>
 
@@ -73,9 +80,12 @@
           >
             <view class="form-row">
               <text class="form-label required">安装日期</text>
-              <view class="form-value picker-value" :class="{ placeholder: !form.installDate }">
+              <view
+                class="form-value picker-value"
+                :class="{ placeholder: !form.installDate }"
+              >
                 <text>{{ form.installDate || "请选择" }}</text>
-                <u-icon name="arrow-right" color="#A8B2C6" size="14" />
+                <uni-icons type="right" color="#A8B2C6" size="14"></uni-icons>
               </view>
             </view>
           </picker>
@@ -89,9 +99,12 @@
           >
             <view class="form-row">
               <text class="form-label">生产日期</text>
-              <view class="form-value picker-value" :class="{ placeholder: !form.productionDate }">
+              <view
+                class="form-value picker-value"
+                :class="{ placeholder: !form.productionDate }"
+              >
                 <text>{{ form.productionDate || "请选择" }}</text>
-                <u-icon name="arrow-right" color="#A8B2C6" size="14" />
+                <uni-icons type="right" color="#A8B2C6" size="14"></uni-icons>
               </view>
             </view>
           </picker>
@@ -113,11 +126,17 @@
             <text class="form-label">是否保修</text>
             <view class="warranty-options">
               <view class="radio-option" @click="setWarranty(1)">
-                <view class="radio-dot" :class="{ checked: form.isWarranty === 1 }" />
+                <view
+                  class="radio-dot"
+                  :class="{ checked: form.isWarranty === 1 }"
+                />
                 <text>是</text>
               </view>
               <view class="radio-option" @click="setWarranty(0)">
-                <view class="radio-dot" :class="{ checked: form.isWarranty === 0 }" />
+                <view
+                  class="radio-dot"
+                  :class="{ checked: form.isWarranty === 0 }"
+                />
                 <text>否</text>
               </view>
             </view>
@@ -151,7 +170,11 @@
       </scroll-view>
 
       <view class="popup-actions">
-        <button class="popup-button cancel" :disabled="saving" @click="$emit('cancel')">
+        <button
+          class="popup-button cancel"
+          :disabled="saving"
+          @click="$emit('cancel')"
+        >
           取消
         </button>
         <button
@@ -309,7 +332,11 @@ function scanDeviceNo() {
       form.deviceNo = value;
     },
     fail: (error) => {
-      if (!String(error.errMsg || "").toLowerCase().includes("cancel")) {
+      if (
+        !String(error.errMsg || "")
+          .toLowerCase()
+          .includes("cancel")
+      ) {
         uni.showToast({ title: "扫码失败，请重试", icon: "none" });
       }
     },
@@ -394,19 +421,45 @@ function formatDate(date: Date) {
   background: #dce3ef;
 }
 
-.popup-head { flex-shrink: 0; text-align: center; }
-.popup-title { display: block; color: #18335f; font-size: 34rpx; font-weight: 900; }
-.popup-subtitle { display: block; margin-top: 5rpx; color: #9aa8c0; font-size: 22rpx; }
-.form-scroll { flex: 1; min-height: 0; margin-top: 20rpx; }
-.form-list { padding: 0 4rpx; }
+.popup-head {
+  flex-shrink: 0;
+  text-align: center;
+}
+.popup-title {
+  display: block;
+  color: #18335f;
+  font-size: 34rpx;
+  font-weight: 900;
+}
+.popup-subtitle {
+  display: block;
+  margin-top: 5rpx;
+  color: #9aa8c0;
+  font-size: 22rpx;
+}
+.form-scroll {
+  flex: 1;
+  min-height: 0;
+  margin-top: 20rpx;
+}
+.form-list {
+  padding: 0 4rpx;
+}
 .form-row {
   display: flex;
   align-items: center;
   min-height: 82rpx;
   border-bottom: 2rpx solid #edf0f5;
 }
-.form-label { flex: 0 0 188rpx; color: #263858; font-size: 26rpx; }
-.form-label.required::before { color: #f04455; content: "*"; }
+.form-label {
+  flex: 0 0 188rpx;
+  color: #263858;
+  font-size: 26rpx;
+}
+.form-label.required::before {
+  color: #f04455;
+  content: "*";
+}
 .form-input,
 .form-value {
   flex: 1;
@@ -417,10 +470,22 @@ function formatDate(date: Date) {
   line-height: 82rpx;
   text-align: right;
 }
-.form-input { padding: 0; }
-.form-input.scan-input { padding-right: 12rpx; font-size: 23rpx; }
-.picker-value { display: flex; align-items: center; justify-content: flex-end; gap: 10rpx; }
-.placeholder { color: #b5bdcb; }
+.form-input {
+  padding: 0;
+}
+.form-input.scan-input {
+  padding-right: 12rpx;
+  font-size: 23rpx;
+}
+.picker-value {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10rpx;
+}
+.placeholder {
+  color: #b5bdcb;
+}
 .scan-btn {
   display: flex;
   align-items: center;
@@ -432,9 +497,23 @@ function formatDate(date: Date) {
   padding: 0;
   background: transparent;
 }
-.scan-btn::after, .popup-button::after { border: 0; }
-.warranty-options { display: flex; justify-content: flex-end; flex: 1; gap: 30rpx; }
-.radio-option { display: flex; align-items: center; gap: 9rpx; color: #263858; font-size: 25rpx; }
+.scan-btn::after,
+.popup-button::after {
+  border: 0;
+}
+.warranty-options {
+  display: flex;
+  justify-content: flex-end;
+  flex: 1;
+  gap: 30rpx;
+}
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: 9rpx;
+  color: #263858;
+  font-size: 25rpx;
+}
 .radio-dot {
   box-sizing: border-box;
   width: 28rpx;
@@ -442,9 +521,16 @@ function formatDate(date: Date) {
   border: 2rpx solid #9ca8bb;
   border-radius: 50%;
 }
-.radio-dot.checked { border: 8rpx solid $primary-color; }
-.remark-row { align-items: flex-start; padding: 20rpx 0; }
-.remark-row .form-label { line-height: 42rpx; }
+.radio-dot.checked {
+  border: 8rpx solid $primary-color;
+}
+.remark-row {
+  align-items: flex-start;
+  padding: 20rpx 0;
+}
+.remark-row .form-label {
+  line-height: 42rpx;
+}
 .remark-input {
   box-sizing: border-box;
   flex: 1;
@@ -457,8 +543,27 @@ function formatDate(date: Date) {
   text-align: left;
   background: #f7f9fc;
 }
-.popup-actions { display: grid; grid-template-columns: 1fr 1.7fr; flex-shrink: 0; gap: 18rpx; margin-top: 24rpx; }
-.popup-button { height: 76rpx; margin: 0; padding: 0; border-radius: 40rpx; font-size: 26rpx; line-height: 76rpx; }
-.popup-button.cancel { color: #8d9ab0; background: #f2f5f9; }
-.popup-button.confirm { color: #fff; background: linear-gradient(100deg, #347cf0, #5572e9); }
+.popup-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.7fr;
+  flex-shrink: 0;
+  gap: 18rpx;
+  margin-top: 24rpx;
+}
+.popup-button {
+  height: 76rpx;
+  margin: 0;
+  padding: 0;
+  border-radius: 40rpx;
+  font-size: 26rpx;
+  line-height: 76rpx;
+}
+.popup-button.cancel {
+  color: #8d9ab0;
+  background: #f2f5f9;
+}
+.popup-button.confirm {
+  color: #fff;
+  background: linear-gradient(100deg, #347cf0, #5572e9);
+}
 </style>
