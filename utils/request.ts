@@ -87,7 +87,7 @@ const ENCRYPT_HEADER = "encrypt-key";
 const BASE_URL = "http://192.168.99.180:58085";
 export const FILE_URL = "http://192.168.99.180:58080/inspection";
 // const BASE_URL = "http://192.168.99.85:58085";
-// export const FILE_URL = "http://192.168.99.85:58081/file";
+// export const FILE_URL = "http://192.168.99.85:58080/inspection";
 const CONTROL_HEADER_KEYS = ["isNotToken", "isEncrypt"];
 
 let DEFAULT_REQUEST_CONFIG: RequestRuntimeConfig = {

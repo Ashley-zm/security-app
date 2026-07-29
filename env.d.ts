@@ -1,5 +1,15 @@
 /// <reference types="@dcloudio/types" />
 
+interface ImportMetaEnv {
+  readonly VITE_ASSISTANT_API_BASE_URL?: string
+  readonly VITE_ASSISTANT_API_KEY?: string
+  readonly VITE_ASSISTANT_MODEL?: string
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv
+}
+
 declare module '*.vue' {
   import type { DefineComponent } from 'vue'
   const component: DefineComponent<Record<string, unknown>, Record<string, unknown>, unknown>

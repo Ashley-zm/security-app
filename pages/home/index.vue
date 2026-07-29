@@ -154,8 +154,8 @@ function formatCurrentDate() {
 }
 
 function goAgentCenter() {
-  uni.navigateTo({ url: "/pages/home/test-index" });
-  // uni.navigateTo({ url: "/pages/assistant/index" });
+  // uni.navigateTo({ url: "/pages/home/test-index" });
+  uni.navigateTo({ url: "/pages/assistant/index" });
 }
 </script>
 

@@ -9,10 +9,6 @@ export default defineConfig({
       {
         find: '@',
         replacement: fileURLToPath(new URL('.', import.meta.url))
-      },
-      {
-        find: /^vue$/,
-        replacement: fileURLToPath(new URL('./utils/vue-app-plus-shim.ts', import.meta.url))
       }
     ]
   }

@@ -1,15 +1,27 @@
 <template>
   <view class="login-page page">
+    <view class="decor decor-left" />
+    <view class="decor decor-right" />
+    <view class="wave-scene">
+      <view class="wave wave-back" />
+      <view class="wave wave-middle" />
+      <view class="wave wave-front" />
+      <view class="wave-line wave-line-one" />
+      <view class="wave-line wave-line-two" />
+    </view>
     <view class="brand">
-      <view class="logo-shield">
-        <view class="logo-flame" />
+      <view class="logo-wrap">
+        <image
+          class="brand-logo"
+          src="/static/logo-login.png"
+          mode="aspectFit"
+        />
       </view>
-      <view class="brand-title">安检APP</view>
+      <view class="brand-title">智能安检</view>
       <view class="brand-subtitle">智能安检 · 安全无忧</view>
     </view>
 
     <view class="login-card">
-      <view class="card-title">账号登录</view>
       <view v-if="tenantEnabled" class="field">
         <view class="field-icon">
           <u-icon name="home" color="#1677ff" size="36rpx" />
@@ -88,6 +100,7 @@
         <text class="agreement-text">我已阅读并同意用户协议与隐私政策</text>
       </button> -->
     </view>
+    <view class="login-footer">专业 · 高效 · 安全</view>
   </view>
 </template>
 
@@ -112,8 +125,8 @@ const tenantList = ref<TenantInfo[]>([]);
 const selectedTenantIndex = ref(-1);
 
 const form = reactive<LoginForm>({
-  username: "15621825359",
-  password: "123456",
+  username: "",
+  password: "",
   tenantId: "",
   remember: false,
   // agree: false,
@@ -256,110 +269,235 @@ function showForgot() {
 @import "@/styles/mixins.scss";
 
 .login-page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
   min-height: 100vh;
-  padding: 112rpx 42rpx 42rpx;
+  overflow: hidden;
+  padding: calc(var(--status-bar-height) + 64rpx) 38rpx
+    calc(env(safe-area-inset-bottom) + 28rpx);
   background:
     radial-gradient(
-      circle at 20% 8%,
-      rgba(56, 164, 255, 0.22),
-      transparent 34%
+      circle at 18% 4%,
+      rgba(66, 147, 242, 0.28),
+      transparent 30%
     ),
-    linear-gradient(180deg, #eff7ff 0%, #f5f8ff 44%, #ffffff 100%);
+    radial-gradient(
+      circle at 82% 12%,
+      rgba(88, 165, 255, 0.22),
+      transparent 26%
+    ),
+    linear-gradient(
+      180deg,
+      #cfe6ff 0%,
+      #e3f1ff 28%,
+      #f5faff 50%,
+      #ffffff 68%,
+      #f7fbff 100%
+    );
+}
+
+.login-page::before {
+  position: absolute;
+  top: 120rpx;
+  left: -430rpx;
+  width: 900rpx;
+  height: 620rpx;
+  border: 8rpx solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+  transform: rotate(26deg);
+}
+
+.login-page::after {
+  position: absolute;
+  top: 300rpx;
+  right: -460rpx;
+  width: 900rpx;
+  height: 400rpx;
+  border: 12rpx solid rgba(255, 255, 255, 0.82);
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+  transform: rotate(-12deg);
+}
+
+.decor {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.decor-left {
+  top: -110rpx;
+  left: -180rpx;
+  width: 520rpx;
+  height: 520rpx;
+  background: radial-gradient(
+    circle,
+    rgba(186, 220, 255, 0.2),
+    transparent 68%
+  );
+}
+
+.decor-right {
+  top: 36rpx;
+  right: 36rpx;
+  width: 150rpx;
+  height: 150rpx;
+  border-radius: 0;
+  background-image: radial-gradient(
+    rgba(83, 153, 236, 0.24) 3rpx,
+    transparent 3rpx
+  );
+  background-size: 22rpx 22rpx;
 }
 
 .brand {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 54rpx;
+  margin-bottom: 44rpx;
 }
 
-.logo-shield {
-  position: relative;
-  width: 132rpx;
-  height: 148rpx;
-  border-radius: 42rpx 42rpx 58rpx 58rpx;
-  background: linear-gradient(150deg, #1677ff 0%, #42b6ff 100%);
-  box-shadow: 0 22rpx 42rpx rgba(22, 119, 255, 0.26);
-  clip-path: polygon(50% 0, 100% 18%, 91% 76%, 50% 100%, 9% 76%, 0 18%);
+.logo-wrap {
+  @include flex-center;
+  width: 170rpx;
+  height: 170rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.94);
+  border-radius: 48rpx;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.98),
+    rgba(236, 245, 255, 0.96)
+  );
+  box-shadow:
+    0 24rpx 52rpx rgba(35, 91, 167, 0.17),
+    0 0 0 10rpx rgba(255, 255, 255, 0.3),
+    inset 0 2rpx 0 #ffffff;
 }
 
-.logo-flame {
-  position: absolute;
-  left: 48rpx;
-  top: 40rpx;
-  width: 38rpx;
-  height: 58rpx;
-  border-radius: 60% 60% 60% 12%;
-  background: #ffffff;
-  transform: rotate(42deg);
+.brand-logo {
+  width: 140rpx;
+  height: 140rpx;
 }
 
 .brand-title {
-  margin-top: 26rpx;
-  color: $text-main;
+  margin-top: 24rpx;
+  color: #0878ee;
   font-size: 48rpx;
-  font-weight: 800;
+  font-weight: 900;
+  line-height: 66rpx;
+  letter-spacing: 3rpx;
+  text-shadow:
+    0 3rpx 0 rgba(255, 255, 255, 0.9),
+    0 7rpx 16rpx rgba(24, 112, 224, 0.22);
 }
 
 .brand-subtitle {
-  margin-top: 12rpx;
-  color: $info-color;
-  font-size: 27rpx;
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  margin-top: 6rpx;
+  padding: 0;
+  border: 0;
+  color: #5594e9;
+  font-size: 24rpx;
+  font-weight: 500;
+  line-height: 36rpx;
+  letter-spacing: 4rpx;
+  background: transparent;
+}
+
+.brand-subtitle::before,
+.brand-subtitle::after {
+  width: 42rpx;
+  height: 2rpx;
+  background: linear-gradient(90deg, transparent, #69a8f3);
+  content: "";
+}
+
+.brand-subtitle::after {
+  background: linear-gradient(90deg, #69a8f3, transparent);
 }
 
 .login-card {
-  padding: 42rpx 34rpx 36rpx;
-  background: rgba(255, 255, 255, 0.96);
-  border-radius: 32rpx;
-  box-shadow: 0 24rpx 60rpx rgba(22, 67, 132, 0.12);
-}
-
-.card-title {
-  margin-bottom: 32rpx;
-  color: $text-main;
-  font-size: 36rpx;
-  font-weight: 800;
+  position: relative;
+  z-index: 3;
+  padding: 36rpx 34rpx 38rpx;
+  overflow: hidden;
+  border: 2rpx solid rgba(255, 255, 255, 0.9);
+  border-radius: 38rpx;
+  background: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.98),
+    rgba(247, 251, 255, 0.95)
+  );
+  box-shadow:
+    0 30rpx 72rpx rgba(35, 76, 137, 0.13),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(24rpx);
 }
 
 .field {
   display: flex;
   align-items: center;
-  min-height: 96rpx;
-  margin-bottom: 24rpx;
-  padding: 0 24rpx;
-  border: 2rpx solid #e3ecfb;
-  border-radius: 24rpx;
-  background: #f8fbff;
+  min-height: 94rpx;
+  margin-bottom: 22rpx;
+  padding: 0 22rpx;
+  border: 2rpx solid #dbe8f8;
+  border-radius: 22rpx;
+  background: linear-gradient(180deg, #f3f8ff 0%, #f8fbff 100%);
+  box-shadow: inset 0 2rpx 4rpx rgba(49, 98, 160, 0.025);
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.field:focus-within {
+  border-color: rgba(22, 119, 255, 0.68);
+  background: #ffffff;
+  box-shadow: 0 0 0 6rpx rgba(22, 119, 255, 0.08);
 }
 
 .field-icon {
-  display: flex;
-  align-items: center;
-  width: 44rpx;
+  @include flex-center;
+  flex-shrink: 0;
+  width: 54rpx;
+  height: 54rpx;
+  margin-right: 12rpx;
+  border-radius: 16rpx;
+  background: rgba(22, 119, 255, 0.08);
 }
 
 .field-input {
   flex: 1;
   min-width: 0;
-  height: 92rpx;
+  height: 90rpx;
   color: $text-main;
   font-size: 30rpx;
 }
 
 .placeholder {
-  color: #a7b3cc;
+  color: #9eacc3;
 }
+
 .tenant-picker {
   flex: 1;
   min-width: 0;
-  height: 92rpx;
+  height: 90rpx;
 }
 
 .tenant-name {
   display: flex;
   align-items: center;
-  height: 92rpx;
+  height: 90rpx;
   overflow: hidden;
   color: $text-main;
   font-size: 30rpx;
@@ -368,12 +506,12 @@ function showForgot() {
 }
 
 .tenant-name.empty {
-  color: #a7b3cc;
+  color: #9eacc3;
 }
 
 .field-arrow {
   margin-left: 16rpx;
-  color: #a7b3cc;
+  color: #91a4c1;
   font-size: 30rpx;
 }
 
@@ -388,7 +526,7 @@ function showForgot() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 8rpx 0 34rpx;
+  margin: 8rpx 0 32rpx;
 }
 
 .check-row,
@@ -396,7 +534,7 @@ function showForgot() {
   display: flex;
   align-items: center;
   min-height: 52rpx;
-  color: $info-color;
+  color: #657696;
   font-size: 26rpx;
 }
 
@@ -405,8 +543,8 @@ function showForgot() {
   width: 34rpx;
   height: 34rpx;
   margin-right: 12rpx;
-  border: 2rpx solid #b9c7df;
-  border-radius: 8rpx;
+  border: 2rpx solid #afbdd3;
+  border-radius: 9rpx;
   color: transparent;
   font-size: 22rpx;
   font-weight: 800;
@@ -422,28 +560,42 @@ function showForgot() {
   color: #ffffff;
   border-color: $primary-color;
   background: $primary-color;
+  box-shadow: 0 6rpx 14rpx rgba(22, 119, 255, 0.2);
 }
 
 .link-btn {
   min-height: 52rpx;
   color: $primary-color;
   font-size: 26rpx;
+  font-weight: 600;
 }
 
 .login-btn {
   @include flex-center;
   width: 100%;
-  height: 92rpx;
-  border-radius: 46rpx;
+  height: 94rpx;
+  border-radius: 24rpx;
   color: #ffffff;
   font-size: 32rpx;
   font-weight: 700;
-  background: $confirm-btn-bg;
-  box-shadow: 0 18rpx 30rpx rgba(22, 119, 255, 0.22);
+  letter-spacing: 8rpx;
+  background: linear-gradient(135deg, #146fee 0%, #3190df 100%);
+  box-shadow:
+    0 18rpx 34rpx rgba(20, 111, 238, 0.26),
+    0 4rpx 10rpx rgba(49, 144, 223, 0.16);
+}
+
+.login-btn::after {
+  border: 0;
+}
+
+.login-btn:active {
+  opacity: 0.88;
+  transform: translateY(2rpx);
 }
 
 .login-btn.disabled {
-  opacity: 0.72;
+  opacity: 0.64;
 }
 
 .agreement {
@@ -454,5 +606,92 @@ function showForgot() {
 .agreement-text {
   color: $info-color;
   font-size: 24rpx;
+}
+
+.login-footer {
+  position: relative;
+  z-index: 2;
+  margin-top: 28rpx;
+  color: #7185a5;
+  font-size: 22rpx;
+  text-align: center;
+  letter-spacing: 6rpx;
+}
+
+.wave-scene {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 270rpx;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.wave {
+  position: absolute;
+  left: -12%;
+  width: 124%;
+  border-radius: 50% 50% 0 0 / 40% 40% 0 0;
+  transform-origin: center bottom;
+}
+
+.wave-back {
+  bottom: -84rpx;
+  height: 250rpx;
+  background: linear-gradient(
+    180deg,
+    rgba(194, 226, 255, 0.48),
+    rgba(111, 183, 255, 0.58)
+  );
+  transform: rotate(-4deg);
+  border-top: 0.0625rem solid #cde7ff;
+}
+
+.wave-middle {
+  bottom: -126rpx;
+  height: 260rpx;
+  background: linear-gradient(
+    180deg,
+    rgba(93, 174, 255, 0.45),
+    rgba(54, 143, 255, 0.72)
+  );
+  transform: rotate(5deg);
+  border-top: 0.0625rem solid #cde7ff;
+}
+
+.wave-front {
+  bottom: -184rpx;
+  height: 270rpx;
+  background: linear-gradient(180deg, rgba(48, 138, 248, 0.562), #1677ffa9);
+  border-top: 0.0625rem solid #cde7ff;
+  transform: rotate(-3deg);
+}
+
+.wave-line {
+  position: absolute;
+  left: -10%;
+  width: 120%;
+  height: 180rpx;
+  border-top: 0.0625rem solid #cde7ff;
+  border-radius: 50%;
+}
+
+.wave-line-one {
+  right: -10%;
+  bottom: 42rpx;
+  transform: rotate(-7deg);
+}
+
+.wave-line-two {
+  bottom: 82rpx;
+  border-top-color: rgba(72, 154, 246, 0.26);
+  transform: rotate(5deg);
+}
+
+.brand,
+.login-card,
+.login-footer {
+  transform: translateY(-180rpx);
 }
 </style>

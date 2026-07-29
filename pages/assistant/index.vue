@@ -1,8 +1,18 @@
 <template>
   <view class="assistant-page page safe-page">
-    <AppNavbar title="安检助手" show-back right-icon="trash" @right-click="clearMessages" />
+    <AppNavbar
+      title="安检助手"
+      show-back
+      right-icon="trash"
+      @right-click="clearMessages"
+    />
 
-    <scroll-view class="assistant-scroll" scroll-y :scroll-into-view="scrollIntoView" scroll-with-animation>
+    <scroll-view
+      class="assistant-scroll"
+      scroll-y
+      :scroll-into-view="scrollIntoView"
+      scroll-with-animation
+    >
       <view class="hero-card">
         <view class="hero-glow" />
         <view class="hero-main">
@@ -15,10 +25,12 @@
               <text>在线辅助</text>
             </view>
             <view class="hero-title">AI安检助手</view>
-            <view class="hero-subtitle">面向入户安检现场的流程、隐患和记录建议</view>
+            <view class="hero-subtitle"
+              >面向入户安检现场的流程、隐患和记录建议</view
+            >
           </view>
         </view>
-        <view class="hero-metrics">
+        <!-- <view class="hero-metrics">
           <view class="metric-item">
             <text class="metric-num">3</text>
             <text class="metric-label">步处置</text>
@@ -31,30 +43,7 @@
             <text class="metric-num">24h</text>
             <text class="metric-label">随时问</text>
           </view>
-        </view>
-      </view>
-
-      <view class="section-head">
-        <view>
-          <text class="section-title">快捷咨询</text>
-          <text class="section-subtitle">选择常见场景，快速生成现场建议</text>
-        </view>
-      </view>
-      <view class="quick-list">
-        <button
-          v-for="item in questionCards"
-          :key="item.title"
-          class="question-item"
-          :class="`question-${item.type}`"
-          :disabled="loading"
-          @click="askQuestion(item.title)"
-        >
-          <view class="question-icon">{{ item.icon }}</view>
-          <view class="question-copy">
-            <text class="question-title">{{ item.title }}</text>
-            <text class="question-desc">{{ item.desc }}</text>
-          </view>
-        </button>
+        </view> -->
       </view>
 
       <view class="chat-list">
@@ -62,15 +51,27 @@
           v-for="message in messages"
           :id="`msg-${message.id}`"
           :key="message.id"
+          v-show="message.role !== 'assistant' || message.content"
           class="chat-row"
           :class="message.role"
         >
           <view class="avatar">
-            <text>{{ message.role === 'assistant' ? 'AI' : '我' }}</text>
+            <text>{{ message.role === "assistant" ? "AI" : "我" }}</text>
           </view>
           <view class="bubble">
             <view class="bubble-head">
-              <text class="role-name">{{ message.role === 'assistant' ? '安检助手' : '现场提问' }}</text>
+              <text class="role-name">
+                {{ message.role === "assistant" ? "安检助手" : "现场提问" }}
+              </text>
+              <text
+                v-if="
+                  message.role === 'assistant' &&
+                  message.durationMs !== undefined
+                "
+                class="response-time"
+              >
+                耗时 {{ formatDuration(message.durationMs) }}
+              </text>
             </view>
             <text class="bubble-text">{{ message.content }}</text>
 
@@ -79,14 +80,23 @@
                 <text class="answer-title-icon">✓</text>
                 <text>现场清单</text>
               </view>
-              <view v-for="item in message.checklist" :key="item" class="check-item">
+              <view
+                v-for="item in message.checklist"
+                :key="item"
+                class="check-item"
+              >
                 <text class="check-dot" />
                 <text>{{ item }}</text>
               </view>
             </view>
 
             <view v-if="message.references?.length" class="reference-list">
-              <text v-for="item in message.references" :key="item" class="reference-tag">{{ item }}</text>
+              <text
+                v-for="item in message.references"
+                :key="item"
+                class="reference-tag"
+                >{{ item }}
+              </text>
             </view>
 
             <view v-if="message.suggestions?.length" class="suggest-list">
@@ -101,155 +111,249 @@
               </button>
             </view>
 
-            <button v-if="message.role === 'assistant'" class="copy-btn" @click="copyMessage(message.content)">
+            <button
+              v-if="message.role === 'assistant'"
+              class="copy-btn"
+              @click="copyMessage(message.content)"
+            >
               <text class="copy-icon">⧉</text>
               <text>复制建议</text>
             </button>
           </view>
         </view>
 
-        <view v-if="loading" id="assistant-loading" class="chat-row assistant">
+        <view
+          v-if="thinking"
+          id="assistant-thinking"
+          class="chat-row assistant thinking-row"
+        >
           <view class="avatar">AI</view>
-          <view class="bubble loading-bubble">
-            <text class="typing-dot" />
-            <text class="typing-dot" />
-            <text class="typing-dot" />
+          <view class="bubble thinking-bubble">
+            <view class="thinking-head">
+              <text class="thinking-title">AI 正在思考</text>
+              <view class="thinking-dots">
+                <text class="typing-dot" />
+                <text class="typing-dot" />
+                <text class="typing-dot" />
+              </view>
+            </view>
+            <text class="thinking-tip">正在分析问题并整理现场建议</text>
           </view>
         </view>
+        <view id="chat-bottom" class="chat-bottom-anchor" />
       </view>
     </scroll-view>
 
     <view class="composer">
-      <view class="input-panel">
-        <view class="input-badge">问</view>
-        <textarea
-          v-model="inputValue"
-          class="question-input"
-          auto-height
-          maxlength="120"
-          placeholder="请输入安检现场问题"
-          :disabled="loading"
-          confirm-type="send"
-          @confirm="sendQuestion"
-        />
+      <view class="quick-consult">
+        <view class="quick-consult-head">
+          <text class="quick-consult-title">快捷咨询</text>
+          <text class="quick-consult-tip">点击即可提问</text>
+        </view>
+        <view class="quick-list">
+          <button
+            v-for="item in questionCards"
+            :key="item.title"
+            class="question-item"
+            :class="`question-${item.type}`"
+            :disabled="loading"
+            @click="askQuestion(item.title)"
+          >
+            <text class="question-dot" />
+            <text class="question-title">{{ item.title }}</text>
+          </button>
+        </view>
       </view>
-      <button class="send-btn" :class="{ disabled: !canSend }" :disabled="!canSend" @click="sendQuestion">发送</button>
+      <view class="composer-row">
+        <view class="input-panel">
+          <view class="input-badge">问</view>
+          <textarea
+            v-model="inputValue"
+            class="question-input"
+            auto-height
+            maxlength="120"
+            placeholder="请输入安检问题..."
+            :disabled="loading"
+            confirm-type="send"
+            @confirm="sendQuestion"
+          />
+        </view>
+        <button
+          class="send-btn"
+          :class="{ disabled: !canSend }"
+          :disabled="!canSend"
+          aria-label="发送"
+          @click="sendQuestion"
+        >
+          <image
+            class="send-icon"
+            src="/static/assistant/send.svg"
+            mode="aspectFit"
+          />
+        </button>
+      </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
-import { askAssistantApi } from '@/modules/assistant/api'
-import AppNavbar from '@/components/AppNavbar.vue'
-import type { AssistantAnswer } from '@/modules/assistant/types'
+import { computed, nextTick, ref } from "vue";
+import { askAssistantStreamApi } from "@/modules/assistant/api";
+import AppNavbar from "@/components/AppNavbar.vue";
+import type {
+  AssistantAnswer,
+  AssistantConversationMessage,
+} from "@/modules/assistant/types";
 
 interface ChatMessage {
-  id: string
-  role: 'assistant' | 'user'
-  content: string
-  checklist?: string[]
-  suggestions?: string[]
-  references?: string[]
+  id: string;
+  role: "assistant" | "user";
+  content: string;
+  checklist?: string[];
+  suggestions?: string[];
+  references?: string[];
+  durationMs?: number;
 }
 
 const questionCards = [
   {
-    title: '入户安检标准流程',
-    desc: '按步骤核验、检查、记录',
-    icon: '流',
-    type: 'process'
+    title: "入户安检标准流程",
+    desc: "按步骤核验、检查、记录",
+    icon: "流",
+    type: "process",
   },
   {
-    title: '燃气泄漏如何处置',
-    desc: '紧急处置和上报建议',
-    icon: '险',
-    type: 'risk'
+    title: "燃气泄漏如何处置",
+    desc: "紧急处置和上报建议",
+    icon: "险",
+    type: "risk",
   },
   {
-    title: '阀门老化检查要点',
-    desc: '识别锈蚀、松动和关闭不严',
-    icon: '阀',
-    type: 'valve'
+    title: "阀门老化检查要点",
+    desc: "识别锈蚀、松动和关闭不严",
+    icon: "阀",
+    type: "valve",
   },
   {
-    title: '用户不在家如何记录',
-    desc: '到访凭证和改约备注',
-    icon: '记',
-    type: 'record'
-  }
-]
+    title: "用户不在家如何记录",
+    desc: "到访凭证和改约备注",
+    icon: "记",
+    type: "record",
+  },
+];
 
 const welcomeMessage: ChatMessage = {
-  id: 'welcome',
-  role: 'assistant',
-  content: '你好，我可以协助查询安检流程、隐患处置、工单记录和燃气安全知识。你可以直接输入问题，也可以点击上方快捷咨询。',
-  suggestions: ['燃气泄漏如何处置', '入户安检标准流程']
-}
+  id: "welcome",
+  role: "assistant",
+  content:
+    "你好，我可以协助查询安检流程、隐患处置、工单记录和燃气安全知识。你可以直接输入问题，也可以点击上方快捷咨询。",
+  suggestions: ["燃气泄漏如何处置", "入户安检标准流程"],
+};
 
-const messages = ref<ChatMessage[]>([{ ...welcomeMessage }])
-const inputValue = ref('')
-const loading = ref(false)
-const scrollIntoView = ref('')
+const messages = ref<ChatMessage[]>([{ ...welcomeMessage }]);
+const inputValue = ref("");
+const loading = ref(false);
+const thinking = ref(false);
+const scrollIntoView = ref("");
 
-const canSend = computed(() => inputValue.value.trim().length > 0 && !loading.value)
+const canSend = computed(
+  () => inputValue.value.trim().length > 0 && !loading.value,
+);
 
 function createId(prefix: string) {
-  return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+  return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 }
 
 async function askQuestion(question: string) {
-  const text = question.trim()
-  if (!text || loading.value) return
+  const text = question.trim();
+  if (!text || loading.value) return;
+  const startedAt = Date.now();
 
   messages.value.push({
-    id: createId('user'),
-    role: 'user',
-    content: text
-  })
-  inputValue.value = ''
-  await scrollToBottom()
+    id: createId("user"),
+    role: "user",
+    content: text,
+  });
+  inputValue.value = "";
+  await scrollToBottom();
 
-  loading.value = true
-  scrollIntoView.value = 'assistant-loading'
+  loading.value = true;
+  thinking.value = true;
+  await nextTick();
+  scrollIntoView.value = "assistant-thinking";
 
   try {
-    const answer = await askAssistantApi({ question: text })
-    messages.value.push(toAssistantMessage(answer))
+    const history: AssistantConversationMessage[] = messages.value
+      .slice(1, -1)
+      .map((message) => ({ role: message.role, content: message.content }));
+    const streamingMessage: ChatMessage = {
+      id: createId("assistant"),
+      role: "assistant",
+      content: "",
+    };
+    messages.value.push(streamingMessage);
+    const answer = await askAssistantStreamApi(
+      { question: text, history },
+      (content) => {
+        thinking.value = false;
+        const target = messages.value.find(
+          (message) => message.id === streamingMessage.id,
+        );
+        if (target) target.content = content;
+        void scrollToBottom();
+      },
+    );
+    thinking.value = false;
+    const target = messages.value.find(
+      (message) => message.id === streamingMessage.id,
+    );
+    if (target) {
+      Object.assign(target, toAssistantMessage(answer), {
+        id: streamingMessage.id,
+        durationMs: Date.now() - startedAt,
+      });
+    }
   } catch (error) {
     messages.value.push({
-      id: createId('assistant'),
-      role: 'assistant',
-      content: error instanceof Error ? error.message : '助手暂时无法响应，请稍后再试。'
-    })
+      id: createId("assistant"),
+      role: "assistant",
+      content:
+        error instanceof Error
+          ? error.message
+          : "助手暂时无法响应，请稍后再试。",
+    });
   } finally {
-    loading.value = false
-    await scrollToBottom()
+    thinking.value = false;
+    loading.value = false;
+    await scrollToBottom();
   }
 }
 
 function sendQuestion() {
-  if (!canSend.value) return
-  askQuestion(inputValue.value)
+  if (!canSend.value) return;
+  askQuestion(inputValue.value);
+}
+
+function formatDuration(durationMs: number) {
+  if (durationMs < 1000) return `${durationMs}ms`;
+  return `${(durationMs / 1000).toFixed(1)}s`;
 }
 
 function toAssistantMessage(answer: AssistantAnswer): ChatMessage {
   return {
     id: answer.id,
-    role: 'assistant',
+    role: "assistant",
     content: answer.answer,
     checklist: answer.checklist,
     suggestions: answer.suggestions,
-    references: answer.references
-  }
+    references: answer.references,
+  };
 }
 
 async function scrollToBottom() {
-  await nextTick()
-  const last = messages.value[messages.value.length - 1]
-  if (last) {
-    scrollIntoView.value = `msg-${last.id}`
-  }
+  scrollIntoView.value = "";
+  await nextTick();
+  scrollIntoView.value = "chat-bottom";
 }
 
 function copyMessage(content: string) {
@@ -257,45 +361,45 @@ function copyMessage(content: string) {
     data: content,
     success: () => {
       uni.showToast({
-        title: '已复制',
-        icon: 'success'
-      })
-    }
-  })
+        title: "已复制",
+        icon: "success",
+      });
+    },
+  });
 }
 
 function clearMessages() {
   uni.showModal({
-    title: '清空对话',
-    content: '是否清空当前安检助手对话？',
-    confirmColor: '#1677ff',
+    title: "清空对话",
+    content: "是否清空当前安检助手对话？",
+    confirmColor: "#1677ff",
     success: (res) => {
-      if (!res.confirm) return
-      messages.value = [{ ...welcomeMessage }]
-      inputValue.value = ''
-      scrollToBottom()
-    }
-  })
+      if (!res.confirm) return;
+      messages.value = [{ ...welcomeMessage }];
+      inputValue.value = "";
+      scrollToBottom();
+    },
+  });
 }
 </script>
 
 <style lang="scss" scoped>
-@import '@/styles/variables.scss';
-@import '@/styles/mixins.scss';
+@import "@/styles/variables.scss";
+@import "@/styles/mixins.scss";
 
 .assistant-page {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  padding: 0 24rpx;
   overflow: hidden;
-  background:
-    linear-gradient(180deg, #edf5ff 0%, #f6f9ff 38%, #f5f8ff 100%);
+  background: linear-gradient(180deg, #edf5ff 0%, #f6f9ff 38%, #f5f8ff 100%);
 }
 
 .assistant-scroll {
   flex: 1;
+  padding: 0 24rpx;
   min-height: 0;
+  width: auto;
 }
 
 .hero-card {
@@ -414,86 +518,6 @@ function clearMessages() {
   font-size: 21rpx;
 }
 
-.section-head {
-  margin: 30rpx 4rpx 18rpx;
-}
-
-.section-subtitle {
-  display: block;
-  margin-top: 8rpx;
-  color: $info-color;
-  font-size: 23rpx;
-}
-
-.quick-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16rpx;
-}
-
-.question-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 14rpx;
-  min-height: 128rpx;
-  padding: 20rpx;
-  border: 2rpx solid #ffffff;
-  border-radius: 22rpx;
-  text-align: left;
-  background: #ffffff;
-  box-shadow: 0 12rpx 26rpx rgba(28, 83, 171, 0.07);
-}
-
-.question-icon {
-  @include flex-center;
-  flex: 0 0 48rpx;
-  width: 48rpx;
-  height: 48rpx;
-  border-radius: 16rpx;
-  color: #ffffff;
-  font-size: 22rpx;
-  font-weight: 800;
-}
-
-.question-process .question-icon {
-  background: linear-gradient(135deg, #1677ff 0%, #52a6ff 100%);
-}
-
-.question-risk .question-icon {
-  background: linear-gradient(135deg, #ff6b4a 0%, #ffb04c 100%);
-}
-
-.question-valve .question-icon {
-  background: linear-gradient(135deg, #19be6b 0%, #63d895 100%);
-}
-
-.question-record .question-icon {
-  background: linear-gradient(135deg, #6f61ff 0%, #4aa6ff 100%);
-}
-
-.question-copy {
-  min-width: 0;
-}
-
-.question-title,
-.question-desc {
-  display: block;
-}
-
-.question-title {
-  color: $text-main;
-  font-size: 26rpx;
-  font-weight: 800;
-  line-height: 1.25;
-}
-
-.question-desc {
-  margin-top: 10rpx;
-  color: $info-color;
-  font-size: 22rpx;
-  line-height: 1.35;
-}
-
 .chat-list {
   padding: 30rpx 0 28rpx;
 }
@@ -549,6 +573,10 @@ function clearMessages() {
 }
 
 .bubble-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
   margin-bottom: 12rpx;
 }
 
@@ -556,6 +584,12 @@ function clearMessages() {
   color: $text-muted;
   font-size: 21rpx;
   font-weight: 700;
+}
+
+.response-time {
+  flex-shrink: 0;
+  color: $text-muted;
+  font-size: 20rpx;
 }
 
 .chat-row.user .role-name {
@@ -639,6 +673,8 @@ function clearMessages() {
 
 .suggest-item {
   min-height: 56rpx;
+  line-height: 56rpx;
+  text-align: left;
   padding: 0 18rpx;
   border: 2rpx solid rgba(22, 119, 255, 0.1);
   border-radius: 12rpx;
@@ -661,28 +697,170 @@ function clearMessages() {
   font-size: 25rpx;
 }
 
-.loading-bubble {
+.thinking-bubble {
+  display: flex;
+  flex-direction: column;
+  min-width: 300rpx;
+  padding: 20rpx 24rpx;
+}
+
+.thinking-head {
   display: flex;
   align-items: center;
-  gap: 8rpx;
-  min-width: 100rpx;
-  min-height: 58rpx;
+  gap: 14rpx;
+}
+
+.thinking-title {
+  color: $text-main;
+  font-size: 25rpx;
+  font-weight: 700;
+}
+
+.thinking-dots {
+  display: flex;
+  align-items: center;
+  gap: 7rpx;
+}
+
+.thinking-tip {
+  margin-top: 8rpx;
+  color: $text-muted;
+  font-size: 21rpx;
 }
 
 .typing-dot {
   width: 10rpx;
   height: 10rpx;
   border-radius: 50%;
-  background: $text-muted;
+  background: $primary-color;
+  animation: thinking-pulse 1.2s ease-in-out infinite;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+.chat-bottom-anchor {
+  width: 100%;
+  height: 1rpx;
+}
+
+@keyframes thinking-pulse {
+  0%,
+  60%,
+  100% {
+    opacity: 0.28;
+    transform: translateY(0);
+  }
+
+  30% {
+    opacity: 1;
+    transform: translateY(-5rpx);
+  }
 }
 
 .composer {
+  padding: 18rpx 24rpx calc(18rpx + env(safe-area-inset-bottom));
+  width: 100%;
+  background: linear-gradient(
+    180deg,
+    rgba(245, 248, 255, 0) 0%,
+    #f5f8ff 20%,
+    #f5f8ff 100%
+  );
+}
+
+.quick-consult {
+  margin-bottom: 16rpx;
+}
+
+.quick-consult-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14rpx;
+  padding: 0 4rpx;
+}
+
+.quick-consult-title {
+  color: $text-main;
+  font-size: 25rpx;
+  font-weight: 800;
+}
+
+.quick-consult-tip {
+  color: $text-muted;
+  font-size: 21rpx;
+}
+
+.quick-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12rpx;
+}
+
+.question-item {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  min-width: 0;
+  min-height: 66rpx;
+  padding: 0 18rpx;
+  border: 2rpx solid rgba(22, 119, 255, 0.38);
+  border-radius: 18rpx;
+  color: $primary-color;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 6rpx 16rpx rgba(28, 83, 171, 0.05);
+}
+
+.question-item:active {
+  background: #edf5ff;
+  transform: scale(0.985);
+}
+
+.question-item[disabled] {
+  opacity: 0.55;
+}
+
+.question-dot {
+  flex: 0 0 10rpx;
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  background: $primary-color;
+}
+
+.question-risk .question-dot {
+  background: #ff7a45;
+}
+
+.question-valve .question-dot {
+  background: $success-color;
+}
+
+.question-record .question-dot {
+  background: #7467f0;
+}
+
+.question-title {
+  overflow: hidden;
+  color: inherit;
+  font-size: 23rpx;
+  font-weight: 600;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-row {
   display: flex;
   align-items: center;
   gap: 14rpx;
-  width: 100%;
-  padding: 18rpx 0 calc(18rpx + env(safe-area-inset-bottom));
-  background: linear-gradient(180deg, rgba(245, 248, 255, 0) 0%, #f5f8ff 20%, #f5f8ff 100%);
 }
 
 .input-panel {
@@ -722,7 +900,7 @@ function clearMessages() {
   border: 0;
   color: $text-main;
   font-size: 27rpx;
-  line-height: 1.45;
+  // line-height: 1.45;
   background: transparent;
 }
 
@@ -737,6 +915,12 @@ function clearMessages() {
   font-weight: 700;
   background: $confirm-btn-bg;
   box-shadow: 0 12rpx 22rpx rgba(22, 119, 255, 0.22);
+}
+
+.send-icon {
+  width: 40rpx;
+  height: 40rpx;
+  filter: brightness(0) invert(1);
 }
 
 .send-btn.disabled {

@@ -1,11 +1,15 @@
 export interface AssistantAskParams {
-  question: string
+  question: string;
+  history?: AssistantConversationMessage[];
 }
-
+export interface AssistantConversationMessage {
+  role: "user" | "assistant";
+  content: string;
+}
 export interface AssistantAnswer {
-  id: string
-  answer: string
-  checklist: string[]
-  suggestions: string[]
-  references: string[]
+  id: string;
+  answer: string;
+  checklist: string[];
+  suggestions: string[];
+  references: string[];
 }
