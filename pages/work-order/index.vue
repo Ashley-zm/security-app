@@ -217,7 +217,7 @@ function toggleTimeSort() {
   store.setSort(timeSort.value);
   store.refresh();
   uni.showToast({
-    title: timeSort.value === 1 ? "按时间升序排序" : "按时间降序排序",
+    title: timeSort.value === 1 ? "按指派时间升序" : "按指派时间降序",
     icon: "none",
   });
 }

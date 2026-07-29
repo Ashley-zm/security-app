@@ -21,13 +21,3 @@ declare module '@dcloudio/uni-h5-vue/dist/vue.runtime.esm.js' {
   export const injectHook: unknown
   export const isInSSRComponentSetup: boolean
 }
-
-declare module 'uview-plus' {
-  import type { App } from 'vue'
-
-  const uviewPlus: {
-    install: (app: App) => void
-  }
-
-  export default uviewPlus
-}

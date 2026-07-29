@@ -358,7 +358,7 @@ function toggleTimeSort() {
   timeSort.value = timeSort.value === 1 ? 2 : 1;
   refreshList();
   uni.showToast({
-    title: timeSort.value === 1 ? "按时间升序排序" : "按时间降序排序",
+    title: timeSort.value === 1 ? "按预约时间升序" : "按预约时间降序",
     icon: "none",
   });
 }
