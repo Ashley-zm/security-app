@@ -71,12 +71,12 @@
             />
           </view>
 
-          <picker
-            mode="date"
-            :value="form.installDate"
+          <uni-datetime-picker
+            v-model="form.installDate"
+            type="date"
             :end="today"
             :disabled="saving"
-            @change="updateDateField('installDate', $event)"
+            :border="false"
           >
             <view class="form-row">
               <text class="form-label required">安装日期</text>
@@ -88,14 +88,14 @@
                 <uni-icons type="right" color="#A8B2C6" size="14"></uni-icons>
               </view>
             </view>
-          </picker>
+          </uni-datetime-picker>
 
-          <picker
-            mode="date"
-            :value="form.productionDate"
+          <uni-datetime-picker
+            v-model="form.productionDate"
+            type="date"
             :end="today"
             :disabled="saving"
-            @change="updateDateField('productionDate', $event)"
+            :border="false"
           >
             <view class="form-row">
               <text class="form-label">生产日期</text>
@@ -107,7 +107,7 @@
                 <uni-icons type="right" color="#A8B2C6" size="14"></uni-icons>
               </view>
             </view>
-          </picker>
+          </uni-datetime-picker>
 
           <view class="form-row">
             <text class="form-label">使用年限(年)</text>
@@ -211,7 +211,6 @@ interface DeviceFormState {
 }
 
 type TextField = "deviceNo" | "brand" | "model" | "purchaseChannel" | "remark";
-type DateField = "installDate" | "productionDate";
 
 const props = defineProps<{
   visible: boolean;
@@ -296,10 +295,6 @@ function getEventValue(event: unknown) {
 }
 
 function updateTextField(field: TextField, event: unknown) {
-  form[field] = getEventValue(event);
-}
-
-function updateDateField(field: DateField, event: unknown) {
   form[field] = getEventValue(event);
 }
 

@@ -123,7 +123,7 @@
               class="action-btn appointment-btn"
               @click="openChangeTime(item)"
             >
-              修改预约时间
+              {{ item.appointmentTime === "--" ? "预约时间" : "修改预约时间" }}
             </button>
             <button
               class="action-btn navigate-btn"
@@ -161,51 +161,16 @@
       </view>
     </scroll-view>
 
-    <view v-if="popupVisible" class="popup-mask" @click="closePopup">
-      <view class="popup" @click.stop>
-        <view class="popup-title">修改预约时间</view>
-        <view class="current-time">
-          <text class="label">当前预约时间</text>
-          <text class="value">
-            {{ currentUser?.appointmentTime || "暂未预约" }}
-          </text>
-        </view>
-
-        <view class="picker-row">
-          <picker
-            mode="date"
-            :value="appointmentDate"
-            @change="handleDateChange"
-          >
-            <view class="picker-field">
-              <text>日期</text>
-              <text>{{ appointmentDate || "请选择日期" }}</text>
-            </view>
-          </picker>
-          <picker
-            mode="time"
-            :value="appointmentTime"
-            @change="handleTimeChange"
-          >
-            <view class="picker-field">
-              <text>时间</text>
-              <text>{{ appointmentTime || "请选择时间" }}</text>
-            </view>
-          </picker>
-        </view>
-
-        <view class="popup-actions">
-          <button class="popup-btn cancel" @click="closePopup">取消</button>
-          <button
-            class="popup-btn confirm"
-            :disabled="updating"
-            @click="confirmChangeTime"
-          >
-            {{ updating ? "提交中..." : "确认修改" }}
-          </button>
-        </view>
-      </view>
-    </view>
+    <uni-datetime-picker
+      ref="appointmentPickerRef"
+      v-model="appointmentDateTime"
+      class="appointment-picker-trigger"
+      type="datetime"
+      :border="false"
+      :hide-second="true"
+      @change="handleAppointmentChange"
+      @mask-click="handleAppointmentCancel"
+    />
   </view>
 </template>
 
@@ -240,10 +205,9 @@ const loading = ref(false);
 const refreshing = ref(false);
 const finished = ref(false);
 const error = ref("");
-const popupVisible = ref(false);
 const currentUser = ref<WorkOrderUserView | null>(null);
-const appointmentDate = ref("");
-const appointmentTime = ref("");
+const appointmentPickerRef = ref<{ show: () => void } | null>(null);
+const appointmentDateTime = ref("");
 const updating = ref(false);
 const tabs = ref<DictDataVO[]>([]);
 
@@ -358,7 +322,7 @@ function toggleTimeSort() {
   timeSort.value = timeSort.value === 1 ? 2 : 1;
   refreshList();
   uni.showToast({
-    title: timeSort.value === 1 ? "按预约时间升序" : "按预约时间降序",
+    title: timeSort.value === 1 ? "按 预约时间 升序" : "按 预约时间 降序",
     icon: "none",
   });
 }
@@ -445,60 +409,40 @@ function parseAppointmentValue(value?: string | null) {
   const normalized = String(value || "").trim();
 
   if (!normalized || normalized === "--") {
-    return { date: "", time: "" };
+    return "";
   }
 
   const [date = "", rawTime = ""] = normalized.split(/\s+/);
-  return {
-    date,
-    time: rawTime.slice(0, 5),
-  };
+  return date && rawTime ? `${date} ${rawTime.slice(0, 5)}` : "";
 }
 
-function buildAppointmentDateTime(date: string, time: string) {
-  return `${date} ${time.slice(0, 5)}:00`;
+function buildAppointmentDateTime(value: string) {
+  return value.length === 16 ? `${value}:00` : value;
 }
 
-function openChangeTime(item: WorkOrderUserView) {
-  currentUser.value = item;
-  const parsed = parseAppointmentValue(item.appointmentTime);
-  appointmentDate.value = parsed.date;
-  appointmentTime.value = parsed.time;
-  popupVisible.value = true;
-}
-
-function closePopup() {
+async function openChangeTime(item: WorkOrderUserView) {
   if (updating.value) return;
-  popupVisible.value = false;
+  currentUser.value = item;
+  appointmentDateTime.value = parseAppointmentValue(item.appointmentTime);
+  await nextTick();
+  appointmentPickerRef.value?.show();
 }
 
-function handleDateChange(event: { detail: { value: string | number } }) {
-  appointmentDate.value = String(event.detail.value);
+function handleAppointmentCancel() {
+  currentUser.value = null;
 }
 
-function handleTimeChange(event: { detail: { value: string | number } }) {
-  appointmentTime.value = String(event.detail.value);
-}
-
-async function confirmChangeTime() {
-  if (!currentUser.value) return;
-  if (!appointmentDate.value || !appointmentTime.value) {
-    uni.showToast({
-      title: "请选择新的预约时间",
-      icon: "none",
-    });
-    return;
-  }
+async function handleAppointmentChange(value: string) {
+  if (!currentUser.value || updating.value) return;
 
   updating.value = true;
   try {
     await updateWorkOrderUserAppointmentApi(
       currentUser.value.id,
-      buildAppointmentDateTime(appointmentDate.value, appointmentTime.value),
+      buildAppointmentDateTime(value),
     );
-    popupVisible.value = false;
     uni.showToast({
-      title: "预约时间修改成功",
+      title: value ? "预约时间修改成功" : "预约时间已清除",
       icon: "success",
     });
     await refreshList();
@@ -509,6 +453,7 @@ async function confirmChangeTime() {
     });
   } finally {
     updating.value = false;
+    currentUser.value = null;
   }
 }
 </script>
@@ -920,91 +865,19 @@ async function confirmChangeTime() {
   background: $primary-color;
 }
 
-.popup-mask {
+.appointment-picker-trigger {
   position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  align-items: flex-end;
-  background: rgba(11, 31, 68, 0.42);
+  top: 50%;
+  left: 50%;
+  width: 1px;
+  height: 1px;
 }
 
-.popup {
-  width: 100%;
-  padding: 34rpx 30rpx calc(34rpx + env(safe-area-inset-bottom));
-  border-radius: 34rpx 34rpx 0 0;
-  background: #ffffff;
-}
-
-.popup-title {
-  color: $text-main;
-  font-size: 34rpx;
-  font-weight: 800;
-  text-align: center;
-}
-
-.current-time {
-  margin-top: 28rpx;
-  padding: 24rpx;
-  border-radius: 20rpx;
-  background: #f7faff;
-}
-
-.label {
-  display: block;
-  color: $info-color;
-  font-size: 24rpx;
-}
-
-.value {
-  display: block;
-  margin-top: 8rpx;
-  color: $text-main;
-  font-size: 30rpx;
-  font-weight: 700;
-}
-
-.picker-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18rpx;
-  margin-top: 22rpx;
-}
-
-.picker-field {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 88rpx;
-  padding: 0 22rpx;
-  border-radius: 20rpx;
-  color: $text-main;
-  font-size: 26rpx;
-  background: #f7faff;
-}
-
-.popup-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18rpx;
-  margin-top: 34rpx;
-}
-
-.popup-btn {
-  @include flex-center;
-  height: 86rpx;
-  border-radius: 43rpx;
-  font-size: 28rpx;
-  font-weight: 700;
-}
-
-.popup-btn.cancel {
-  color: $info-color;
-  background: $info-bg;
-}
-
-.popup-btn.confirm {
-  color: #ffffff;
-  background: $confirm-btn-bg;
+.appointment-picker-trigger :deep(.uni-date-editor) {
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
 }
 </style>

@@ -599,7 +599,7 @@ async function removeDevice() {
 }
 function confirmDeleteDevice(device: DeviceItem) {
   deletingDeviceId.value = String(device.id || "").trim();
-  confirmContent.value = `确定删除设备“${getDeviceTypeText(device.deviceType) || "未编号设备"}”吗？`;
+  confirmContent.value = `确定删除“${getDeviceTypeText(device.deviceType) || "未编号设备"}”吗？`;
   deleteDialogRef?.value?.open();
 }
 // 处理安检操作
