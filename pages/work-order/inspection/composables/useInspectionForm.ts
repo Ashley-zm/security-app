@@ -38,8 +38,15 @@ export function useInspectionForm() {
   }));
 
   function initialize(template: InspectionTemplate) {
-    currentTemplate.value = template;
+    const groupList = template?.groupList?.filter(
+      (group) => (group.itemList || []).length > 0,
+    );
+    currentTemplate.value = {
+      ...template,
+      groupList: groupList || [],
+    };
     Object.keys(formData).forEach((key) => delete formData[key]);
+
     enabledGroups.value.forEach((group) =>
       (group.itemList || []).forEach((item) => {
         const itemId = String(item.id);

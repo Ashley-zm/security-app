@@ -1,14 +1,17 @@
+// inputType 输入类型 单选1 复选2 文本3
 export const INPUT_TYPE = {
   RADIO: "1",
   CHECKBOX: "2",
   TEXT: "3",
 } as const;
+// photoRule 照片规则 无1 有2 必填3 异常必填4
 export const PHOTO_RULE = {
   NONE: "1",
   OPTIONAL: "2",
   REQUIRED: "3",
   ABNORMAL_REQUIRED: "4",
 } as const;
+// subItemType 安检子项类型 正常1 隐患2
 export const SUB_ITEM_TYPE = { NORMAL: "1", DANGER: "2" } as const;
 export const DEFAULT_MAX_PHOTO_COUNT = 3;
 export const DEFAULT_MAX_INPUT_LENGTH = 200;

@@ -63,7 +63,6 @@
     <view v-if="disposalMeasures.length" class="disposal-section">
       <view class="disposal-head">
         <view class="disposal-title-wrap">
-          <!-- <text class="disposal-title-icon">✓</text> -->
           <text class="disposal-title">处置措施</text>
         </view>
         <text class="disposal-hint">可多选</text>
