@@ -14,11 +14,6 @@ export interface LoginParams {
   grantType?: string;
 }
 
-export interface ChangePasswordParams {
-  oldPassword: string;
-  newPassword: string;
-}
-
 export interface UserInfo {
   userId: string;
   userName: string;

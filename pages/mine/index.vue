@@ -78,7 +78,7 @@
           </view>
           <image class="arrow" src="/static/images/mine/arrow.png" />
         </button>
-        <button class="menu-item" @click="showComingSoon('消息通知设置')">
+        <button class="menu-item" @click="openNotificationSettings">
           <view class="menu-left">
             <image class="menu-icon" src="/static/images/mine/bell.png" />
             <text>消息通知设置</text>
@@ -231,7 +231,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref } from "vue";
-import { changePasswordApi } from "@/modules/auth/api";
+import { changePasswordApi } from "@/modules/mine/api";
 import { useUserStore } from "@/stores/user";
 import { FILE_URL } from "@/utils/request";
 const statusBarHeight = uni.getSystemInfoSync().statusBarHeight || 0;
@@ -317,10 +317,9 @@ const profile = computed(() => ({
   mobile: userStore.userInfo?.userName || "--",
 }));
 // 消息通知设置
-const showComingSoon = (name: string) => {
-  uni.showToast({
-    title: `${name}暂未开放`,
-    icon: "none",
+const openNotificationSettings = () => {
+  uni.navigateTo({
+    url: "/pages/mine/notification-settings",
   });
 };
 // 关于我们

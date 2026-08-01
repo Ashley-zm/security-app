@@ -1,4 +1,4 @@
-import type { ChangePasswordParams } from '@/modules/auth/types'
+import type { ChangePasswordParams } from '@/modules/mine/types'
 import type { AssistantAnswer, AssistantAskParams } from '@/modules/assistant/types'
 import type { HomeOverview } from '@/modules/home/types'
 
