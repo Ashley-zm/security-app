@@ -70,6 +70,16 @@
       }
     },
     {
+      "path": "pages/mine/notification-settings",
+      "style": {
+        "navigationStyle": "custom",
+        "pageOrientation": "portrait",
+        "app-plus": {
+          "bounce": "none"
+        }
+      }
+    },
+    {
       "path": "pages/assistant/index",
       "style": {
         "navigationStyle": "custom"
