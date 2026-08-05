@@ -118,7 +118,7 @@
             <text class="info-value address-value">{{ item.userAddress }}</text>
           </view>
 
-          <view class="card-actions" @click.stop>
+          <view class="card-actions" @click.stop v-if="item.status === '1'">
             <button
               class="action-btn appointment-btn"
               @click="openChangeTime(item)"
