@@ -52,7 +52,7 @@ function getPermissionGuide(permission: string) {
   if (permission === ANDROID_PERMISSIONS.POST_NOTIFICATIONS) {
     return {
       title: "通知权限提示",
-      content: "后台持续录音需要显示前台服务通知，请开启通知权限后重试。",
+      content: "接收工单提醒和显示前台服务通知需要通知权限，请开启后重试。",
     };
   }
   return {
@@ -96,6 +96,22 @@ function requestAndroidPermission(permission: string) {
     resolve(true);
     // #endif
   });
+}
+
+export async function requestNotificationPermission() {
+  // #ifdef APP-PLUS
+  if (uni.getSystemInfoSync().platform !== "android") return true;
+
+  const plusRuntime = (globalThis as { plus?: AppPlusRuntime }).plus;
+  const androidVersion = Number.parseInt(plusRuntime?.os?.version || "0", 10);
+  if (androidVersion < 13) return true;
+
+  return requestAndroidPermission(ANDROID_PERMISSIONS.POST_NOTIFICATIONS);
+  // #endif
+
+  // #ifndef APP-PLUS
+  return true;
+  // #endif
 }
 
 export async function requestRecordingPermissions(permissions: string[]) {
