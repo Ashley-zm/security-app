@@ -187,7 +187,7 @@
         >
           <image
             class="send-icon"
-            src="/static/assistant/send.svg"
+            src="/static/images/assistant/send.svg"
             mode="aspectFit"
           />
         </button>

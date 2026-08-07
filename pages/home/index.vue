@@ -51,7 +51,7 @@
           <view class="overview-icon-wrap">
             <image
               class="overview-icon"
-              src="/static/images/Neighborhood.svg"
+              src="/static/images/home/Neighborhood.svg"
               mode="aspectFit"
             />
           </view>
@@ -65,7 +65,7 @@
           <view class="overview-icon-wrap">
             <image
               class="overview-icon"
-              src="/static/images/households.svg"
+              src="/static/images/home/households.svg"
               mode="aspectFit"
             />
           </view>

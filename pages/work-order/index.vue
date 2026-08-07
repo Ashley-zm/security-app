@@ -155,8 +155,8 @@ const tabCountStyle = computed(() => ({
 const activeStatus = computed<string>(() => store.queryParams.status || "all");
 const timeSortIcon = computed(() =>
   timeSort.value === 1
-    ? "/static/images/shijianzhengxu.png"
-    : "/static/images/shijiandaoxu.png",
+    ? "/static/images/work-order/shijianzhengxu.png"
+    : "/static/images/work-order/shijiandaoxu.png",
 );
 const orderViews = computed<WorkOrderCardView[]>(() => {
   return store.list.map(formatOrder);

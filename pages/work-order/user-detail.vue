@@ -496,9 +496,9 @@ function makePhoneCall() {
 
 function getActionIcon(mode: string) {
   const iconMap: Record<string, string> = {
-    "1": "/static/images/ai.svg",
-    "2": "/static/images/person.svg",
-    "3": "/static/images/unable.svg",
+    "1": "/static/images/work-order/ai.svg",
+    "2": "/static/images/work-order/person.svg",
+    "3": "/static/images/work-order/unable.svg",
   };
   return iconMap[mode] || "";
 }

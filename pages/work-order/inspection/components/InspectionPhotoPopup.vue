@@ -50,7 +50,7 @@
           >
             <image
               class="add-photo-icon"
-              src="/static/images/add-image.png"
+              src="/static/images/work-order/add-image.png"
               mode="aspectFit"
             />
             <text class="add-photo-text">+添加图片</text>
