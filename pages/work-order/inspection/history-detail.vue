@@ -88,7 +88,7 @@
                     <view class="item-icon-wrap">
                       <image
                         class="item-icon"
-                        src="/static/images/item.png"
+                        src="/static/images/work-order/item.png"
                         mode="aspectFit"
                       />
                     </view>

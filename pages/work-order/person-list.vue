@@ -129,11 +129,11 @@
               class="action-btn navigate-btn"
               @click="handleNavigate(item)"
             >
-              <uni-icons
-                type="location-filled"
-                color="#1677ff"
-                size="25"
-              ></uni-icons>
+              <image
+                class="time-sort-icon"
+                src="/static/images/work-order/navigate.svg"
+                mode="aspectFit"
+              />
             </button>
           </view>
         </view>
@@ -441,13 +441,13 @@ async function handleAppointmentChange(value: string) {
       buildAppointmentDateTime(value),
     );
     uni.showToast({
-      title: value ? "预约时间修改成功" : "预约时间已清除",
+      title: value ? "修改成功" : "预约时间已清除",
       icon: "success",
     });
     await refreshList();
   } catch (err) {
     uni.showToast({
-      title: err instanceof Error ? err.message : "预约时间修改失败",
+      title: err instanceof Error ? err.message : "修改失败",
       icon: "none",
     });
   } finally {
