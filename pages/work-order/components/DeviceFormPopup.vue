@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <view v-if="visible" class="popup-mask" @click="handleMaskClick">
     <view class="device-popup" @click.stop>
       <view class="popup-handle" />
@@ -71,43 +71,35 @@
             />
           </view>
 
-          <uni-datetime-picker
-            v-model="form.installDate"
-            type="date"
-            :end="today"
-            :disabled="saving"
-            :border="false"
+          <view
+            class="form-row"
+            :class="{ disabled: saving }"
+            @click="openInstallDatePicker"
           >
-            <view class="form-row">
-              <text class="form-label required">安装日期</text>
-              <view
-                class="form-value picker-value"
-                :class="{ placeholder: !form.installDate }"
-              >
-                <text>{{ form.installDate || "请选择" }}</text>
-                <uni-icons type="right" color="#A8B2C6" size="14"></uni-icons>
-              </view>
+            <text class="form-label required">安装日期</text>
+            <view
+              class="form-value picker-value"
+              :class="{ placeholder: !form.installDate }"
+            >
+              <text>{{ form.installDate || "请选择" }}</text>
+              <uni-icons type="right" color="#A8B2C6" size="14"></uni-icons>
             </view>
-          </uni-datetime-picker>
+          </view>
 
-          <uni-datetime-picker
-            v-model="form.productionDate"
-            type="date"
-            :end="today"
-            :disabled="saving"
-            :border="false"
+          <view
+            class="form-row"
+            :class="{ disabled: saving }"
+            @click="openProductionDatePicker"
           >
-            <view class="form-row">
-              <text class="form-label">生产日期</text>
-              <view
-                class="form-value picker-value"
-                :class="{ placeholder: !form.productionDate }"
-              >
-                <text>{{ form.productionDate || "请选择" }}</text>
-                <uni-icons type="right" color="#A8B2C6" size="14"></uni-icons>
-              </view>
+            <text class="form-label">生产日期</text>
+            <view
+              class="form-value picker-value"
+              :class="{ placeholder: !form.productionDate }"
+            >
+              <text>{{ form.productionDate || "请选择" }}</text>
+              <uni-icons type="right" color="#A8B2C6" size="14"></uni-icons>
             </view>
-          </uni-datetime-picker>
+          </view>
 
           <view class="form-row">
             <text class="form-label">使用年限(年)</text>
@@ -186,6 +178,22 @@
           {{ saving ? "保存中..." : "确定" }}
         </button>
       </view>
+      <AppointmentTimePicker
+        ref="installDatePickerRef"
+        v-model="form.installDate"
+        mode="date"
+        title="选择安装日期"
+        min-date="1990-01-01"
+        :max-date="today"
+      />
+      <AppointmentTimePicker
+        ref="productionDatePickerRef"
+        v-model="form.productionDate"
+        mode="date"
+        title="选择生产日期"
+        min-date="1990-01-01"
+        :max-date="today"
+      />
     </view>
   </view>
 </template>
@@ -195,6 +203,7 @@ import { computed, reactive, ref, watch } from "vue";
 import type { DictDataVO } from "@/modules/common/types";
 import type { DeviceItem } from "@/modules/work-order/types";
 import { getDictLabelByValue } from "@/utils/common";
+import AppointmentTimePicker from "@/components/AppointmentTimePicker.vue";
 
 interface DeviceFormState {
   id?: string;
@@ -225,6 +234,13 @@ const emit = defineEmits<{
   submit: [device: DeviceItem];
 }>();
 
+type DatePickerExpose = {
+  open: (value?: string) => void;
+};
+
+const installDatePickerRef = ref<DatePickerExpose | null>(null);
+const productionDatePickerRef = ref<DatePickerExpose | null>(null);
+
 const scanning = ref(false);
 const form = reactive<DeviceFormState>(createEmptyForm());
 const title = computed(() => (props.mode === "edit" ? "编辑设备" : "添加设备"));
@@ -247,6 +263,16 @@ watch(
   },
   { immediate: true },
 );
+
+function openInstallDatePicker() {
+  if (props.saving) return;
+  installDatePickerRef.value?.open(form.installDate);
+}
+
+function openProductionDatePicker() {
+  if (props.saving) return;
+  productionDatePickerRef.value?.open(form.productionDate);
+}
 
 function createEmptyForm(): DeviceFormState {
   return {

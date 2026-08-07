@@ -161,15 +161,11 @@
       </view>
     </scroll-view>
 
-    <uni-datetime-picker
+    <AppointmentTimePicker
       ref="appointmentPickerRef"
       v-model="appointmentDateTime"
-      class="appointment-picker-trigger"
-      type="datetime"
-      :border="false"
-      :hide-second="true"
-      @change="handleAppointmentChange"
-      @mask-click="handleAppointmentCancel"
+      @confirm="handleAppointmentChange"
+      @cancel="handleAppointmentCancel"
     />
   </view>
 </template>
@@ -179,6 +175,7 @@ import { computed, nextTick, ref } from "vue";
 import { onLoad, onPullDownRefresh, onShow } from "@dcloudio/uni-app";
 import AppEmpty from "@/components/AppEmpty.vue";
 import AppNavbar from "@/components/AppNavbar.vue";
+import AppointmentTimePicker from "@/components/AppointmentTimePicker.vue";
 import {
   getWorkOrderUserListApi,
   updateWorkOrderUserAppointmentApi,
@@ -206,7 +203,9 @@ const refreshing = ref(false);
 const finished = ref(false);
 const error = ref("");
 const currentUser = ref<WorkOrderUserView | null>(null);
-const appointmentPickerRef = ref<{ show: () => void } | null>(null);
+const appointmentPickerRef = ref<{ open: (value?: string) => void } | null>(
+  null,
+);
 const appointmentDateTime = ref("");
 const updating = ref(false);
 const tabs = ref<DictDataVO[]>([]);
@@ -425,7 +424,7 @@ async function openChangeTime(item: WorkOrderUserView) {
   currentUser.value = item;
   appointmentDateTime.value = parseAppointmentValue(item.appointmentTime);
   await nextTick();
-  appointmentPickerRef.value?.show();
+  appointmentPickerRef.value?.open(appointmentDateTime.value);
 }
 
 function handleAppointmentCancel() {
@@ -863,21 +862,5 @@ async function handleAppointmentChange(value: string) {
   color: #ffffff;
   font-size: 26rpx;
   background: $primary-color;
-}
-
-.appointment-picker-trigger {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  width: 1px;
-  height: 1px;
-}
-
-.appointment-picker-trigger :deep(.uni-date-editor) {
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  pointer-events: none;
-  opacity: 0;
 }
 </style>
