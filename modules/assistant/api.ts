@@ -1,184 +1,503 @@
 import { RequestError } from "@/utils/request";
+import { getUserInfoStorage } from "@/utils/storage";
+import type { UserInfo } from "@/modules/auth/types";
 import type {
-  AssistantAnswer,
-  AssistantAskParams,
+  AssistantAgent,
+  AssistantContent,
+  AssistantCredential,
+  AssistantDataContent,
+  AssistantImageDraft,
+  AssistantMessage,
+  AssistantModel,
+  AssistantModelConfig,
+  AssistantSendMessageParams,
+  AssistantSession,
+  AssistantSessionItem,
+  AssistantStreamEvent,
+  AssistantStreamResult,
+  AssistantTextContent,
+  AssistantKnowledgeBase,
+  AssistantKnowledgeConfig,
 } from "@/modules/assistant/types";
 
-interface StreamChunk {
-  id?: string;
-  choices?: Array<{
-    delta?: { content?: string };
-    finish_reason?: string | null;
-  }>;
-  error?: { message?: string };
-}
 const API_BASE_URL = (
-  import.meta.env.VITE_ASSISTANT_API_BASE_URL || "https://code.rayinai.com/v1"
+  import.meta.env.VITE_ASSISTANT_API_BASE_URL || "http://192.168.99.21:8000"
 ).replace(/\/$/, "");
-const API_KEY = import.meta.env.VITE_ASSISTANT_API_KEY || "";
-const MODEL = import.meta.env.VITE_ASSISTANT_MODEL || "gpt-5.6-terra";
-const SYSTEM_PROMPT = `你是燃气入户安检助手，面向一线安检人员提供准确、清晰、可执行的中文建议。严格返回 JSON 对象，不使用 Markdown 代码块：{"answer":"核心答复","checklist":["现场操作项"],"suggestions":["后续追问"],"references":["规范或安全提示"]}。紧急风险优先撤离、避免操作电器和产生火花、确保安全时关闭气源并联系当地抢险部门；不虚构法规，不指导超资质拆装维修。`;
-function list(value: unknown) {
-  return Array.isArray(value)
-    ? value.filter(
-        (item): item is string =>
-          typeof item === "string" && Boolean(item.trim()),
-      )
-    : [];
+const REQUEST_TIMEOUT = 60000;
+
+function getCurrentUserId() {
+  const userId = String(getUserInfoStorage<UserInfo>()?.userId || "").trim();
+  if (!userId) throw new RequestError("未获取到当前登录用户 ID，请重新登录");
+  return userId;
 }
-function parse(content: string, id?: string): AssistantAnswer {
-  const text = content.trim();
-  const json = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-  try {
-    const data = JSON.parse(json) as Partial<AssistantAnswer>;
-    return {
-      id: id || `assistant-${Date.now()}`,
-      answer:
-        typeof data.answer === "string" && data.answer.trim()
-          ? data.answer.trim()
-          : text,
-      checklist: list(data.checklist),
-      suggestions: list(data.suggestions),
-      references: list(data.references),
-    };
-  } catch {
-    return {
-      id: id || `assistant-${Date.now()}`,
-      answer: text || "模型未返回有效内容，请重新提问。",
-      checklist: [],
-      suggestions: [],
-      references: [],
-    };
+
+type AgentMethod = "GET" | "POST" | "PATCH" | "DELETE";
+
+function apiUrl(path: string, query?: Record<string, string | undefined>) {
+  const queryString = Object.entries(query || {})
+    .filter(([, value]) => Boolean(value))
+    .map(
+      ([key, value]) =>
+        `${encodeURIComponent(key)}=${encodeURIComponent(value || "")}`,
+    )
+    .join("&");
+  return `${API_BASE_URL}/${path.replace(/^\//, "")}${queryString ? `?${queryString}` : ""}`;
+}
+
+function unwrap<T>(value: unknown): T {
+  if (
+    value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Object.prototype.hasOwnProperty.call(value, "data") &&
+    Object.prototype.hasOwnProperty.call(value, "code")
+  ) {
+    return (value as { data: T }).data;
   }
+  return value as T;
 }
-function answerPreview(content: string) {
-  const match = /"answer"\s*:\s*"/.exec(content);
-  if (!match) return "";
-  let result = "";
-  let escaped = false;
-  for (const char of content.slice(match.index + match[0].length)) {
-    if (escaped) {
-      result += char === "n" ? "\n" : 
-      char === "t" ? "\t" : char;
-      escaped = false;
-      continue;
-    }
-    if (char === "\\") {
-      escaped = true;
-      continue;
-    }
-    if (char === '"') break;
-    result += char;
-  }
-  return result;
+
+function responseMessage(value: unknown, fallback: string) {
+  if (!value || typeof value !== "object") return fallback;
+  const data = value as Record<string, unknown>;
+  return String(data.message || data.msg || fallback);
 }
-export function askAssistantStreamApi(
-  data: AssistantAskParams,
-  onDelta: (content: string) => void,
+
+function agentRequest<T>(
+  path: string,
+  options: {
+    method?: AgentMethod;
+    query?: Record<string, string | undefined>;
+    data?: unknown;
+    timeout?: number;
+  } = {},
 ) {
-  if (!API_KEY)
-    return Promise.reject(
-      new RequestError(
-        "未配置安检助手 API Key，请检查 VITE_ASSISTANT_API_KEY。",
-      ),
-    );
-  return new Promise<AssistantAnswer>((resolve, reject) => {
+  return new Promise<T>((resolve, reject) => {
+    uni.request({
+      url: apiUrl(path, options.query),
+      method: (options.method || "GET") as UniApp.RequestOptions["method"],
+      data: options.data as UniApp.RequestOptions["data"],
+      timeout: options.timeout || REQUEST_TIMEOUT,
+      header: {
+        "x-user-id": getCurrentUserId(),
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      success: (res) => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(unwrap<T>(res.data));
+          return;
+        }
+        reject(
+          new RequestError(responseMessage(res.data, "安检助手服务请求失败"), {
+            statusCode: res.statusCode,
+            response: res.data,
+          }),
+        );
+      },
+      fail: (error) =>
+        reject(new RequestError(error.errMsg || "安检助手服务连接失败")),
+    });
+  });
+}
+
+export function getAssistantAgentsApi() {
+  return agentRequest<{ agents: AssistantAgent[]; total?: number }>("/agent");
+}
+
+export function getAssistantCredentialsApi() {
+  return agentRequest<{
+    credentials: AssistantCredential[];
+    total?: number;
+  }>("/credential/");
+}
+
+export function getAssistantModelsApi(provider: string) {
+  return agentRequest<{ models: AssistantModel[] }>("/model/", {
+    query: { provider },
+  });
+}
+
+export function getAssistantSessionsApi(agentId: string) {
+  return agentRequest<{ sessions: AssistantSessionItem[] }>("/sessions", {
+    query: { agent_id: agentId },
+  });
+}
+
+export function getAssistantMessagesApi(agentId: string, sessionId: string) {
+  return agentRequest<{
+    messages: AssistantMessage[];
+    is_running?: boolean;
+    has_more?: boolean;
+  }>(`/sessions/${encodeURIComponent(sessionId)}/messages`, {
+    query: { agent_id: agentId },
+  });
+}
+export function getAssistantKnowledgeBaseApi() {
+  return agentRequest<{ knowledge_bases: AssistantKnowledgeBase[] }>(
+    "/knowledge_bases",
+  );
+}
+
+export function createAssistantSessionApi(
+  agentId: string,
+  chatModelConfig: AssistantModelConfig,
+  knowledgeConfig: AssistantKnowledgeConfig,
+) {
+  return agentRequest<{ session_id: string }>("/sessions/", {
+    method: "POST",
+    data: {
+      agent_id: agentId,
+      chat_model_config: chatModelConfig,
+      knowledge_config: knowledgeConfig,
+    },
+  });
+}
+// 中断会话
+export function interruptAssistantSessionApi(
+  agentId: string,
+  sessionId: string,
+) {
+  return agentRequest<void>(
+    `/sessions/${encodeURIComponent(sessionId)}/interrupt`,
+    {
+      method: "POST",
+      query: { agent_id: agentId },
+    },
+  );
+}
+
+export function updateAssistantSessionApi(
+  agentId: string,
+  sessionId: string,
+  data: {
+    name?: string;
+    chat_model_config?: AssistantModelConfig;
+    knowledge_config?: AssistantKnowledgeConfig | null;
+  },
+) {
+  return agentRequest<AssistantSession>(
+    `/sessions/${encodeURIComponent(sessionId)}`,
+    { method: "PATCH", query: { agent_id: agentId }, data },
+  );
+}
+
+export function deleteAssistantSessionApi(agentId: string, sessionId: string) {
+  return agentRequest<void>(`/sessions/${encodeURIComponent(sessionId)}`, {
+    method: "DELETE",
+    query: { agent_id: agentId },
+  });
+}
+
+function uuid() {
+  const cryptoApi = globalThis.crypto as
+    { randomUUID?: () => string } | undefined;
+  if (cryptoApi?.randomUUID) return cryptoApi.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (char) => {
+    const random = Math.floor(Math.random() * 16);
+    const value = char === "x" ? random : (random & 0x3) | 0x8;
+    return value.toString(16);
+  });
+}
+
+function imageContent(image: AssistantImageDraft): AssistantDataContent {
+  return {
+    id: uuid(),
+    type: "data",
+    source: {
+      type: "base64",
+      media_type: image.mediaType,
+      data: image.base64,
+    },
+    name: image.name,
+  };
+}
+
+export function sendAssistantMessageApi(params: AssistantSendMessageParams) {
+  const now = new Date().toISOString();
+  const content: AssistantContent[] = [];
+  if (params.text?.trim()) {
+    content.push({ id: uuid(), type: "text", text: params.text.trim() });
+  }
+  content.push(...(params.images || []).map(imageContent));
+  return agentRequest<{ status: string; session_id: string }>("/chat/", {
+    method: "POST",
+    data: {
+      agent_id: params.agentId,
+      session_id: params.sessionId,
+      input: {
+        id: uuid(),
+        name: "user",
+        role: "user",
+        content,
+        created_at: now,
+        finished_at: now,
+        metadata: {},
+      },
+    },
+  });
+}
+
+function textFromContent(content: unknown) {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return content
+    .map((item) => {
+      if (!item || typeof item !== "object") return "";
+      const block = item as Partial<AssistantTextContent>;
+      return block.type === "text" && typeof block.text === "string"
+        ? block.text
+        : "";
+    })
+    .join("");
+}
+
+function eventDelta(event: AssistantStreamEvent) {
+  const type = String(event.type || "").toUpperCase();
+  if (!type.includes("DELTA") && type !== "TEXT_BLOCK") return "";
+  if (typeof event.delta === "string") return event.delta;
+  if (event.delta && typeof event.delta === "object") {
+    return event.delta.text || event.delta.content || "";
+  }
+  if (typeof event.text === "string") return event.text;
+  return textFromContent(event.content);
+}
+
+export function streamAssistantReplyApi(
+  agentId: string,
+  sessionId: string,
+  onDelta: (text: string, event: AssistantStreamEvent) => void,
+) {
+  let cancel = () => undefined;
+  const promise = new Promise<AssistantStreamResult>((resolve, reject) => {
     let buffer = "";
-    let content = "";
-    let responseId = "";
-    let chunkReceived = false;
+    let text = "";
+    let replyId = "";
+    let settled = false;
+    let task: UniApp.RequestTask | undefined;
+
+    const finish = (result: AssistantStreamResult) => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
+    const fail = (error: unknown) => {
+      if (settled) return;
+      settled = true;
+      reject(error);
+    };
+    cancel = () => {
+      if (settled) return;
+      settled = true;
+      task?.abort();
+      reject(new RequestError("流式请求已取消"));
+    };
+    const consumeEvent = (event: AssistantStreamEvent) => {
+      replyId ||= event.reply_id || "";
+      const type = String(event.type || "").toUpperCase();
+      const delta = eventDelta(event);
+      if (delta) {
+        text += delta;
+        onDelta(text, event);
+      }
+      if (type === "REPLY_END") {
+        if (event.error?.message || event.finished_reason === "error") {
+          fail(new RequestError(event.error?.message || "助手回复失败"));
+        } else {
+          finish({ replyId, text, finishedReason: event.finished_reason });
+        }
+        task?.abort();
+      }
+    };
     const consumePayload = (payload: string) => {
       if (!payload || payload === "[DONE]") return;
       try {
-        const chunk = JSON.parse(payload) as StreamChunk;
-        if (chunk.error?.message) throw new RequestError(chunk.error.message);
-        responseId ||= chunk.id || "";
-        const delta = chunk.choices?.[0]?.delta?.content || "";
-        console.log("delta", delta);
+        const parsed = JSON.parse(payload) as
+          AssistantStreamEvent | AssistantStreamEvent[];
+        (Array.isArray(parsed) ? parsed : [parsed]).forEach(consumeEvent);
+      } catch {
+        // event/id/retry 行不属于 JSON 数据，安全忽略。
+      }
+    };
+    const consume = (chunk: string, flush = false) => {
+      buffer += chunk;
+      const blocks = buffer.split(/\r?\n\r?\n/);
+      buffer = flush ? "" : blocks.pop() || "";
+      for (const block of blocks) {
+        const payload = block
+          .split(/\r?\n/)
+          .filter((line) => line.trim().startsWith("data:"))
+          .map((line) => line.trim().slice(5).trim())
+          .join("\n");
+        consumePayload(payload || block.trim());
+      }
+    };
 
-        if (delta) {
-          content += delta;
-          onDelta(answerPreview(content) || content);
-        }
-      } catch (error) {
-        if (error instanceof RequestError) reject(error);
-      }
-    };
-    const consume = (text: string) => {
-      buffer += text;
-      const lines = buffer.split(/\r?\n/);
-      buffer = lines.pop() || "";
-      for (const line of lines) {
-        const normalizedLine = line.trim();
-        if (!normalizedLine) continue;
-        const payload = normalizedLine.startsWith("data:")
-          ? normalizedLine.slice(5).trim()
-          : normalizedLine;
-        if (payload.startsWith("{") || payload === "[DONE]")
-          consumePayload(payload);
-      }
-    };
-    const renderTypewriter = async (text: string) => {
-      const step = text.length > 300 ? 4 : text.length > 120 ? 2 : 1;
-      for (let index = step; index < text.length; index += step) {
-        onDelta(text.slice(0, index));
-        await new Promise((done) => setTimeout(done, 16));
-      }
-      onDelta(text);
-    };
-    const task = uni.request({
-      url: `${API_BASE_URL}/chat/completions`,
-      method: "POST",
-      timeout: 60000,
+    task = uni.request({
+      url: apiUrl(`/sessions/${encodeURIComponent(sessionId)}/stream`, {
+        agent_id: agentId,
+      }),
+      method: "GET",
+      timeout: REQUEST_TIMEOUT,
       enableChunked: true,
       header: {
-        Authorization: `Bearer ${API_KEY}`,
-        "Content-Type": "application/json",
+        "x-user-id": getCurrentUserId(),
         Accept: "text/event-stream",
+        "Cache-Control": "no-cache",
       },
-      data: {
-        model: MODEL,
-        stream: true,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          ...(data.history || [])
-            .filter((item) => item.content.trim())
-            .slice(-10),
-          { role: "user", content: data.question.trim() },
-        ],
-      },
-      success: async (res) => {
-        consume("\n");
+      success: (res) => {
+        if (settled) return;
         if (res.statusCode < 200 || res.statusCode >= 300) {
-          reject(
-            new RequestError(`请求失败（${res.statusCode}）`, {
+          fail(
+            new RequestError(responseMessage(res.data, "流式请求失败"), {
               statusCode: res.statusCode,
               response: res.data,
             }),
           );
           return;
         }
-        if (!content && typeof res.data === "string") {
-          consume(`${res.data}\n`);
-          if (content && !chunkReceived)
-            await renderTypewriter(answerPreview(content) || content);
-        }
-        if (!content) {
-          reject(new RequestError("模型未返回有效内容，请稍后重试。"));
-          return;
-        }
-        resolve(parse(content, responseId));
+        if (typeof res.data === "string") consume(res.data, true);
+        finish({ replyId, text });
       },
-      fail: (error) =>
-        reject(new RequestError(error.errMsg || "流式请求失败，请稍后重试。")),
+      fail: (error) => {
+        if (!settled)
+          fail(new RequestError(error.errMsg || "流式请求连接失败"));
+      },
     });
+
     const streamTask = task as typeof task & {
       onChunkReceived?: (
         callback: (event: { data: ArrayBuffer }) => void,
       ) => void;
     };
-    streamTask.onChunkReceived?.((event) =>
-      consume(new TextDecoder("utf-8").decode(event.data, { stream: true })),
+    streamTask.onChunkReceived?.((event) => {
+      consume(new TextDecoder("utf-8").decode(event.data, { stream: true }));
+    });
+  });
+  return Object.assign(promise, { abort: () => cancel() });
+}
+
+export function getMessageText(message: AssistantMessage) {
+  return textFromContent(message.content);
+}
+
+export function getMessageImages(message: AssistantMessage) {
+  return message.content.filter((item): item is AssistantDataContent => {
+    if (item.type !== "data" || !("source" in item)) return false;
+    const source = (item as AssistantDataContent).source;
+    return (
+      source?.type === "base64" &&
+      typeof source.data === "string" &&
+      Boolean(source.data)
     );
   });
+}
+
+interface AppPlusFileReader {
+  result?: string;
+  onloadend?: () => void;
+  onerror?: (error: { message?: string }) => void;
+  readAsDataURL: (file: unknown) => void;
+}
+
+interface AppPlusFileEntry {
+  file: (
+    success: (file: unknown) => void,
+    fail: (error: { message?: string }) => void,
+  ) => void;
+}
+
+interface AppPlusRuntime {
+  io?: {
+    FileReader?: new () => AppPlusFileReader;
+    resolveLocalFileSystemURL?: (
+      path: string,
+      success: (entry: AppPlusFileEntry) => void,
+      fail: (error: { message?: string }) => void,
+    ) => void;
+  };
+}
+
+function base64FromDataUrl(dataUrl: string) {
+  const separator = dataUrl.indexOf(",");
+  if (separator < 0 || !dataUrl.slice(separator + 1)) {
+    throw new RequestError("图片 Base64 数据为空");
+  }
+  return dataUrl.slice(separator + 1);
+}
+
+function readAppPlusImageAsBase64(filePath: string) {
+  const appPlus = (globalThis as typeof globalThis & { plus?: AppPlusRuntime })
+    .plus;
+  const resolveFile = appPlus?.io?.resolveLocalFileSystemURL;
+  const Reader = appPlus?.io?.FileReader;
+  if (!resolveFile || !Reader) return undefined;
+
+  return new Promise<string>((resolve, reject) => {
+    const fail = (error: { message?: string }) =>
+      reject(new RequestError(error?.message || "Android 图片读取失败"));
+    resolveFile(
+      filePath,
+      (entry) => {
+        entry.file((file) => {
+          const reader = new Reader();
+          reader.onerror = fail;
+          reader.onloadend = () => {
+            try {
+              resolve(base64FromDataUrl(String(reader.result || "")));
+            } catch (error) {
+              reject(error);
+            }
+          };
+          reader.readAsDataURL(file);
+        }, fail);
+      },
+      fail,
+    );
+  });
+}
+
+export function imagePathToBase64(filePath: string) {
+  const runtime = uni as typeof uni & {
+    getFileSystemManager?: () => {
+      readFile: (options: {
+        filePath: string;
+        encoding: "base64";
+        success: (result: { data: string | ArrayBuffer }) => void;
+        fail: (error: { errMsg?: string }) => void;
+      }) => void;
+    };
+  };
+  const appPlusReader = readAppPlusImageAsBase64(filePath);
+  if (appPlusReader) return appPlusReader;
+  if (runtime.getFileSystemManager) {
+    return new Promise<string>((resolve, reject) => {
+      runtime.getFileSystemManager?.().readFile({
+        filePath,
+        encoding: "base64",
+        success: (result) => resolve(String(result.data)),
+        fail: (error) =>
+          reject(new RequestError(error.errMsg || "图片读取失败")),
+      });
+    });
+  }
+  if (typeof fetch !== "undefined" && typeof FileReader !== "undefined") {
+    return fetch(filePath)
+      .then((response) => response.blob())
+      .then(
+        (blob) =>
+          new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () =>
+              resolve(
+                String(reader.result || "")
+                  .split(",")
+                  .pop() || "",
+              );
+            reader.onerror = () => reject(new RequestError("图片读取失败"));
+            reader.readAsDataURL(blob);
+          }),
+      );
+  }
+  return Promise.reject(new RequestError("当前平台暂不支持图片读取"));
 }
