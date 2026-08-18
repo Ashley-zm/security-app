@@ -79,11 +79,38 @@
                   @click="previewImages(message.images, imageIndex)"
                 />
               </view>
-              <text v-if="message.text" class="message-text" selectable>
+              <view
+                v-if="message.streaming && message.progress?.length"
+                class="event-progress"
+              >
+                <view
+                  v-for="item in message.progress"
+                  :key="item.key"
+                  class="event-item"
+                >
+                  <view class="event-indicator" :class="item.status" />
+                  <view class="event-copy">
+                    <text class="event-label">{{ item.label }}</text>
+                    <text v-if="item.detail" class="event-detail">
+                      {{ item.detail }}
+                    </text>
+                  </view>
+                </view>
+              </view>
+              <AssistantMarkdown
+                v-if="
+                  message.role === 'assistant' &&
+                  (message.text || message.images.length)
+                "
+                :content="message.text"
+                :streaming="message.streaming"
+                :images="message.images"
+              />
+              <text v-else-if="message.text" class="message-text" selectable>
                 {{ message.text }}
               </text>
               <view v-if="message.streaming && !message.text" class="thinking">
-                <text>正在分析</text>
+                <text>{{ message.statusText || "正在分析" }}</text>
                 <view class="typing-dots">
                   <text />
                   <text />
@@ -91,13 +118,23 @@
                 </view>
               </view>
             </view>
-            <button
-              v-if="message.role === 'assistant' && message.text"
-              class="copy-btn"
-              @click="copyMessage(message.text)"
-            >
-              复制
-            </button>
+            <view v-if="message.role === 'assistant'" class="message-actions">
+              <button
+                v-if="message.text"
+                class="copy-btn"
+                @click="copyMessage(message.text)"
+              >
+                复制
+              </button>
+              <button
+                v-if="!message.streaming && message.elapsedMs !== undefined"
+                class="duration-btn"
+                @click="executionDetailMessage = message"
+              >
+                <uni-icons type="info" size="13" color="#667085" />
+                <text>耗时 {{ formatElapsed(message.elapsedMs) }}</text>
+              </button>
+            </view>
           </view>
         </view>
         <view id="message-bottom" class="bottom-anchor" />
@@ -260,12 +297,63 @@
         </view>
       </view>
     </view>
+
+    <view
+      v-if="executionDetailMessage"
+      class="dialog-mask"
+      @click="executionDetailMessage = undefined"
+    >
+      <view class="execution-dialog" @click.stop>
+        <view class="execution-head">
+          <text class="dialog-title">执行详情</text>
+          <button class="close-btn" @click="executionDetailMessage = undefined">
+            ×
+          </button>
+        </view>
+        <view class="execution-summary">
+          <text>本次回答耗时</text>
+          <text class="execution-total">
+            {{ formatElapsed(executionDetailMessage.elapsedMs || 0) }}
+          </text>
+        </view>
+        <scroll-view class="execution-list" scroll-y>
+          <view
+            v-if="!executionDetailMessage.progress?.length"
+            class="execution-empty"
+          >
+            暂无更详细的运行事件
+          </view>
+          <view
+            v-for="step in executionDetailMessage.progress || []"
+            :key="step.key"
+            class="execution-step"
+          >
+            <view class="event-indicator" :class="step.status" />
+            <view class="execution-step-main">
+              <view class="execution-step-head">
+                <text class="execution-step-label">{{ step.label }}</text>
+                <text v-if="step.finishedAt" class="execution-step-time">
+                  {{ formatStepDuration(step) }}
+                </text>
+              </view>
+              <text v-if="step.detail" class="execution-step-detail">
+                {{ step.detail }}
+              </text>
+            </view>
+          </view>
+        </scroll-view>
+        <text class="execution-note">
+          仅展示模型调用、工具执行和媒体处理等运行步骤，不展示模型内部思维内容。
+        </text>
+      </view>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from "vue";
 import AppNavbar from "@/components/AppNavbar.vue";
+import AssistantMarkdown from "@/components/AssistantMarkdown.vue";
 import {
   createAssistantSessionApi,
   deleteAssistantSessionApi,
@@ -286,12 +374,27 @@ import {
 import type {
   AssistantCredential,
   AssistantImageDraft,
+  AssistantDataContent,
+  AssistantTextContent,
   AssistantKnowledgeBase,
   AssistantKnowledgeConfig,
   AssistantMessage,
   AssistantModelConfig,
   AssistantSessionItem,
+  AssistantStreamEvent,
+  AssistantStreamSnapshot,
 } from "@/modules/assistant/types";
+
+type ViewProgressStatus = "running" | "success" | "warning" | "error";
+
+interface ViewProgressItem {
+  key: string;
+  label: string;
+  detail?: string;
+  status: ViewProgressStatus;
+  startedAt?: number;
+  finishedAt?: number;
+}
 
 interface ViewMessage {
   id: string;
@@ -300,6 +403,11 @@ interface ViewMessage {
   images: string[];
   streaming?: boolean;
   failed?: boolean;
+  statusText?: string;
+  progress?: ViewProgressItem[];
+  startedAt?: number;
+  finishedAt?: number;
+  elapsedMs?: number;
 }
 const DEFAULT_MODEL = import.meta.env.VITE_ASSISTANT_MODEL || "gpt-5.5";
 const systemInfo = uni.getSystemInfoSync();
@@ -340,6 +448,7 @@ const currentRuntimeId = ref("");
 const renameTarget = ref<AssistantSessionItem>();
 const renameValue = ref("");
 let activeStreamRequest: ReturnType<typeof streamAssistantReplyApi> | undefined;
+const executionDetailMessage = ref<ViewMessage>();
 let interruptRequested = false;
 
 const currentSessionItem = computed(() =>
@@ -381,6 +490,306 @@ const currentSessionName = computed(() => {
 
 function createId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+}
+
+function streamMediaUrls(snapshot: AssistantStreamSnapshot) {
+  return snapshot.media
+    .filter((item) => item.mediaType.startsWith("image/"))
+    .map(
+      (item) =>
+        item.url ||
+        (item.data ? `data:${item.mediaType};base64,${item.data}` : ""),
+    )
+    .filter(Boolean);
+}
+function formatElapsed(milliseconds: number) {
+  const duration = Math.max(0, milliseconds || 0);
+  if (duration < 1000) return `${Math.round(duration)} 毫秒`;
+  if (duration < 60000) return `${(duration / 1000).toFixed(1)} 秒`;
+  const minutes = Math.floor(duration / 60000);
+  const seconds = Math.round((duration % 60000) / 1000);
+  return `${minutes} 分 ${seconds} 秒`;
+}
+
+function formatStepDuration(step: ViewProgressItem) {
+  if (!step.startedAt || !step.finishedAt) return "";
+  return formatElapsed(step.finishedAt - step.startedAt);
+}
+
+function timestampValue(value?: string | null) {
+  if (!value) return undefined;
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : undefined;
+}
+
+function completeMessageTiming(message: ViewMessage, finishedAt = Date.now()) {
+  message.startedAt ||= finishedAt;
+  message.finishedAt = finishedAt;
+  message.elapsedMs = Math.max(0, finishedAt - message.startedAt);
+}
+
+function upsertProgress(message: ViewMessage, item: ViewProgressItem) {
+  const progress = [...(message.progress || [])];
+  const index = progress.findIndex((current) => current.key === item.key);
+  const current = index >= 0 ? progress[index] : undefined;
+  const now = Date.now();
+  const next: ViewProgressItem = {
+    ...current,
+    ...item,
+    startedAt: current?.startedAt || item.startedAt || now,
+    finishedAt:
+      item.status === "running"
+        ? undefined
+        : item.finishedAt || current?.finishedAt || now,
+  };
+  if (index >= 0) {
+    progress[index] = next;
+  } else {
+    progress.push(next);
+  }
+  message.progress = progress;
+}
+function eventToolNames(event: AssistantStreamEvent) {
+  return (event.tool_calls || [])
+    .map((item) => String(item.name || item.tool_call_name || ""))
+    .filter(Boolean)
+    .join("、");
+}
+
+function handleStreamEvent(
+  message: ViewMessage,
+  snapshot: AssistantStreamSnapshot,
+  event: AssistantStreamEvent,
+) {
+  message.text = snapshot.text;
+  message.images = streamMediaUrls(snapshot);
+  message.startedAt ||= Date.now();
+  const type = String(event.type || "").toUpperCase();
+  const blockKey = `block:${event.block_id || type}`;
+  const toolKey = `tool:${event.tool_call_id || type}`;
+  const toolName = event.tool_call_name || "工具";
+
+  switch (type) {
+    case "REPLY_START":
+      message.statusText = "正在准备回答";
+      break;
+    case "HINT_BLOCK":
+      message.statusText = "正在准备上下文";
+      break;
+    case "MODEL_CALL_START":
+      message.statusText = "正在调用模型";
+      upsertProgress(message, {
+        key: "model",
+        label: "正在调用模型",
+        detail: event.model_name,
+        status: "running",
+      });
+      break;
+    case "MODEL_CALL_END": {
+      const tokens =
+        typeof event.input_tokens === "number" ||
+        typeof event.output_tokens === "number"
+          ? `输入 ${event.input_tokens || 0} / 输出 ${event.output_tokens || 0} tokens`
+          : undefined;
+      upsertProgress(message, {
+        key: "model",
+        label: "模型调用完成",
+        detail: tokens,
+        status: "success",
+      });
+      break;
+    }
+    case "THINKING_BLOCK_START":
+    case "THINKING_BLOCK_DELTA":
+      message.statusText = "正在分析问题";
+      upsertProgress(message, {
+        key: blockKey,
+        label: "正在分析问题",
+        status: "running",
+      });
+      break;
+    case "THINKING_BLOCK_END":
+      upsertProgress(message, {
+        key: blockKey,
+        label: "问题分析完成",
+        status: "success",
+      });
+      break;
+    case "TEXT_BLOCK_START":
+      message.statusText = "正在组织回答";
+      break;
+    case "TEXT_BLOCK_DELTA":
+    case "TEXT_BLOCK":
+      message.statusText = "正在生成回答";
+      break;
+    case "TEXT_BLOCK_END":
+      message.statusText = "正在整理结果";
+      break;
+    case "DATA_BLOCK_START":
+    case "DATA_BLOCK_DELTA":
+      message.statusText = "正在接收媒体内容";
+      upsertProgress(message, {
+        key: blockKey,
+        label: "正在接收媒体内容",
+        detail: event.media_type,
+        status: "running",
+      });
+      break;
+    case "DATA_BLOCK_END":
+      upsertProgress(message, {
+        key: blockKey,
+        label: "媒体内容接收完成",
+        status: "success",
+      });
+      break;
+    case "TOOL_CALL_START":
+      message.statusText = `正在调用${toolName}`;
+      upsertProgress(message, {
+        key: toolKey,
+        label: `正在调用${toolName}`,
+        status: "running",
+      });
+      break;
+    case "TOOL_CALL_DELTA":
+      message.statusText = `正在准备${toolName}参数`;
+      break;
+    case "TOOL_CALL_END":
+      upsertProgress(message, {
+        key: toolKey,
+        label: `${toolName}参数已准备`,
+        status: "running",
+      });
+      break;
+    case "TOOL_RESULT_START":
+    case "TOOL_RESULT_TEXT_DELTA":
+    case "TOOL_RESULT_DATA_DELTA":
+      message.statusText = `正在执行${toolName}`;
+      upsertProgress(message, {
+        key: toolKey,
+        label: `正在执行${toolName}`,
+        status: "running",
+      });
+      break;
+    case "TOOL_RESULT_END": {
+      const state = String(event.state || "SUCCESS").toUpperCase();
+      const status: ViewProgressStatus =
+        state === "ERROR"
+          ? "error"
+          : state === "INTERRUPTED" || state === "DENIED"
+            ? "warning"
+            : "success";
+      const stateLabel =
+        state === "ERROR"
+          ? "执行失败"
+          : state === "INTERRUPTED"
+            ? "已中断"
+            : state === "DENIED"
+              ? "已拒绝"
+              : "执行完成";
+      upsertProgress(message, {
+        key: toolKey,
+        label: `${toolName}${stateLabel}`,
+        status,
+      });
+      break;
+    }
+    case "REQUIRE_USER_CONFIRM":
+      message.statusText = "等待用户确认";
+      upsertProgress(message, {
+        key: "hitl",
+        label: "等待用户确认工具操作",
+        detail: eventToolNames(event),
+        status: "warning",
+      });
+      break;
+    case "REQUIRE_EXTERNAL_EXECUTION":
+      message.statusText = "等待外部执行";
+      upsertProgress(message, {
+        key: "hitl",
+        label: "等待外部系统执行",
+        detail: eventToolNames(event),
+        status: "warning",
+      });
+      break;
+    case "USER_CONFIRM_RESULT":
+      upsertProgress(message, {
+        key: "hitl",
+        label: "用户确认已提交",
+        status: "success",
+      });
+      break;
+    case "EXTERNAL_EXECUTION_RESULT":
+      upsertProgress(message, {
+        key: "hitl",
+        label: "外部执行结果已返回",
+        status: "success",
+      });
+      break;
+    case "EXCEED_MAX_ITERS":
+      message.statusText = "已达到最大迭代次数";
+      upsertProgress(message, {
+        key: "reply",
+        label: "已达到最大迭代次数",
+        status: "warning",
+      });
+      break;
+    case "USER_INTERRUPT":
+      message.statusText = "会话已中断";
+      upsertProgress(message, {
+        key: "reply",
+        label: "会话已中断",
+        status: "warning",
+      });
+      break;
+    case "CUSTOM":
+      if (event.name === "state_updated" || event.name === "team_updated") {
+        upsertProgress(message, {
+          key: `custom:${event.name}`,
+          label:
+            event.name === "state_updated"
+              ? "任务状态已更新"
+              : "协作成员已更新",
+          status: "success",
+        });
+      }
+      break;
+    case "REPLY_END": {
+      const reason = String(event.finished_reason || "completed").toLowerCase();
+      if (reason === "interrupted") {
+        message.statusText = "会话已中断";
+        upsertProgress(message, {
+          key: "reply",
+          label: "会话已中断",
+          status: "warning",
+        });
+      } else if (reason === "exceed_max_iters") {
+        message.statusText = "已达到最大迭代次数";
+        upsertProgress(message, {
+          key: "reply",
+          label: "已达到最大迭代次数",
+          status: "warning",
+        });
+      } else if (reason === "error") {
+        message.statusText = "回复失败";
+        upsertProgress(message, {
+          key: "reply",
+          label: event.error?.message || "回复失败",
+          status: "error",
+        });
+      } else {
+        message.statusText = "回答完成";
+        upsertProgress(message, {
+          key: "reply",
+          label: "回答生成完成",
+          status: "success",
+        });
+      }
+      completeMessageTiming(message);
+      break;
+    }
+    default:
+      break;
+  }
 }
 
 function providerFromCredential(credential: AssistantCredential) {
@@ -478,14 +887,75 @@ async function refreshSessions(selectLatest = false, runtimeId = "") {
 }
 
 function toViewMessage(message: AssistantMessage): ViewMessage {
+  const startedAt = timestampValue(message.created_at);
+  const finishedAt = timestampValue(message.finished_at);
+  const failed = Boolean(message.error);
+  const progress: ViewProgressItem[] = [];
+
+  if (message.role === "assistant") {
+    if (message.usage) {
+      progress.push({
+        key: `history-model-${message.id}`,
+        label: "模型调用完成",
+        detail: `输入 ${message.usage.input_tokens || 0} / 输出 ${message.usage.output_tokens || 0} tokens`,
+        status: "success",
+        startedAt,
+        finishedAt,
+      });
+    }
+    for (const content of message.content) {
+      if (content.type === "text" && "text" in content) {
+        const textContent = content as AssistantTextContent;
+        progress.push({
+          key: `history-text-${content.id || progress.length}`,
+          label: "回答文本生成完成",
+          detail: `${String(content.text || "").length} 字`,
+          status: "success",
+          startedAt: timestampValue(textContent.created_at) || startedAt,
+          finishedAt: timestampValue(textContent.finished_at) || finishedAt,
+        });
+      } else if (content.type === "data" && "source" in content) {
+        const dataContent = content as AssistantDataContent;
+        progress.push({
+          key: `history-data-${content.id || progress.length}`,
+          label: "媒体内容生成完成",
+          detail:
+            dataContent.name ||
+            (dataContent.source.type === "base64"
+              ? dataContent.source.media_type
+              : dataContent.source.media_type || "图片"),
+          status: "success",
+          startedAt: timestampValue(dataContent.created_at) || startedAt,
+          finishedAt: timestampValue(dataContent.finished_at) || finishedAt,
+        });
+      }
+    }
+    progress.push({
+      key: `history-reply-${message.id}`,
+      label: failed ? message.error?.message || "回答失败" : "回答生成完成",
+      status: failed ? "error" : "success",
+      startedAt,
+      finishedAt,
+    });
+  }
+
   return {
     id: message.id,
     role: message.role,
     text: getMessageText(message),
-    images: getMessageImages(message).map(
-      (image) => `data:${image.source.media_type};base64,${image.source.data}`,
+    images: getMessageImages(message).map((image) =>
+      image.source.type === "url"
+        ? image.source.url
+        : `data:${image.source.media_type};base64,${image.source.data}`,
     ),
-    failed: Boolean(message.error),
+    failed,
+    progress,
+    startedAt,
+    finishedAt,
+    elapsedMs:
+      startedAt !== undefined && finishedAt !== undefined
+        ? Math.max(0, finishedAt - startedAt)
+        : undefined,
   };
 }
 
@@ -569,16 +1039,31 @@ async function ensureSession() {
   };
 }
 
-async function syncMessagesAfterReply() {
+function mergeRuntimeExecution(source?: ViewMessage) {
+  if (!source) return;
+  const target = [...messages.value]
+    .reverse()
+    .find((message) => message.role === "assistant");
+  if (!target) return;
+  target.progress = source.progress;
+  target.startedAt = source.startedAt;
+  target.finishedAt = source.finishedAt;
+  target.elapsedMs = source.elapsedMs;
+  target.statusText = source.statusText;
+}
+
+async function syncMessagesAfterReply(runtimeMessage?: ViewMessage) {
   if (!agentId.value) return;
   if (!currentRecordId.value && currentRuntimeId.value) {
     await refreshSessions(false, currentRuntimeId.value);
+    mergeRuntimeExecution(runtimeMessage);
     return;
   }
   const item = sessions.value.find(
     (session) => session.session.id === currentRecordId.value,
   );
   if (item) await loadMessages(item);
+  mergeRuntimeExecution(runtimeMessage);
 }
 
 async function askQuestion(question: string) {
@@ -604,6 +1089,7 @@ async function sendQuestion() {
     text: "",
     images: [],
     streaming: true,
+    startedAt: Date.now(),
   };
   sending.value = true;
   messages.value.push(userMessage, assistantMessage);
@@ -620,8 +1106,8 @@ async function sendQuestion() {
     streamRequest = streamAssistantReplyApi(
       agentId.value,
       recordId,
-      (delta) => {
-        assistantMessage.text = delta;
+      (snapshot, event) => {
+        handleStreamEvent(assistantMessage, snapshot, event);
         void scrollToBottom();
       },
     );
@@ -636,24 +1122,39 @@ async function sendQuestion() {
     const streamResult = await streamRequest;
     if (!assistantMessage.text) assistantMessage.text = streamResult.text;
     assistantMessage.streaming = false;
+    if (assistantMessage.elapsedMs === undefined)
+      completeMessageTiming(assistantMessage);
 
     await new Promise((resolve) => setTimeout(resolve, 150));
-    await syncMessagesAfterReply();
+    await syncMessagesAfterReply(assistantMessage);
     if (!currentRecordId.value)
       await refreshSessions(false, currentRuntimeId.value);
   } catch (error) {
     streamRequest?.abort();
     assistantMessage.streaming = false;
+    completeMessageTiming(assistantMessage);
     if (interruptRequested) {
       if (!assistantMessage.text) assistantMessage.text = "已停止生成";
       await new Promise((resolve) => setTimeout(resolve, 150));
-      await syncMessagesAfterReply();
+      upsertProgress(assistantMessage, {
+        key: "reply",
+        label: "会话已中断",
+        status: "warning",
+      });
+      await syncMessagesAfterReply(assistantMessage);
     } else {
       assistantMessage.failed = true;
       assistantMessage.text =
         error instanceof Error ? error.message : "助手暂时无法响应，请稍后重试";
     }
   } finally {
+    if (!interruptRequested && assistantMessage.failed) {
+      upsertProgress(assistantMessage, {
+        key: "reply",
+        label: assistantMessage.text,
+        status: "error",
+      });
+    }
     sending.value = false;
     streamReady.value = false;
     if (activeStreamRequest === streamRequest) activeStreamRequest = undefined;
@@ -1065,6 +1566,71 @@ button {
   color: #fff;
 }
 
+.event-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+  margin-bottom: 16rpx;
+  padding: 14rpx 16rpx;
+  border-radius: 14rpx;
+  background: rgba(22, 119, 255, 0.06);
+}
+
+.event-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+}
+
+.event-indicator {
+  width: 12rpx;
+  height: 12rpx;
+  flex: none;
+  margin-top: 9rpx;
+  border-radius: 50%;
+  background: #98a2b3;
+
+  &.running {
+    background: #1677ff;
+    box-shadow: 0 0 0 5rpx rgba(22, 119, 255, 0.12);
+  }
+
+  &.success {
+    background: #12b76a;
+  }
+
+  &.warning {
+    background: #f79009;
+  }
+
+  &.error {
+    background: #e5484d;
+  }
+}
+
+.event-copy {
+  min-width: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2rpx;
+}
+
+.event-label {
+  color: #475467;
+  font-size: 22rpx;
+  line-height: 30rpx;
+}
+
+.event-detail {
+  overflow: hidden;
+  color: #98a2b3;
+  font-size: 19rpx;
+  line-height: 27rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .message-text {
   font-size: 28rpx;
   line-height: 1.7;
@@ -1090,11 +1656,30 @@ button {
   background: #eef2f7;
 }
 
-.copy-btn {
+.message-actions {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
   margin-top: 8rpx;
+}
+
+.copy-btn,
+.duration-btn {
+  margin: 0;
   padding: 8rpx;
   color: #8a94a5;
   font-size: 21rpx;
+}
+
+.duration-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5rpx;
+  color: #667085;
+}
+
+.duration-btn:active {
+  color: #1677ff;
 }
 
 .thinking {
@@ -1392,6 +1977,113 @@ button {
   border-radius: 26rpx;
   background: #fff;
   box-sizing: border-box;
+}
+
+.execution-dialog {
+  width: 650rpx;
+  max-width: calc(100vw - 48rpx);
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+  padding: 30rpx;
+  border-radius: 26rpx;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.execution-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.execution-summary {
+  margin-top: 22rpx;
+  padding: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 16rpx;
+  background: #f4f8ff;
+  color: #667085;
+  font-size: 24rpx;
+}
+
+.execution-total {
+  color: #1677ff;
+  font-size: 29rpx;
+  font-weight: 700;
+}
+
+.execution-list {
+  max-height: 58vh;
+  margin-top: 20rpx;
+}
+
+.execution-step {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 14rpx;
+  padding: 14rpx 4rpx 18rpx;
+}
+
+.execution-step:not(:last-child)::after {
+  position: absolute;
+  top: 34rpx;
+  bottom: -2rpx;
+  left: 9rpx;
+  width: 2rpx;
+  background: #e4e7ec;
+  content: "";
+}
+
+.execution-step-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.execution-step-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14rpx;
+}
+
+.execution-step-label {
+  color: #344054;
+  font-size: 25rpx;
+  font-weight: 600;
+}
+
+.execution-step-time {
+  flex: none;
+  color: #98a2b3;
+  font-size: 20rpx;
+}
+
+.execution-step-detail {
+  display: block;
+  margin-top: 6rpx;
+  color: #667085;
+  font-size: 22rpx;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.execution-empty {
+  padding: 50rpx 0;
+  color: #98a2b3;
+  font-size: 24rpx;
+  text-align: center;
+}
+
+.execution-note {
+  margin-top: 16rpx;
+  color: #98a2b3;
+  font-size: 19rpx;
+  line-height: 1.5;
 }
 
 .dialog-title {

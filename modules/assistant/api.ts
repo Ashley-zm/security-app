@@ -15,6 +15,7 @@ import type {
   AssistantSessionItem,
   AssistantStreamEvent,
   AssistantStreamResult,
+  AssistantStreamSnapshot,
   AssistantTextContent,
   AssistantKnowledgeBase,
   AssistantKnowledgeConfig,
@@ -191,7 +192,8 @@ export function deleteAssistantSessionApi(agentId: string, sessionId: string) {
 
 function uuid() {
   const cryptoApi = globalThis.crypto as
-    { randomUUID?: () => string } | undefined;
+    | { randomUUID?: () => string }
+    | undefined;
   if (cryptoApi?.randomUUID) return cryptoApi.randomUUID();
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (char) => {
     const random = Math.floor(Math.random() * 16);
@@ -254,7 +256,7 @@ function textFromContent(content: unknown) {
 
 function eventDelta(event: AssistantStreamEvent) {
   const type = String(event.type || "").toUpperCase();
-  if (!type.includes("DELTA") && type !== "TEXT_BLOCK") return "";
+  if (type !== "TEXT_BLOCK_DELTA" && type !== "TEXT_BLOCK") return "";
   if (typeof event.delta === "string") return event.delta;
   if (event.delta && typeof event.delta === "object") {
     return event.delta.text || event.delta.content || "";
@@ -266,13 +268,30 @@ function eventDelta(event: AssistantStreamEvent) {
 export function streamAssistantReplyApi(
   agentId: string,
   sessionId: string,
-  onDelta: (text: string, event: AssistantStreamEvent) => void,
+  onEvent: (
+    snapshot: AssistantStreamSnapshot,
+    event: AssistantStreamEvent,
+  ) => void,
 ) {
   let cancel = () => undefined;
   const promise = new Promise<AssistantStreamResult>((resolve, reject) => {
     let buffer = "";
+    console.log("streamAssistantReplyApi");
+    const decoder = new TextDecoder("utf-8");
+    console.log("decoder", decoder);
     let text = "";
     let replyId = "";
+    let thinking = "";
+    const mediaBuffers = new Map<
+      string,
+      AssistantStreamSnapshot["media"][number]
+    >();
+    const snapshot = (): AssistantStreamSnapshot => ({
+      replyId: replyId || undefined,
+      text,
+      thinking,
+      media: [...mediaBuffers.values()].filter((item) => item.data || item.url),
+    });
     let settled = false;
     let task: UniApp.RequestTask | undefined;
 
@@ -298,13 +317,44 @@ export function streamAssistantReplyApi(
       const delta = eventDelta(event);
       if (delta) {
         text += delta;
-        onDelta(text, event);
+        onEvent(snapshot(), event);
       }
+      if (type === "THINKING_BLOCK_DELTA" && typeof event.delta === "string") {
+        thinking += event.delta;
+      }
+      const mediaId = event.block_id || event.tool_call_id || event.id || type;
+      if (type === "DATA_BLOCK_START") {
+        mediaBuffers.set(mediaId, {
+          id: mediaId,
+          mediaType: event.media_type || "application/octet-stream",
+          data: "",
+        });
+      } else if (type === "DATA_BLOCK_DELTA") {
+        const current = mediaBuffers.get(mediaId);
+        mediaBuffers.set(mediaId, {
+          id: mediaId,
+          mediaType:
+            event.media_type ||
+            current?.mediaType ||
+            "application/octet-stream",
+          data: `${current?.data || ""}${event.data || ""}`,
+          url: event.url || current?.url,
+        });
+      } else if (type === "TOOL_RESULT_DATA_DELTA") {
+        const current = mediaBuffers.get(mediaId);
+        mediaBuffers.set(mediaId, {
+          id: mediaId,
+          mediaType: event.media_type || "application/octet-stream",
+          data: `${current?.data || ""}${event.data || ""}`,
+          url: event.url || current?.url,
+        });
+      }
+      if (!delta) onEvent(snapshot(), event);
       if (type === "REPLY_END") {
         if (event.error?.message || event.finished_reason === "error") {
           fail(new RequestError(event.error?.message || "助手回复失败"));
         } else {
-          finish({ replyId, text, finishedReason: event.finished_reason });
+          finish({ ...snapshot(), finishedReason: event.finished_reason });
         }
         task?.abort();
       }
@@ -313,7 +363,8 @@ export function streamAssistantReplyApi(
       if (!payload || payload === "[DONE]") return;
       try {
         const parsed = JSON.parse(payload) as
-          AssistantStreamEvent | AssistantStreamEvent[];
+          | AssistantStreamEvent
+          | AssistantStreamEvent[];
         (Array.isArray(parsed) ? parsed : [parsed]).forEach(consumeEvent);
       } catch {
         // event/id/retry 行不属于 JSON 数据，安全忽略。
@@ -357,7 +408,7 @@ export function streamAssistantReplyApi(
           return;
         }
         if (typeof res.data === "string") consume(res.data, true);
-        finish({ replyId, text });
+        finish(snapshot());
       },
       fail: (error) => {
         if (!settled)
@@ -371,7 +422,7 @@ export function streamAssistantReplyApi(
       ) => void;
     };
     streamTask.onChunkReceived?.((event) => {
-      consume(new TextDecoder("utf-8").decode(event.data, { stream: true }));
+      consume(decoder.decode(event.data, { stream: true }));
     });
   });
   return Object.assign(promise, { abort: () => cancel() });
@@ -385,6 +436,7 @@ export function getMessageImages(message: AssistantMessage) {
   return message.content.filter((item): item is AssistantDataContent => {
     if (item.type !== "data" || !("source" in item)) return false;
     const source = (item as AssistantDataContent).source;
+    if (source?.type === "url") return Boolean(source.url);
     return (
       source?.type === "base64" &&
       typeof source.data === "string" &&

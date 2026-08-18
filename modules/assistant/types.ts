@@ -60,14 +60,20 @@ export interface AssistantTextContent {
 export interface AssistantDataContent {
   id?: string;
   type: "data";
-  source: { type: "base64"; media_type: string; data: string };
-  name: string;
+  source:
+    | { type: "base64"; media_type: string; data: string }
+    | { type: "url"; media_type?: string; url: string };
+  name?: string;
+  created_at?: string;
+  finished_at?: string;
 }
 
 export interface AssistantHintContent {
   id?: string;
   type: "hint";
   hint: string;
+  created_at?: string;
+  finished_at?: string;
   [key: string]: unknown;
 }
 
@@ -84,6 +90,10 @@ export interface AssistantMessage {
   content: AssistantContent[];
   metadata?: Record<string, unknown>;
   created_at?: string;
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+  } | null;
   finished_at?: string | null;
   finished_reason?: string | null;
   error?: { message?: string; [key: string]: unknown } | null;
@@ -137,6 +147,19 @@ export interface AssistantStreamEvent {
   type?: string;
   session_id?: string;
   reply_id?: string;
+  block_id?: string;
+  tool_call_id?: string;
+  tool_call_name?: string;
+  model_name?: string;
+  media_type?: string;
+  data?: string;
+  url?: string;
+  state?: string;
+  input_tokens?: number;
+  output_tokens?: number;
+  name?: string;
+  value?: Record<string, unknown>;
+  tool_calls?: Array<Record<string, unknown>>;
   text?: string;
   delta?: string | { text?: string; content?: string };
   content?: string | AssistantContent[];
@@ -145,7 +168,20 @@ export interface AssistantStreamEvent {
   [key: string]: unknown;
 }
 
-export interface AssistantStreamResult {
+export interface AssistantStreamMedia {
+  id: string;
+  mediaType: string;
+  data?: string;
+  url?: string;
+}
+
+export interface AssistantStreamSnapshot {
+  replyId?: string;
+  text: string;
+  thinking: string;
+  media: AssistantStreamMedia[];
+}
+export interface AssistantStreamResult extends AssistantStreamSnapshot {
   replyId?: string;
   text: string;
   finishedReason?: string;
