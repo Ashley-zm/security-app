@@ -32,6 +32,26 @@
         <text>{{ form.photos.length }}/{{ maxPhotos }}</text>
       </button>
     </view>
+    <view
+      v-if="form.aiCheckStatus !== 'idle'"
+      class="ai-status-detail"
+      :class="form.aiCheckStatus"
+    >
+      <text v-if="form.aiCheckStatus === 'detecting'" class="ai-spinner"
+        >◌</text
+      >
+      <text class="ai-status-label">{{ aiStatusLabel }}</text>
+      <text class="ai-status-text">
+        {{ form.aiErrorMessage || form.aiStatusMessage }}
+      </text>
+      <text
+        v-if="form.aiCheckStatus === 'failed'"
+        class="ai-status-action"
+        @click="$emit('retryAi')"
+      >
+        重新检测
+      </text>
+    </view>
     <InspectionOptionList
       v-if="showsOptions"
       :model-value="form.selectedSubItemIds"
@@ -60,6 +80,17 @@
       <text class="ai-title">✦ AI 建议</text>
       <text class="ai-text">{{ form.aiSuggestion }}</text>
     </view>
+    <view v-if="form.aiSuggestionPending" class="ai-suggestion ai-conflict">
+      <text class="ai-title">✦ AI 建议</text>
+      <text class="ai-text">{{ aiSuggestionText }}</text>
+      <view class="ai-actions">
+        <text class="ai-action primary" @click="$emit('applyAi')">
+          采用 AI 建议
+        </text>
+        <text class="ai-action" @click="$emit('ignoreAi')">忽略</text>
+      </view>
+    </view>
+
     <view v-if="disposalMeasures.length" class="disposal-section">
       <view class="disposal-head">
         <view class="disposal-title-wrap">
@@ -120,7 +151,29 @@ const emit = defineEmits<{
   choosePhoto: [];
   retryPhoto: [id: string];
   removePhoto: [id: string];
+  retryAi: [];
+  applyAi: [];
+  ignoreAi: [];
 }>();
+const aiStatusLabel = computed(() => {
+  if (props.form.aiCheckStatus === "detecting") return "AI 检测中";
+  if (props.form.aiCheckStatus === "failed") return "AI 检测失败";
+  return "AI 已识别";
+});
+const aiSuggestionText = computed(() => {
+  const idSet = new Set(props.form.aiSuggestedSubItemIds.map(String));
+  const optionNames = (props.item.subItemList || [])
+    .filter((option) => idSet.has(String(option.id)))
+    .map((option) => option.subItemName);
+  const parts = [
+    optionNames.length ? "建议选择：" + optionNames.join("、") : "",
+    props.form.aiSuggestedInputValue
+      ? "识别结果：" + props.form.aiSuggestedInputValue
+      : "",
+  ].filter(Boolean);
+  return parts.join("；") || "AI 给出了新的识别结果";
+});
+
 const allowedDisposalMeasureIds = computed(() => {
   const values = String(props.item.disposalMeasures || "")
     .split(/[,，]/)
@@ -408,5 +461,73 @@ function onInput(event: Event) {
   font-size: 21rpx;
   font-weight: 900;
   line-height: 1;
+}
+.ai-status-detail {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  margin-top: 18rpx;
+  padding: 14rpx 18rpx;
+  border-radius: 14rpx;
+  color: #58749e;
+  font-size: 21rpx;
+  background: #f4f8fe;
+}
+
+.ai-status-detail.success {
+  color: #287d58;
+  background: #eef9f3;
+}
+
+.ai-status-detail.failed {
+  color: #a75b22;
+  background: #fff7ef;
+}
+
+.ai-status-label {
+  flex: 0 0 auto;
+  font-weight: 800;
+}
+
+.ai-status-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-status-action {
+  flex: 0 0 auto;
+  color: #3474de;
+  font-weight: 800;
+}
+
+.ai-spinner {
+  animation: ai-spin 1s linear infinite;
+}
+
+@keyframes ai-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ai-conflict {
+  background: #f7f3ff;
+}
+
+.ai-actions {
+  display: flex;
+  gap: 24rpx;
+  margin-top: 16rpx;
+}
+
+.ai-action {
+  padding: 8rpx 0;
+  color: #7e8da7;
+  font-size: 22rpx;
+}
+
+.ai-action.primary {
+  color: #665be5;
+  font-weight: 800;
 }
 </style>

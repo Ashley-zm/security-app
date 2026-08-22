@@ -393,6 +393,7 @@ const isAutoRecordingEnabled = ref(false);
 async function loadParameterConfigList() {
   try {
     const result = await getParameterConfigListApi();
+    console.log("user-detail loadParameterConfigList", result);
     isAgentAgentEnabled.value = result
       .filter((item) => item.configType === 1)
       .some((item) => item.configValue === "1");

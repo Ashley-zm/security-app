@@ -216,8 +216,8 @@ const tabCountStyle = computed(() => ({
 
 const timeSortIcon = computed(() =>
   timeSort.value === 1
-    ? "/static/images/shijianzhengxu.png"
-    : "/static/images/shijiandaoxu.png",
+    ? "/static/images/work-order/shijianzhengxu.png"
+    : "/static/images/work-order/shijiandaoxu.png",
 );
 
 const userViews = computed<WorkOrderUserView[]>(() =>

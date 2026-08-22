@@ -41,3 +41,16 @@ export async function uploadInspectionPhoto(
   if (!uploaded?.fileId) throw new Error("图片上传结果为空");
   return { fileId: uploaded.fileId, fileUrl: uploaded.url };
 }
+
+/** 调用ai接口获取算法识别需要勾选的数据 */
+export function getAiSelectedSubItemIdsApi(data: {
+  workOrderUserId: string;
+  itemId: string | number;
+  photoFileIds: string[];
+}) {
+  return request<any>({
+    url: `/inspection/app/workOrder/v0.2/ai/recognize`,
+    method: "POST",
+    data,
+  });
+}

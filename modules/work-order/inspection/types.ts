@@ -1,5 +1,6 @@
 ﻿export type BusinessId = string;
 export type UploadStatus = "pending" | "uploading" | "success" | "failed";
+export type AiCheckStatus = "idle" | "detecting" | "success" | "failed";
 
 export interface InspectionTemplateSubItem {
   id: string | number;
@@ -74,6 +75,15 @@ export interface InspectionFormItem {
   aiDetectedSubItemIds: string[];
   aiConfidence?: number;
   aiRawData?: Record<string, unknown>;
+  /** 仅用于当前页面交互，不会进入安检提交数据。 */
+  aiCheckStatus: AiCheckStatus;
+  aiStatusMessage?: string;
+  aiErrorMessage?: string;
+  aiRequestId?: string;
+  aiSuggestedSubItemIds: string[];
+  aiSuggestedInputValue?: string;
+  aiSuggestionPending: boolean;
+  manuallyEdited: boolean;
   completed: boolean;
 }
 

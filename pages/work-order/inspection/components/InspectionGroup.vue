@@ -22,6 +22,9 @@
         @choose-photo="$emit('choosePhoto', item)"
         @retry-photo="$emit('retryPhoto', item, $event)"
         @remove-photo="$emit('removePhoto', item, $event)"
+        @retry-ai="$emit('retryAi', item)"
+        @apply-ai="$emit('applyAi', item)"
+        @ignore-ai="$emit('ignoreAi', item)"
       />
     </view>
   </view>
@@ -52,6 +55,9 @@ defineEmits<{
   choosePhoto: [item: InspectionTemplateItem];
   retryPhoto: [item: InspectionTemplateItem, photoId: string];
   removePhoto: [item: InspectionTemplateItem, photoId: string];
+  retryAi: [item: InspectionTemplateItem];
+  applyAi: [item: InspectionTemplateItem];
+  ignoreAi: [item: InspectionTemplateItem];
 }>();
 const items = computed(() =>
   (props.group.itemList || []).filter((item) => Number(item.enabled) === 1),

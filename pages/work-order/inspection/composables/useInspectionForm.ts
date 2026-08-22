@@ -60,6 +60,10 @@ export function useInspectionForm() {
           selectedDisposalMeasures: [],
           photos: [],
           aiDetectedSubItemIds: [],
+          aiCheckStatus: "idle",
+          aiSuggestedSubItemIds: [],
+          aiSuggestionPending: false,
+          manuallyEdited: false,
           completed: false,
         };
         updateCompleted(item);

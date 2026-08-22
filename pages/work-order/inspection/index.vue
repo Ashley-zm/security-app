@@ -79,6 +79,9 @@
           @choose-photo="handlePhotoAction"
           @retry-photo="retryPhoto"
           @remove-photo="removePhoto"
+          @retry-ai="retryAiRecognition"
+          @apply-ai="applyAiSuggestion"
+          @ignore-ai="ignoreAiSuggestion"
         />
         <view class="signature-entry" @click="openSignaturePopup">
           <view class="signature-entry-head">
@@ -199,6 +202,7 @@ import { FILE_UPLOAD_TYPE } from "@/modules/common/types";
 import {
   submitInspectionRecordApi,
   uploadInspectionPhoto,
+  getAiSelectedSubItemIdsApi,
 } from "@/modules/work-order/inspection/api";
 import { useInspectionStore } from "@/stores/inspection";
 import { formatDateTime } from "@/utils/date";
@@ -229,7 +233,7 @@ const inspectionMode = ref<string>(INSPECTION_ACTIONS.AI.mode);
 const expandedGroups = reactive<Record<string, boolean>>({});
 const scrollTarget = ref("");
 const errorItemId = ref("");
-const dirty = ref(false);
+const dirty = ref(false); // 是否有手动修改
 const submitted = ref(false);
 const navigatingBack = ref(false);
 const photoPopupVisible = ref(false);
@@ -381,13 +385,17 @@ function toggleGroup(id: string) {
 }
 // 选项改变
 function onOptionChange(item: InspectionTemplateItem, value: string[]) {
-  formData[String(item.id)].selectedSubItemIds = [...value];
+  const state = formData[String(item.id)];
+  state.selectedSubItemIds = [...value];
+  state.manuallyEdited = true;
   updateCompleted(item);
   dirty.value = true;
 }
 // 输入框值改变
 function onInputChange(item: InspectionTemplateItem, value: string) {
-  formData[String(item.id)].inputValue = value;
+  const state = formData[String(item.id)];
+  state.inputValue = value;
+  state.manuallyEdited = true;
   updateCompleted(item);
   dirty.value = true;
 }
@@ -456,16 +464,6 @@ function confirmPhotoPopup() {
   closePhotoPopup();
   // 本次拍摄内容只有确认后才上传保存。
   if (pendingPhotos.length) enqueuePhotoUploads(item, pendingPhotos);
-  // 确认照片弹窗后，更新选项（根据item.itemName判断是连接管道还是燃气灶）
-  if (!item.subItemList?.[1].id) return;
-  if (item.itemName === "燃气灶连接管道") {
-    onOptionChange(item, [String(item.subItemList?.[1].id)]);
-  } else if (item.itemName === "燃气灶") {
-    onOptionChange(item, [
-      String(item.subItemList?.[1].id),
-      String(item.subItemList?.[2].id),
-    ]);
-  }
 }
 
 // 拍照照片
@@ -557,13 +555,124 @@ function enqueuePhotoUploads(
   item: InspectionTemplateItem,
   photos: InspectionPhoto[],
 ) {
+  const state = formData[String(item.id)];
+  state.aiRequestId = "pending-" + Date.now();
+  if (inspectionMode.value === INSPECTION_ACTIONS.AI.mode) {
+    state.aiCheckStatus = "detecting";
+    state.aiStatusMessage = "照片上传中，完成后将自动分析";
+    state.aiErrorMessage = undefined;
+    state.aiSuggestionPending = false;
+  }
+
   // 每张图片独立请求，Promise.all 并行上传以缩短整体等待时间。
   Promise.all(photos.map((photo) => uploadPhoto(item, photo))).then(() => {
-    const state = formData[String(item.id)];
-    // 模拟ai建议数据
-    state.aiSuggestion = "重大风险，需上报燃气公司维修整改！";
+    //如果是agent安检就 调用ai接口获取算法识别需要勾选的数据
+    if (inspectionMode.value === INSPECTION_ACTIONS.AI.mode) {
+      getAiSelectedSubItemIds(item, photos);
+      return;
+    }
     updateCompleted(item);
   });
+}
+async function getAiSelectedSubItemIds(
+  item: InspectionTemplateItem,
+  photos: InspectionPhoto[],
+) {
+  const state = formData[String(item.id)];
+  const requestId = Date.now() + "-" + Math.random().toString(36).slice(2);
+  state.aiRequestId = requestId;
+  state.aiCheckStatus = "detecting";
+  state.aiStatusMessage = "AI 正在分析照片，你可以继续填写其他项目";
+  state.aiErrorMessage = undefined;
+  state.aiSuggestionPending = false;
+
+  try {
+    const result = await getAiSelectedSubItemIdsApi({
+      workOrderUserId: workOrderUserId.value,
+      itemId: item.id,
+      photoFileIds: photos
+        .map((photo) => photo.fileId)
+        .filter((fileId): fileId is string => Boolean(fileId)),
+    });
+    if (state.aiRequestId !== requestId) return;
+    const allowedIds = new Set(
+      (item.subItemList || []).map((subItem) => String(subItem.id)),
+    );
+    const suggestedIds = [
+      ...new Set<string>(
+        (result?.templateDangerId || [])
+          .map(String)
+          .filter((id: string) => allowedIds.has(id)),
+      ),
+    ];
+    const suggestedInput = result?.result ? String(result.result) : "";
+    state.aiSuggestedSubItemIds = suggestedIds;
+    state.aiSuggestedInputValue = suggestedInput;
+    state.aiDetectedSubItemIds = suggestedIds;
+    state.aiCheckStatus = "success";
+    state.aiStatusMessage =
+      suggestedIds.length || suggestedInput
+        ? "AI 已完成识别"
+        : "AI 未识别到异常，请人工确认";
+    if (!state.manuallyEdited) {
+      if (suggestedIds.length) state.selectedSubItemIds = suggestedIds;
+      if (suggestedInput) state.inputValue = suggestedInput;
+      updateCompleted(item);
+      if (suggestedIds.length || suggestedInput) {
+        dirty.value = true;
+      }
+    } else if (suggestedIds.length || suggestedInput) {
+      state.aiSuggestionPending = true;
+    }
+
+    // // 模拟ai建议数据
+    // const state = formData[String(item.id)];
+    // state.aiSuggestion = "重大风险，需上报燃气公司维修整改！";
+    // updateCompleted(item);
+  } catch (error) {
+    if (state.aiRequestId !== requestId) return;
+    state.aiCheckStatus = "failed";
+    state.aiStatusMessage = undefined;
+    state.aiErrorMessage =
+      error instanceof Error ? error.message : "AI 检测失败，请重试";
+
+    console.log("ai识别结果错误", error);
+    uni.showToast({
+      title: error instanceof Error ? error.message : "ai识别失败，请重试",
+      icon: "none",
+    });
+  }
+}
+
+function retryAiRecognition(item: InspectionTemplateItem) {
+  const photos = formData[String(item.id)].photos.filter(
+    (photo) => photo.uploadStatus === "success" && photo.fileId,
+  );
+  if (!photos.length) {
+    uni.showToast({ title: "请先上传照片", icon: "none" });
+    return;
+  }
+  getAiSelectedSubItemIds(item, photos);
+}
+
+function applyAiSuggestion(item: InspectionTemplateItem) {
+  const state = formData[String(item.id)];
+  if (state.aiSuggestedSubItemIds.length) {
+    state.selectedSubItemIds = [...state.aiSuggestedSubItemIds];
+  }
+  if (state.aiSuggestedInputValue) {
+    state.inputValue = state.aiSuggestedInputValue;
+  }
+  state.aiSuggestionPending = false;
+  state.aiStatusMessage = "已采用 AI 建议";
+  updateCompleted(item);
+  dirty.value = true;
+}
+
+function ignoreAiSuggestion(item: InspectionTemplateItem) {
+  const state = formData[String(item.id)];
+  state.aiSuggestionPending = false;
+  state.aiStatusMessage = "已保留人工填写结果";
 }
 
 // 上传照片
