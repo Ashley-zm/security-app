@@ -17,12 +17,7 @@
       </button>
     </view>
 
-    <scroll-view
-      class="message-scroll"
-      scroll-y
-      :scroll-into-view="scrollIntoView"
-      scroll-with-animation
-    >
+    <scroll-view class="message-scroll" scroll-y :scroll-top="messageScrollTop">
       <view v-if="initializing" class="state-card">
         <view class="loading-dot" />
         <text>正在连接安检 Agent...</text>
@@ -68,6 +63,19 @@
             <text class="role-name">
               {{ message.role === "assistant" ? agentName : "现场提问" }}
             </text>
+
+            <button
+              v-if="
+                message.role === 'assistant' &&
+                !message.streaming &&
+                message.elapsedMs !== undefined
+              "
+              class="duration-btn"
+              @click="executionDetailMessage = message"
+            >
+              <uni-icons type="info" size="13" color="#667085" />
+              <text>耗时 {{ formatElapsed(message.elapsedMs) }}</text>
+            </button>
             <view class="bubble" :class="{ failed: message.failed }">
               <view v-if="message.images.length" class="message-images">
                 <image
@@ -118,26 +126,26 @@
                 </view>
               </view>
             </view>
-            <view v-if="message.role === 'assistant'" class="message-actions">
-              <button
+            <view class="message-actions">
+              <!-- <button
                 v-if="message.text"
                 class="copy-btn"
                 @click="copyMessage(message.text)"
               >
-                复制
-              </button>
-              <button
-                v-if="!message.streaming && message.elapsedMs !== undefined"
-                class="duration-btn"
-                @click="executionDetailMessage = message"
-              >
-                <uni-icons type="info" size="13" color="#667085" />
-                <text>耗时 {{ formatElapsed(message.elapsedMs) }}</text>
-              </button>
+              复制
+            </button> -->
+              <image
+                v-if="message.text"
+                @click="copyMessage(message.text)"
+                class="copy-icon"
+                src="/static/images/assistant/copy.png"
+                mode="aspectFill"
+                style="width: 24rpx; height: 24rpx"
+              />
             </view>
           </view>
         </view>
-        <view id="message-bottom" class="bottom-anchor" />
+        <view class="bottom-anchor" />
       </view>
     </scroll-view>
 
@@ -173,8 +181,9 @@
           :disabled="busy || uploadingImages || draftImages.length >= 4"
           @click="chooseImages"
         >
-          <text class="image-icon">＋</text>
-          <text>{{ uploadingImages ? "读取中" : "图片" }}</text>
+          <!-- <text class="image-icon">＋</text>
+          <text>{{ uploadingImages ? "读取中" : "图片" }}</text> -->
+          <image src="/static/images/assistant/images.svg" mode="aspectFit" />
         </button>
         <textarea
           v-model="inputValue"
@@ -187,13 +196,14 @@
           @confirm="sendQuestion"
         />
         <button
-          v-if="isCurrentSessionRunning"
           class="send-btn stop-btn"
+          v-if="isCurrentSessionRunning"
           :class="{ disabled: !canInterrupt }"
           :disabled="!canInterrupt"
           @click="interruptReply"
         >
-          {{ interrupting ? "停止中" : "停止" }}
+          <image src="/static/images/assistant/abort.png" mode="aspectFit" />
+          <!-- {{ interrupting ? "停止中" : "停止" }} -->
         </button>
         <button
           v-else
@@ -202,7 +212,17 @@
           :disabled="!canSend"
           @click="sendQuestion"
         >
-          发送
+          <image
+            v-show="!canSend"
+            src="/static/images/assistant/send.svg"
+            mode="aspectFit"
+          />
+          <image
+            v-show="canSend"
+            src="/static/images/assistant/send-can.svg"
+            mode="aspectFit"
+          />
+          <!-- 发送 -->
         </button>
       </view>
       <text class="composer-tip">支持 JPG、PNG、GIF、WebP，最多 4 张</text>
@@ -232,7 +252,14 @@
         >
           ＋ 新建会话
         </button>
-        <scroll-view class="session-list" scroll-y>
+        <scroll-view
+          class="session-list"
+          scroll-y
+          @touchstart.stop="handleDrawerTouchStart"
+          @touchmove.stop="handleDrawerTouchMove"
+          @touchend.stop="handleDrawerTouchEnd"
+          @touchcancel.stop="resetDrawerGesture"
+        >
           <view v-if="sessionsLoading" class="drawer-empty">加载中...</view>
           <view v-else-if="!sessions.length" class="drawer-empty">
             暂无历史会话
@@ -351,7 +378,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import AppNavbar from "@/components/AppNavbar.vue";
 import AssistantMarkdown from "@/components/AssistantMarkdown.vue";
 import {
@@ -409,7 +436,7 @@ interface ViewMessage {
   finishedAt?: number;
   elapsedMs?: number;
 }
-const DEFAULT_MODEL = import.meta.env.VITE_ASSISTANT_MODEL || "gpt-5.5";
+const DEFAULT_MODEL = import.meta.env.VITE_ASSISTANT_MODEL || "qwen3.7-plus";
 const systemInfo = uni.getSystemInfoSync();
 const drawerTopPadding = `${
   Math.max(
@@ -434,12 +461,19 @@ const interrupting = ref(false);
 const streamReady = ref(false);
 const uploadingImages = ref(false);
 const historyVisible = ref(false);
+const drawerTranslateX = ref(0);
+const drawerDragging = ref(false);
+let drawerTouchStartX = 0;
+let drawerTouchStartY = 0;
+let drawerTouchStartedAt = 0;
+let drawerHorizontalGesture = false;
 const sessions = ref<AssistantSessionItem[]>([]);
 const knowledgeBases = ref<AssistantKnowledgeBase[]>([]);
 const messages = ref<ViewMessage[]>([]);
 const draftImages = ref<AssistantImageDraft[]>([]);
 const inputValue = ref("");
-const scrollIntoView = ref("");
+const messageScrollTop = ref(0);
+let latestScrollRequest = 0;
 const agentId = ref("");
 const agentName = ref("安检助手");
 const modelConfig = ref<AssistantModelConfig>();
@@ -840,7 +874,9 @@ async function initialize() {
     agentName.value = agent.data?.name || "安检助手";
     const provider = providerFromCredential(credential);
     const modelResult = await getAssistantModelsApi(provider);
+    console.log("获取模型列表", modelResult);
     const model = chooseModel(modelResult.models || []);
+    console.log("选择模型", model);
     if (!model) throw new Error("当前模型凭证下没有可用模型");
     modelConfig.value = {
       type: credential.data.type,
@@ -986,6 +1022,91 @@ async function loadMessages(item: AssistantSessionItem) {
   }
 }
 
+interface DrawerTouchPoint {
+  clientX?: number;
+  clientY?: number;
+  pageX?: number;
+  pageY?: number;
+}
+
+interface DrawerTouchEvent {
+  touches?: DrawerTouchPoint[];
+  changedTouches?: DrawerTouchPoint[];
+  preventDefault?: () => void;
+}
+
+function getDrawerTouchPoint(event: DrawerTouchEvent, changed = false) {
+  const points = changed ? event.changedTouches : event.touches;
+  return points?.[0];
+}
+
+function touchCoordinate(point: DrawerTouchPoint, axis: "x" | "y") {
+  return Number(
+    axis === "x"
+      ? (point.clientX ?? point.pageX ?? 0)
+      : (point.clientY ?? point.pageY ?? 0),
+  );
+}
+
+function resetDrawerGesture() {
+  drawerDragging.value = false;
+  drawerTranslateX.value = 0;
+  drawerHorizontalGesture = false;
+}
+
+function handleDrawerTouchStart(event: DrawerTouchEvent) {
+  const point = getDrawerTouchPoint(event);
+  if (!point) return;
+  drawerTouchStartX = touchCoordinate(point, "x");
+  drawerTouchStartY = touchCoordinate(point, "y");
+  drawerTouchStartedAt = Date.now();
+  drawerHorizontalGesture = false;
+  drawerDragging.value = true;
+}
+
+function handleDrawerTouchMove(event: DrawerTouchEvent) {
+  const point = getDrawerTouchPoint(event);
+  if (!point || !drawerDragging.value) return;
+  const deltaX = touchCoordinate(point, "x") - drawerTouchStartX;
+  const deltaY = touchCoordinate(point, "y") - drawerTouchStartY;
+
+  if (!drawerHorizontalGesture) {
+    if (Math.abs(deltaX) < 8 && Math.abs(deltaY) < 8) return;
+    if (Math.abs(deltaY) >= Math.abs(deltaX)) {
+      drawerDragging.value = false;
+      return;
+    }
+    drawerHorizontalGesture = true;
+  }
+  event.preventDefault?.();
+  drawerTranslateX.value = Math.max(0, deltaX);
+}
+
+function handleDrawerTouchEnd(event: DrawerTouchEvent) {
+  if (!drawerDragging.value || !drawerHorizontalGesture) {
+    resetDrawerGesture();
+    return;
+  }
+  const point = getDrawerTouchPoint(event, true);
+  const deltaX = point
+    ? Math.max(0, touchCoordinate(point, "x") - drawerTouchStartX)
+    : drawerTranslateX.value;
+  const elapsed = Math.max(1, Date.now() - drawerTouchStartedAt);
+  const shouldClose = deltaX >= uni.upx2px(140) || deltaX / elapsed >= 0.5;
+
+  drawerDragging.value = false;
+  if (!shouldClose) {
+    drawerTranslateX.value = 0;
+    drawerHorizontalGesture = false;
+    return;
+  }
+  drawerTranslateX.value = systemInfo.windowWidth;
+  setTimeout(() => {
+    historyVisible.value = false;
+    resetDrawerGesture();
+  }, 220);
+}
+
 async function selectSession(item: AssistantSessionItem, closeDrawer = true) {
   if (sending.value) return;
   currentRecordId.value = item.session.id;
@@ -1112,6 +1233,7 @@ async function sendQuestion() {
       },
     );
     activeStreamRequest = streamRequest;
+    await streamRequest.ready;
     streamReady.value = true;
     await sendAssistantMessageApi({
       agentId: agentId.value,
@@ -1161,7 +1283,7 @@ async function sendQuestion() {
     if (currentSessionItem.value) {
       currentSessionItem.value.is_running = false;
     }
-    await scrollToBottom();
+    await scrollToBottom(true);
   }
 }
 
@@ -1327,13 +1449,52 @@ function formatTime(value?: string) {
   )}:${pad(date.getMinutes())}`;
 }
 
-async function scrollToBottom() {
-  scrollIntoView.value = "";
-  await nextTick();
-  scrollIntoView.value = "message-bottom";
+function getMessageContentHeight() {
+  return new Promise<number>((resolve) => {
+    uni
+      .createSelectorQuery()
+      .select(".message-list")
+      .boundingClientRect((rect) => {
+        const target = Array.isArray(rect) ? rect[0] : rect;
+        resolve(Number(target?.height) || 0);
+      })
+      .exec();
+  });
 }
 
-onMounted(initialize);
+async function applyContentScrollTop() {
+  const requestId = ++latestScrollRequest;
+  await nextTick();
+  const contentHeight = await getMessageContentHeight();
+  if (requestId !== latestScrollRequest) return;
+
+  messageScrollTop.value = Math.ceil(contentHeight) + requestId;
+}
+
+async function scrollToBottom(settle = false) {
+  await applyContentScrollTop();
+  if (!settle) return;
+
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  await applyContentScrollTop();
+  await new Promise((resolve) => setTimeout(resolve, 240));
+  await applyContentScrollTop();
+}
+
+function handleKeyboardHeightChange(event: { height: number }) {
+  if (event.height <= 0) return;
+  setTimeout(() => void scrollToBottom(true), 80);
+  console.log("keyboard height changed", event.height);
+}
+
+onMounted(() => {
+  initialize();
+  uni.onKeyboardHeightChange(handleKeyboardHeightChange);
+});
+onBeforeUnmount(() => {
+  activeStreamRequest?.abort();
+  uni.offKeyboardHeightChange(handleKeyboardHeightChange);
+});
 </script>
 
 <style lang="scss" scoped>
@@ -1400,6 +1561,7 @@ button {
 }
 
 .message-scroll {
+  height: 0;
   min-height: 0;
   flex: 1;
 }
@@ -1813,9 +1975,14 @@ button {
   color: #fff;
   font-size: 25rpx;
   font-weight: 700;
+  image {
+    width: 38rpx;
+    height: 38rpx;
+  }
 
   &.stop-btn {
-    background: #e5484d;
+    // background: #e5484d;
+    background: #b8c5d5;
   }
 
   &.disabled {
@@ -1850,6 +2017,12 @@ button {
   box-sizing: border-box;
   background: #fff;
   box-shadow: -16rpx 0 40rpx rgba(20, 35, 55, 0.16);
+  transition: transform 0.22s ease-out;
+  will-change: transform;
+
+  &.dragging {
+    transition: none;
+  }
 }
 
 .drawer-head {

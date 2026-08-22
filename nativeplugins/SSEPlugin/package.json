@@ -1,0 +1,29 @@
+{
+  "name": "SSEPlugin",
+  "id": "SSEPlugin",
+  "version": "1.0.0",
+  "description": "基于 OkHttp SSE 的 uni-app Android GET/POST 流式连接插件",
+  "_dp_type": "nativeplugin",
+  "_dp_nativeplugin": {
+    "android": {
+      "plugins": [
+        {
+          "type": "module",
+          "name": "SSEPlugin",
+          "class": "com.ajagent.unisse.SsePlugin"
+        }
+      ],
+      "integrateType": "aar",
+      "minSdkVersion": 21,
+      "useAndroidX": true,
+      "dependencies": [
+        "com.alibaba:fastjson:1.2.83",
+        "com.squareup.okhttp3:okhttp:4.12.0",
+        "com.squareup.okhttp3:okhttp-sse:4.12.0"
+      ],
+      "permissions": [
+        "<uses-permission android:name=\"android.permission.INTERNET\"/>"
+      ]
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import { RequestError } from "@/utils/request";
 import { getUserInfoStorage } from "@/utils/storage";
+import { startSSE, stopSSE, type SSEConnectionEvent } from "@/utils/sse";
 import type { UserInfo } from "@/modules/auth/types";
 import type {
   AssistantAgent,
@@ -22,7 +23,8 @@ import type {
 } from "@/modules/assistant/types";
 
 const API_BASE_URL = (
-  import.meta.env.VITE_ASSISTANT_API_BASE_URL || "http://192.168.99.21:8000"
+  import.meta.env.VITE_ASSISTANT_API_BASE_URL ||
+  "http://117.50.174.170:58081/agent-chat/"
 ).replace(/\/$/, "");
 const REQUEST_TIMEOUT = 60000;
 
@@ -74,6 +76,7 @@ function agentRequest<T>(
   } = {},
 ) {
   return new Promise<T>((resolve, reject) => {
+    console.log("请求路径", apiUrl(path, options.query));
     uni.request({
       url: apiUrl(path, options.query),
       method: (options.method || "GET") as UniApp.RequestOptions["method"],
@@ -103,7 +106,7 @@ function agentRequest<T>(
 }
 
 export function getAssistantAgentsApi() {
-  return agentRequest<{ agents: AssistantAgent[]; total?: number }>("/agent");
+  return agentRequest<{ agents: AssistantAgent[]; total?: number }>("/agent/");
 }
 
 export function getAssistantCredentialsApi() {
@@ -120,7 +123,7 @@ export function getAssistantModelsApi(provider: string) {
 }
 
 export function getAssistantSessionsApi(agentId: string) {
-  return agentRequest<{ sessions: AssistantSessionItem[] }>("/sessions", {
+  return agentRequest<{ sessions: AssistantSessionItem[] }>("/sessions/", {
     query: { agent_id: agentId },
   });
 }
@@ -136,7 +139,7 @@ export function getAssistantMessagesApi(agentId: string, sessionId: string) {
 }
 export function getAssistantKnowledgeBaseApi() {
   return agentRequest<{ knowledge_bases: AssistantKnowledgeBase[] }>(
-    "/knowledge_bases",
+    "/knowledge_bases/",
   );
 }
 
@@ -160,7 +163,7 @@ export function interruptAssistantSessionApi(
   sessionId: string,
 ) {
   return agentRequest<void>(
-    `/sessions/${encodeURIComponent(sessionId)}/interrupt`,
+    `/sessions/${encodeURIComponent(sessionId)}/interrupt/`,
     {
       method: "POST",
       query: { agent_id: agentId },
@@ -178,13 +181,13 @@ export function updateAssistantSessionApi(
   },
 ) {
   return agentRequest<AssistantSession>(
-    `/sessions/${encodeURIComponent(sessionId)}`,
+    `/sessions/${encodeURIComponent(sessionId)}/`,
     { method: "PATCH", query: { agent_id: agentId }, data },
   );
 }
 
 export function deleteAssistantSessionApi(agentId: string, sessionId: string) {
-  return agentRequest<void>(`/sessions/${encodeURIComponent(sessionId)}`, {
+  return agentRequest<void>(`/sessions/${encodeURIComponent(sessionId)}/`, {
     method: "DELETE",
     query: { agent_id: agentId },
   });
@@ -274,11 +277,17 @@ export function streamAssistantReplyApi(
   ) => void,
 ) {
   let cancel = () => undefined;
+  let readyResolved = false;
+  let resolveReady: () => void = () => undefined;
+  const ready = new Promise<void>((resolve) => {
+    resolveReady = resolve;
+  });
+  const markReady = () => {
+    if (readyResolved) return;
+    readyResolved = true;
+    resolveReady();
+  };
   const promise = new Promise<AssistantStreamResult>((resolve, reject) => {
-    let buffer = "";
-    console.log("streamAssistantReplyApi");
-    const decoder = new TextDecoder("utf-8");
-    console.log("decoder", decoder);
     let text = "";
     let replyId = "";
     let thinking = "";
@@ -293,22 +302,25 @@ export function streamAssistantReplyApi(
       media: [...mediaBuffers.values()].filter((item) => item.data || item.url),
     });
     let settled = false;
-    let task: UniApp.RequestTask | undefined;
+    let abortTransport: () => void = () => undefined;
 
     const finish = (result: AssistantStreamResult) => {
       if (settled) return;
       settled = true;
+      markReady();
       resolve(result);
     };
     const fail = (error: unknown) => {
       if (settled) return;
       settled = true;
+      markReady();
       reject(error);
     };
     cancel = () => {
       if (settled) return;
       settled = true;
-      task?.abort();
+      markReady();
+      abortTransport();
       reject(new RequestError("流式请求已取消"));
     };
     const consumeEvent = (event: AssistantStreamEvent) => {
@@ -356,11 +368,15 @@ export function streamAssistantReplyApi(
         } else {
           finish({ ...snapshot(), finishedReason: event.finished_reason });
         }
-        task?.abort();
+        abortTransport();
       }
     };
     const consumePayload = (payload: string) => {
-      if (!payload || payload === "[DONE]") return;
+      if (!payload) return;
+      if (payload === "[DONE]") {
+        finish(snapshot());
+        return;
+      }
       try {
         const parsed = JSON.parse(payload) as
           | AssistantStreamEvent
@@ -370,62 +386,64 @@ export function streamAssistantReplyApi(
         // event/id/retry 行不属于 JSON 数据，安全忽略。
       }
     };
-    const consume = (chunk: string, flush = false) => {
-      buffer += chunk;
-      const blocks = buffer.split(/\r?\n\r?\n/);
-      buffer = flush ? "" : blocks.pop() || "";
-      for (const block of blocks) {
-        const payload = block
-          .split(/\r?\n/)
-          .filter((line) => line.trim().startsWith("data:"))
-          .map((line) => line.trim().slice(5).trim())
-          .join("\n");
-        consumePayload(payload || block.trim());
+    const streamUrl = apiUrl(
+      `/sessions/${encodeURIComponent(sessionId)}/stream`,
+      { agent_id: agentId },
+    );
+    const handleConnectionEvent = (event: SSEConnectionEvent | null) => {
+      console.log("SSE connection event", event);
+      if (settled) return;
+      if (!event) {
+        fail(
+          new RequestError(
+            "SSEPlugin callback payload is empty; rebuild the custom runtime",
+          ),
+        );
+        return;
+      }
+      if (event.type === "connecting" || event.type === "open") {
+        markReady();
+      } else if (event.type === "message") {
+        consumePayload(String(event.data || ""));
+      } else if (event.type === "closed") {
+        if (text || mediaBuffers.size) finish(snapshot());
+        else fail(new RequestError(event.message || "SSE connection closed"));
+      } else if (event.type === "cancelled") {
+        fail(new RequestError("SSE request cancelled"));
+      } else if (event.type === "error") {
+        fail(
+          new RequestError(event.message || "SSE connection failed", {
+            statusCode: event.code,
+            response: event,
+          }),
+        );
       }
     };
-
-    task = uni.request({
-      url: apiUrl(`/sessions/${encodeURIComponent(sessionId)}/stream`, {
-        agent_id: agentId,
-      }),
-      method: "GET",
-      timeout: REQUEST_TIMEOUT,
-      enableChunked: true,
-      header: {
-        "x-user-id": getCurrentUserId(),
-        Accept: "text/event-stream",
-        "Cache-Control": "no-cache",
-      },
-      success: (res) => {
-        if (settled) return;
-        if (res.statusCode < 200 || res.statusCode >= 300) {
-          fail(
-            new RequestError(responseMessage(res.data, "流式请求失败"), {
-              statusCode: res.statusCode,
-              response: res.data,
-            }),
-          );
-          return;
-        }
-        if (typeof res.data === "string") consume(res.data, true);
-        finish(snapshot());
-      },
-      fail: (error) => {
-        if (!settled)
-          fail(new RequestError(error.errMsg || "流式请求连接失败"));
-      },
-    });
-
-    const streamTask = task as typeof task & {
-      onChunkReceived?: (
-        callback: (event: { data: ArrayBuffer }) => void,
-      ) => void;
-    };
-    streamTask.onChunkReceived?.((event) => {
-      consume(decoder.decode(event.data, { stream: true }));
-    });
+    try {
+      startSSE(
+        {
+          url: streamUrl,
+          method: "GET",
+          headers: {
+            "x-user-id": getCurrentUserId(),
+            Accept: "text/event-stream",
+            "Cache-Control": "no-cache",
+          },
+        },
+        handleConnectionEvent,
+      );
+      abortTransport = () => stopSSE();
+    } catch (error) {
+      fail(
+        new RequestError(
+          error instanceof Error
+            ? error.message
+            : "Failed to start SSE request",
+        ),
+      );
+    }
   });
-  return Object.assign(promise, { abort: () => cancel() });
+  return Object.assign(promise, { abort: () => cancel(), ready });
 }
 
 export function getMessageText(message: AssistantMessage) {
