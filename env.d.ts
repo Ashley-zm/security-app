@@ -1,23 +1,29 @@
 /// <reference types="@dcloudio/types" />
 
 interface ImportMetaEnv {
-  readonly VITE_ASSISTANT_API_BASE_URL?: string
-  readonly VITE_ASSISTANT_API_KEY?: string
-  readonly VITE_ASSISTANT_MODEL?: string
+  readonly VITE_ASSISTANT_API_BASE_URL?: string;
+  readonly VITE_ASSISTANT_API_KEY?: string;
+  readonly VITE_ASSISTANT_MODEL?: string;
+  readonly VITE_BASE_API_URL?: string;
+  readonly VITE_FILE_API_URL?: string;
 }
 
 interface ImportMeta {
-  readonly env: ImportMetaEnv
+  readonly env: ImportMetaEnv;
 }
 
-declare module '*.vue' {
-  import type { DefineComponent } from 'vue'
-  const component: DefineComponent<Record<string, unknown>, Record<string, unknown>, unknown>
-  export default component
+declare module "*.vue" {
+  import type { DefineComponent } from "vue";
+  const component: DefineComponent<
+    Record<string, unknown>,
+    Record<string, unknown>,
+    unknown
+  >;
+  export default component;
 }
 
-declare module '@dcloudio/uni-h5-vue/dist/vue.runtime.esm.js' {
-  export * from 'vue'
-  export const injectHook: unknown
-  export const isInSSRComponentSetup: boolean
+declare module "@dcloudio/uni-h5-vue/dist/vue.runtime.esm.js" {
+  export * from "vue";
+  export const injectHook: unknown;
+  export const isInSSRComponentSetup: boolean;
 }

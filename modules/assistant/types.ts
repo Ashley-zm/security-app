@@ -158,6 +158,9 @@ export interface AssistantStreamEvent {
   input_tokens?: number;
   output_tokens?: number;
   name?: string;
+  title?: string;
+  first_level_title?: string;
+  table_title?: string;
   value?: Record<string, unknown>;
   tool_calls?: Array<Record<string, unknown>>;
   text?: string;
@@ -179,6 +182,7 @@ export interface AssistantStreamSnapshot {
   replyId?: string;
   text: string;
   thinking: string;
+  tableTitle?: string;
   media: AssistantStreamMedia[];
 }
 export interface AssistantStreamResult extends AssistantStreamSnapshot {

@@ -88,6 +88,7 @@ function agentRequest<T>(
         Accept: "application/json",
       },
       success: (res) => {
+        console.log("请求成功", path, res);
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(unwrap<T>(res.data));
           return;
@@ -268,6 +269,34 @@ function eventDelta(event: AssistantStreamEvent) {
   return textFromContent(event.content);
 }
 
+function eventTableTitle(event: AssistantStreamEvent) {
+  const value = event.value || {};
+  const candidates = [
+    event.table_title,
+    event.first_level_title,
+    event.title,
+    event.tableTitle,
+    event.firstLevelTitle,
+    event.level_one_title,
+    event.level1_title,
+    event["一级标题"],
+    value.table_title,
+    value.first_level_title,
+    value.title,
+    value.tableTitle,
+    value.firstLevelTitle,
+    value.level_one_title,
+    value.level1_title,
+    value["一级标题"],
+  ];
+  return candidates
+    .find(
+      (item): item is string =>
+        typeof item === "string" && Boolean(item.trim()),
+    )
+    ?.trim();
+}
+
 export function streamAssistantReplyApi(
   agentId: string,
   sessionId: string,
@@ -291,6 +320,7 @@ export function streamAssistantReplyApi(
     let text = "";
     let replyId = "";
     let thinking = "";
+    let tableTitle = "";
     const mediaBuffers = new Map<
       string,
       AssistantStreamSnapshot["media"][number]
@@ -299,6 +329,7 @@ export function streamAssistantReplyApi(
       replyId: replyId || undefined,
       text,
       thinking,
+      tableTitle: tableTitle || undefined,
       media: [...mediaBuffers.values()].filter((item) => item.data || item.url),
     });
     let settled = false;
@@ -325,6 +356,7 @@ export function streamAssistantReplyApi(
     };
     const consumeEvent = (event: AssistantStreamEvent) => {
       replyId ||= event.reply_id || "";
+      tableTitle ||= eventTableTitle(event) || "";
       const type = String(event.type || "").toUpperCase();
       const delta = eventDelta(event);
       if (delta) {
@@ -391,7 +423,6 @@ export function streamAssistantReplyApi(
       { agent_id: agentId },
     );
     const handleConnectionEvent = (event: SSEConnectionEvent | null) => {
-      console.log("SSE connection event", event);
       if (settled) return;
       if (!event) {
         fail(

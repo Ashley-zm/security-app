@@ -84,10 +84,10 @@ export class RequestError extends Error {
 }
 
 const ENCRYPT_HEADER = "encrypt-key";
-const BASE_URL = "http://192.168.99.180:58085";
-export const FILE_URL = "http://192.168.99.180:58080/inspection";
-// const BASE_URL = "http://192.168.99.85:58085";
-// export const FILE_URL = "http://192.168.99.85:58080/inspection";
+const BASE_URL =
+  import.meta.env.VITE_BASE_API_URL || "http://192.168.99.77:58085/";
+export const FILE_URL =
+  import.meta.env.VITE_FILE_API_URL || "http://192.168.99.77:58080/inspection/";
 const CONTROL_HEADER_KEYS = ["isNotToken", "isEncrypt"];
 
 let DEFAULT_REQUEST_CONFIG: RequestRuntimeConfig = {
@@ -251,7 +251,6 @@ export function request<T, D = unknown>(
     runtimeConfig,
     aesKey,
   );
-
   return new Promise((resolve, reject) => {
     uni.request({
       url: normalizeUrl(runtimeConfig.baseUrl, options.url),

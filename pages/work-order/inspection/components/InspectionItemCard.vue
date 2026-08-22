@@ -81,7 +81,7 @@
       <text class="ai-text">{{ form.aiSuggestion }}</text>
     </view>
     <view v-if="form.aiSuggestionPending" class="ai-suggestion ai-conflict">
-      <text class="ai-title">✦ AI 建议</text>
+      <text class="ai-title">✦ AI 识别结果建议</text>
       <text class="ai-text">{{ aiSuggestionText }}</text>
       <view class="ai-actions">
         <text class="ai-action primary" @click="$emit('applyAi')">

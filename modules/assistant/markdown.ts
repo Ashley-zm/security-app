@@ -83,6 +83,7 @@ export function renderAssistantMarkdown(content: string) {
 
 export interface AssistantMarkdownTable {
   id: string;
+  title?: string;
   rows: string[][];
 }
 
@@ -92,7 +93,10 @@ export interface AssistantMarkdownImage {
   alt: string;
 }
 
-export function extractAssistantMarkdownAssets(content: string) {
+export function extractAssistantMarkdownAssets(
+  content: string,
+  fallbackTableTitle = "",
+) {
   const tables: AssistantMarkdownTable[] = [];
   const images: AssistantMarkdownImage[] = [];
   if (!content) return { tables, images };
@@ -100,6 +104,8 @@ export function extractAssistantMarkdownAssets(content: string) {
   const tokens = markdown.parse(content, {});
   let tableRows: string[][] | undefined;
   let row: string[] | undefined;
+  let firstLevelTitle = "";
+  let collectingFirstLevelTitle = false;
 
   const collectImages = (token: Token) => {
     for (const child of token.children || []) {
@@ -115,12 +121,21 @@ export function extractAssistantMarkdownAssets(content: string) {
   };
 
   for (const token of tokens) {
-    if (token.type === "table_open") {
+    if (token.type === "heading_open" && token.tag === "h3") {
+      collectingFirstLevelTitle = true;
+    } else if (token.type === "heading_close" && token.tag === "h3") {
+      collectingFirstLevelTitle = false;
+    } else if (token.type === "table_open") {
       tableRows = [];
     } else if (token.type === "tr_open" && tableRows) {
       row = [];
     } else if (token.type === "inline") {
       collectImages(token);
+      if (collectingFirstLevelTitle) {
+        firstLevelTitle = markdown.renderer
+          .renderInlineAsText(token.children || [], markdown.options, {})
+          .trim();
+      }
       if (row) {
         row.push(
           markdown.renderer.renderInlineAsText(
@@ -134,7 +149,11 @@ export function extractAssistantMarkdownAssets(content: string) {
       tableRows.push(row);
       row = undefined;
     } else if (token.type === "table_close" && tableRows) {
-      tables.push({ id: `table-${tables.length + 1}`, rows: tableRows });
+      tables.push({
+        id: `table-${tables.length + 1}`,
+        title: firstLevelTitle || fallbackTableTitle.trim() || undefined,
+        rows: tableRows,
+      });
       tableRows = undefined;
     }
   }

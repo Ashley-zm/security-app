@@ -42,7 +42,14 @@ function appPlus() {
 }
 
 function safeFilename(name: string) {
-  return name.replace(/[\\/:*?"<>|]/g, "-");
+  return name.replace(/[\\/:*?"<>|]/g, "-").trim();
+}
+
+function tableFilename(table: AssistantMarkdownTable, index: number) {
+  const title = safeFilename(table.title || "").replace(/\.csv$/i, "");
+  return title
+    ? `${title}.csv`
+    : `安检助手-表格-${index + 1}-${Date.now()}.csv`;
 }
 
 function browserDownload(data: Blob | string, filename: string) {
@@ -150,7 +157,7 @@ export async function downloadAssistantTable(
   table: AssistantMarkdownTable,
   index: number,
 ) {
-  const filename = `安检助手-表格-${index + 1}-${Date.now()}.csv`;
+  const filename = tableFilename(table, index);
   const csv = tableCsv(table);
   const appWriter = writeAppFile(filename, csv, "downloads");
   if (appWriter) {

@@ -11,7 +11,7 @@
       @click="downloadTable(table, index)"
     >
       <uni-icons type="download" size="14" color="#1677ff" />
-      <text>表格 {{ index + 1 }}</text>
+      <text>{{ table.title || `表格 ${index + 1}` }}</text>
     </button>
     <button
       v-for="(image, index) in downloadableImages"
@@ -49,13 +49,18 @@ const props = withDefaults(
     content: string;
     streaming?: boolean;
     images?: string[];
+    tableTitle?: string;
   }>(),
   { streaming: false, images: () => [] },
 );
 
 const renderedHtml = ref("");
 const downloadingKey = ref("");
-const assets = ref(extractAssistantMarkdownAssets(props.content));
+const assets = ref(
+  extractAssistantMarkdownAssets(props.content, props.tableTitle),
+);
+// 打印下sse数据
+console.log("打印下sse数据", props.content);
 const downloadableImages = computed(() =>
   [
     ...new Set([
@@ -99,7 +104,10 @@ function renderNow() {
   if (renderTimer) clearTimeout(renderTimer);
   renderTimer = undefined;
   renderedHtml.value = renderAssistantMarkdown(props.content);
-  assets.value = extractAssistantMarkdownAssets(props.content);
+  assets.value = extractAssistantMarkdownAssets(
+    props.content,
+    props.tableTitle,
+  );
 }
 
 function scheduleRender() {
@@ -126,9 +134,13 @@ function handleItemClick(event: {
   // #endif
 }
 
-watch(() => [props.content, props.streaming], scheduleRender, {
-  immediate: true,
-});
+watch(
+  () => [props.content, props.streaming, props.tableTitle],
+  scheduleRender,
+  {
+    immediate: true,
+  },
+);
 onBeforeUnmount(() => {
   if (renderTimer) clearTimeout(renderTimer);
 });

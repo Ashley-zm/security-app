@@ -113,6 +113,7 @@
                 :content="message.text"
                 :streaming="message.streaming"
                 :images="message.images"
+                :table-title="message.tableTitle"
               />
               <text v-else-if="message.text" class="message-text" selectable>
                 {{ message.text }}
@@ -428,6 +429,7 @@ interface ViewMessage {
   role: "user" | "assistant";
   text: string;
   images: string[];
+  tableTitle?: string;
   streaming?: boolean;
   failed?: boolean;
   statusText?: string;
@@ -597,6 +599,7 @@ function handleStreamEvent(
 ) {
   message.text = snapshot.text;
   message.images = streamMediaUrls(snapshot);
+  message.tableTitle = snapshot.tableTitle;
   message.startedAt ||= Date.now();
   const type = String(event.type || "").toUpperCase();
   const blockKey = `block:${event.block_id || type}`;
@@ -922,6 +925,40 @@ async function refreshSessions(selectLatest = false, runtimeId = "") {
   }
 }
 
+function messageTableTitle(message: AssistantMessage) {
+  const metadata = message.metadata || {};
+  const contentWithTitle = message.content.find((item) => {
+    const candidate = item as Record<string, unknown>;
+    return Boolean(
+      candidate.table_title ||
+      candidate.first_level_title ||
+      candidate.title ||
+      candidate.tableTitle ||
+      candidate.firstLevelTitle ||
+      candidate["一级标题"],
+    );
+  }) as Record<string, unknown> | undefined;
+  const candidates = [
+    metadata.table_title,
+    metadata.first_level_title,
+    metadata.title,
+    metadata.tableTitle,
+    metadata.firstLevelTitle,
+    metadata["一级标题"],
+    contentWithTitle?.table_title,
+    contentWithTitle?.first_level_title,
+    contentWithTitle?.title,
+    contentWithTitle?.tableTitle,
+    contentWithTitle?.firstLevelTitle,
+    contentWithTitle?.["一级标题"],
+  ];
+  return candidates
+    .find(
+      (item): item is string =>
+        typeof item === "string" && Boolean(item.trim()),
+    )
+    ?.trim();
+}
 function toViewMessage(message: AssistantMessage): ViewMessage {
   const startedAt = timestampValue(message.created_at);
   const finishedAt = timestampValue(message.finished_at);
@@ -979,6 +1016,7 @@ function toViewMessage(message: AssistantMessage): ViewMessage {
     id: message.id,
     role: message.role,
     text: getMessageText(message),
+    tableTitle: messageTableTitle(message),
     images: getMessageImages(message).map((image) =>
       image.source.type === "url"
         ? image.source.url
@@ -1293,9 +1331,10 @@ async function interruptReply() {
   const hasLocalStream = Boolean(activeStreamRequest);
   interrupting.value = true;
   interruptRequested = true;
-
+  console.log("============", agentId.value, recordId);
   try {
-    await interruptAssistantSessionApi(agentId.value, recordId);
+    const res = await interruptAssistantSessionApi(agentId.value, recordId);
+    console.log("打印下中断会话结果", res);
     if (currentSessionItem.value) {
       currentSessionItem.value.is_running = false;
     }
@@ -1310,6 +1349,7 @@ async function interruptReply() {
     }
     uni.showToast({ title: "已停止生成", icon: "none" });
   } catch (error) {
+    console.log("打印下error", error);
     interruptRequested = false;
     uni.showToast({
       title: error instanceof Error ? error.message : "停止生成失败",
@@ -1976,8 +2016,8 @@ button {
   font-size: 25rpx;
   font-weight: 700;
   image {
-    width: 38rpx;
-    height: 38rpx;
+    width: 40rpx;
+    height: 40rpx;
   }
 
   &.stop-btn {
