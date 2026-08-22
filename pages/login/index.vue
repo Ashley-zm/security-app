@@ -176,7 +176,7 @@ async function loadTenantList() {
         0,
       );
       selectedTenantIndex.value = index;
-      form.tenantId = tenantList.value[index].tenantId;
+      if (!form.tenantId) form.tenantId = tenantList.value[index].tenantId;
       console.log("2默认租户", form.tenantId);
     } else {
       form.tenantId = "";

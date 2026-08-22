@@ -20,7 +20,8 @@
         "modules" : {
             "Maps" : {},
             "Geolocation" : {},
-            "Push" : {}
+            "Push" : {},
+            "Barcode" : {}
         },
         "distribute" : {
             "android" : {
@@ -63,6 +64,20 @@
                 "__plugin_info__" : {
                     "name" : "AudioRecordPlugin",
                     "description" : "Android 后台持续录音原生插件（Java + ForegroundService + MediaRecorder）",
+                    "platforms" : "Android",
+                    "url" : "",
+                    "android_package_name" : "",
+                    "ios_bundle_id" : "",
+                    "isCloud" : false,
+                    "bought" : -1,
+                    "pid" : "",
+                    "parameters" : {}
+                }
+            },
+            "SSEPlugin" : {
+                "__plugin_info__" : {
+                    "name" : "SSEPlugin",
+                    "description" : "OkHttp SSE native plugin for uni-app Android",
                     "platforms" : "Android",
                     "url" : "",
                     "android_package_name" : "",

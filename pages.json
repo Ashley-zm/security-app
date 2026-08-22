@@ -82,7 +82,11 @@
     {
       "path": "pages/assistant/index",
       "style": {
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "app-plus": {
+          "bounce": "none",
+          "softinputMode": "adjustResize"
+        }
       }
     },
     {
@@ -182,8 +186,6 @@
     ]
   },
   "easycom": {
-    "autoscan": true,
-    "custom": {
-    }
+    "autoscan": true
   }
 }
